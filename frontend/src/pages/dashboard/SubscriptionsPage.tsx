@@ -1,0 +1,139 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Layers, Users, TrendingUp, Download } from "lucide-react";
+import { format } from "date-fns";
+import StatCard from "@/components/dashboard/StatCard";
+import SubscriptionAnalyticsChart from "@/components/subscription/SubscriptionAnalyticsChart";
+import CreatePlanDialog from "@/components/subscription/CreatePlanDialog";
+import PlanCard from "@/components/subscription/PlanCard";
+import { Button } from "@/components/ui/button";
+import { useSubscriptionStore } from "@/stores/subscription-store";
+import { exportToCSV } from "@/lib/export-csv";
+import SubscriptionsSkeleton from "@/components/dashboard/SubscriptionsSkeleton";
+import EmptyState from "@/components/dashboard/EmptyState";
+import { StaggerContainer, StaggerItem } from "@/components/layout/PageTransition";
+
+import { BTC_USD } from "@/lib/constants";
+
+function SubscriptionsPage() {
+  const plans = useSubscriptionStore((s) => s.plans);
+  const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const stats = useMemo(() => {
+    const activeSubs = subscribers.filter((s) => s.status === "active");
+    const monthlyRevenue = plans
+      .filter((p) => p.isActive)
+      .reduce((sum, plan) => {
+        const count = subscribers.filter(
+          (s) => s.planId === plan.id && s.status === "active"
+        ).length;
+        let monthly = plan.amount * count;
+        if (plan.interval === "weekly") monthly *= 4;
+        if (plan.interval === "yearly") monthly /= 12;
+        return sum + monthly;
+      }, 0);
+
+    return {
+      totalPlans: plans.length,
+      activeSubscribers: activeSubs.length,
+      monthlyRevenue: Math.round(monthlyRevenue),
+    };
+  }, [plans, subscribers]);
+
+  const handleExport = useCallback(() => {
+    const rows: Record<string, string | number>[] = [];
+    for (const sub of subscribers) {
+      const plan = plans.find((p) => p.id === sub.planId);
+      const base = {
+        "Plan Name": plan?.name ?? "",
+        "Plan Amount (sats)": plan?.amount ?? "",
+        Interval: plan?.interval ?? "",
+        "Subscriber Address": sub.payerAddress,
+        Status: sub.status,
+        "Started At": format(sub.startedAt, "yyyy-MM-dd"),
+      };
+      if (sub.payments.length === 0) {
+        rows.push({ ...base, "Payment Date": "", "Payment Amount (sats)": "", "TX ID": "" });
+      } else {
+        for (const p of sub.payments) {
+          rows.push({
+            ...base,
+            "Payment Date": format(p.timestamp, "yyyy-MM-dd"),
+            "Payment Amount (sats)": p.amount,
+            "TX ID": p.txId,
+          });
+        }
+      }
+    }
+    exportToCSV(rows, `subscribers-export-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  }, [plans, subscribers]);
+
+  if (isLoading) return <SubscriptionsSkeleton />;
+
+  return (
+    <StaggerContainer className="space-y-6">
+      {/* Header */}
+      <StaggerItem>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-heading-lg text-foreground">Subscriptions</h1>
+            <p className="text-body-sm text-muted-foreground mt-1">
+              Manage recurring payment plans and subscribers.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="mr-1 h-4 w-4" />
+              Export CSV
+            </Button>
+            <CreatePlanDialog />
+          </div>
+        </div>
+      </StaggerItem>
+
+      {plans.length === 0 ? (
+        <StaggerItem>
+          <EmptyState
+            icon={Layers}
+            title="No subscription plans"
+            description="Create your first recurring payment plan to start collecting sBTC subscriptions."
+            action={<CreatePlanDialog />}
+          />
+        </StaggerItem>
+      ) : (
+        <>
+          {/* Stats */}
+          <div className="grid gap-4 sm:grid-cols-3">
+            <StaggerItem>
+              <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change="+1 this month" />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change="+2 this month" />
+            </StaggerItem>
+            <StaggerItem>
+              <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} displayValue={stats.monthlyRevenue.toLocaleString()} unit="sats" usd={`≈ $${(stats.monthlyRevenue * BTC_USD).toFixed(2)}`} icon={TrendingUp} change="+12%" />
+            </StaggerItem>
+          </div>
+
+          {/* Analytics Chart */}
+          <StaggerItem><SubscriptionAnalyticsChart /></StaggerItem>
+
+          {/* Plan Cards */}
+          <div className="grid gap-4 md:grid-cols-2">
+            {plans.map((plan) => (
+              <StaggerItem key={plan.id}>
+                <PlanCard plan={plan} />
+              </StaggerItem>
+            ))}
+          </div>
+        </>
+      )}
+    </StaggerContainer>
+  );
+}
+export default SubscriptionsPage;
