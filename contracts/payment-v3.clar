@@ -848,3 +848,84 @@
     (ok new-id)
   )
 )
+
+;; Process subscription payment
+(define-public (process-subscription-payment (subscription-id uint))
+  (let (
+    (caller tx-sender)
+    (sub (unwrap! (map-get? subscriptions subscription-id) ERR_SUBSCRIPTION_NOT_FOUND))
+    (subscriber (get subscriber sub))
+    (merchant-addr (get merchant sub))
+    (merchant (unwrap! (map-get? merchants merchant-addr) ERR_MERCHANT_NOT_FOUND))
+    (amount (get amount sub))
+    (fee (calculate-fee amount))
+    (merchant-amount (- amount fee))
+  )
+    (try! (check-is-operational))
+    
+    ;; Only subscriber can process
+    (asserts! (is-eq caller subscriber) ERR_NOT_AUTHORIZED)
+    
+    ;; Check subscription active
+    (asserts! (is-eq (get status sub) SUB_ACTIVE) ERR_SUBSCRIPTION_INACTIVE)
+    
+    ;; Check if due
+    (asserts! (>= burn-block-height (get next-payment-at sub)) ERR_NOT_DUE_YET)
+    
+    ;; Transfer to merchant
+    (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+      merchant-amount
+      caller
+      merchant-addr
+      none
+    ))
+    
+    ;; Transfer fee
+    (if (> fee u0)
+      (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+        fee
+        caller
+        (var-get fee-recipient)
+        none
+      ))
+      true
+    )
+    
+    ;; Update subscription
+    (map-set subscriptions subscription-id (merge sub {
+      payments-made: (+ (get payments-made sub) u1),
+      total-paid: (+ (get total-paid sub) amount),
+      last-payment-at: burn-block-height,
+      next-payment-at: (+ burn-block-height (get interval-blocks sub))
+    }))
+    
+    ;; Update merchant stats
+    (map-set merchants merchant-addr (merge merchant {
+      total-received: (+ (get total-received merchant) merchant-amount)
+    }))
+    
+    ;; Update global stats
+    (var-set total-volume (+ (var-get total-volume) amount))
+    (var-set total-fees-collected (+ (var-get total-fees-collected) fee))
+    
+    (print {
+      event: "subscription-payment",
+      subscription-id: subscription-id,
+      subscriber: caller,
+      merchant: merchant-addr,
+      amount: amount,
+      fee: fee,
+      merchant-received: merchant-amount,
+      payments-made: (+ (get payments-made sub) u1),
+      block-height: burn-block-height
+    })
+    
+    (ok {
+      subscription-id: subscription-id,
+      amount-paid: amount,
+      fee-paid: fee,
+      merchant-received: merchant-amount,
+      next-payment-at: (+ burn-block-height (get interval-blocks sub))
+    })
+  )
+)
