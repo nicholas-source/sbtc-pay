@@ -234,3 +234,91 @@
 (define-private (safe-sub (a uint) (b uint))
   (if (>= a b) (- a b) u0)
 )
+
+;; =============================================
+;; AUTHORIZATION CHECKS
+;; =============================================
+
+(define-read-only (check-is-owner)
+  (ok (asserts! (is-owner) ERR_NOT_AUTHORIZED))
+)
+
+(define-read-only (check-is-operational)
+  (ok (asserts! (is-operational) ERR_CONTRACT_PAUSED))
+)
+
+;; =============================================
+;; MERCHANT MANAGEMENT
+;; =============================================
+
+;; Register as merchant
+(define-public (register-merchant 
+  (name (string-utf8 64)) 
+  (description (optional (string-utf8 256)))
+  (webhook-url (optional (string-utf8 256)))
+  (logo-url (optional (string-utf8 256)))
+)
+  (let (
+    (caller tx-sender)
+    (new-id (+ (var-get merchant-counter) u1))
+  )
+    ;; Check contract operational
+    (try! (check-is-operational))
+    
+    ;; Prevent duplicate registration
+    (asserts! (is-none (map-get? merchants caller)) ERR_MERCHANT_EXISTS)
+    
+    ;; Register
+    (map-set merchants caller {
+      id: new-id,
+      name: name,
+      description: description,
+      webhook-url: webhook-url,
+      logo-url: logo-url,
+      total-received: u0,
+      total-refunded: u0,
+      invoice-count: u0,
+      subscription-count: u0,
+      registered-at: burn-block-height,
+      is-active: true,
+      is-verified: false
+    })
+    
+    (var-set merchant-counter new-id)
+    
+    (print {
+      event: "merchant-registered",
+      merchant: caller,
+      id: new-id,
+      name: name,
+      block-height: burn-block-height
+    })
+    
+    (ok new-id)
+  )
+)
+
+;; Update merchant profile
+(define-public (update-merchant-profile
+  (name (string-utf8 64))
+  (description (optional (string-utf8 256)))
+  (webhook-url (optional (string-utf8 256)))
+  (logo-url (optional (string-utf8 256)))
+)
+  (let (
+    (caller tx-sender)
+    (merchant (unwrap! (map-get? merchants caller) ERR_MERCHANT_NOT_FOUND))
+  )
+    (try! (check-is-operational))
+    
+    (map-set merchants caller (merge merchant {
+      name: name,
+      description: description,
+      webhook-url: webhook-url,
+      logo-url: logo-url
+    }))
+    
+    (print { event: "merchant-updated", merchant: caller })
+    (ok true)
+  )
+)
