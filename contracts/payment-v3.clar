@@ -783,3 +783,68 @@
     (refund-invoice invoice-id refundable reason)
   )
 )
+
+;; =============================================
+;; SUBSCRIPTION MANAGEMENT
+;; =============================================
+
+;; Create subscription
+(define-public (create-subscription
+  (merchant-addr principal)
+  (name (string-utf8 64))
+  (amount uint)
+  (interval-blocks uint)
+)
+  (let (
+    (caller tx-sender)
+    (merchant (unwrap! (map-get? merchants merchant-addr) ERR_MERCHANT_NOT_FOUND))
+    (new-id (+ (var-get subscription-counter) u1))
+  )
+    (try! (check-is-operational))
+    
+    ;; Validate merchant active
+    (asserts! (get is-active merchant) ERR_MERCHANT_INACTIVE)
+    
+    ;; Validate amount
+    (asserts! (>= amount MIN_INVOICE_AMOUNT) ERR_AMOUNT_TOO_LOW)
+    
+    ;; Validate interval (minimum ~1 day = 144 blocks)
+    (asserts! (>= interval-blocks u144) ERR_INVALID_AMOUNT)
+    
+    ;; Create subscription
+    (map-set subscriptions new-id {
+      id: new-id,
+      merchant: merchant-addr,
+      subscriber: caller,
+      name: name,
+      amount: amount,
+      interval-blocks: interval-blocks,
+      status: SUB_ACTIVE,
+      payments-made: u0,
+      total-paid: u0,
+      created-at: burn-block-height,
+      last-payment-at: u0,
+      next-payment-at: burn-block-height
+    })
+    
+    ;; Update merchant subscription count
+    (map-set merchants merchant-addr (merge merchant {
+      subscription-count: (+ (get subscription-count merchant) u1)
+    }))
+    
+    (var-set subscription-counter new-id)
+    
+    (print {
+      event: "subscription-created",
+      subscription-id: new-id,
+      merchant: merchant-addr,
+      subscriber: caller,
+      name: name,
+      amount: amount,
+      interval-blocks: interval-blocks,
+      block-height: burn-block-height
+    })
+    
+    (ok new-id)
+  )
+)
