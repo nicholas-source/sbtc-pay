@@ -13,16 +13,20 @@ import { toast } from "sonner";
 
 export function WalletModal() {
   const { walletModalOpen, setWalletModalOpen } = useUIStore();
-  const { connect, isConnecting } = useWalletStore();
+  const { connect, isConnecting, connectionError, isConnected } = useWalletStore();
 
   const handleConnect = async () => {
-    try {
-      await connect();
+    await connect();
+    // Check if connection was successful (no error and connected)
+    const state = useWalletStore.getState();
+    if (state.isConnected && !state.connectionError) {
       setWalletModalOpen(false);
       toast.success("Wallet connected successfully!");
-    } catch (error) {
-      console.error("Connection failed:", error);
-      toast.error("Failed to connect wallet. Please try again.");
+    }
+    // If there's a network mismatch, the global handler will show the error modal
+    // Close this modal so the error modal can be seen
+    if (state.connectionError?.type === 'network_mismatch') {
+      setWalletModalOpen(false);
     }
   };
 

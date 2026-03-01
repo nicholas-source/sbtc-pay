@@ -11,6 +11,25 @@ import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
 export type WalletProvider = 'leather' | 'xverse' | 'asigna' | null;
 export type Network = 'mainnet' | 'testnet';
 
+// Error types for wallet connection
+export type WalletError = 
+  | { type: 'network_mismatch'; detectedNetwork: Network; expectedNetwork: Network }
+  | { type: 'no_address'; message: string }
+  | { type: 'connection_failed'; message: string }
+  | null;
+
+// Helper to detect network from address
+function detectNetworkFromAddress(address: string): Network {
+  // Testnet addresses start with ST, mainnet with SP
+  return address.startsWith('ST') ? 'testnet' : 'mainnet';
+}
+
+// Helper to validate address matches expected network
+function validateNetworkMatch(address: string, expectedNetwork: Network): boolean {
+  const detectedNetwork = detectNetworkFromAddress(address);
+  return detectedNetwork === expectedNetwork;
+}
+
 interface WalletState {
   // Connection
   isConnected: boolean;
@@ -19,6 +38,7 @@ interface WalletState {
   address: string | null;
   publicKey: string | null;
   network: Network;
+  connectionError: WalletError;
 
   // Balances (in base units: microSTX and sats)
   stxBalance: bigint;
@@ -32,6 +52,7 @@ interface WalletState {
   fetchBalances: () => Promise<void>;
   fetchBtcPrice: () => Promise<void>;
   setNetwork: (network: Network) => void;
+  clearError: () => void;
 }
 
 // Helper to extract STX address from connection response
@@ -60,12 +81,13 @@ export const useWalletStore = create<WalletState>()(
       address: null,
       publicKey: null,
       network: NETWORK_MODE,
+      connectionError: null,
       stxBalance: BigInt(0),
       sbtcBalance: BigInt(0),
       btcPriceUsd: 97500, // Default BTC price
 
       connect: async () => {
-        set({ isConnecting: true });
+        set({ isConnecting: true, connectionError: null });
         try {
           // Use the new @stacks/connect API
           const response = await stacksConnect();
@@ -75,21 +97,57 @@ export const useWalletStore = create<WalletState>()(
             const publicKey = extractPublicKey(response.addresses);
 
             if (stxAddress) {
+              // Validate that the wallet is on the correct network
+              const expectedNetwork = NETWORK_MODE;
+              const detectedNetwork = detectNetworkFromAddress(stxAddress);
+
+              if (!validateNetworkMatch(stxAddress, expectedNetwork)) {
+                // Network mismatch - disconnect and show error
+                stacksDisconnect();
+                set({
+                  isConnected: false,
+                  isConnecting: false,
+                  address: null,
+                  publicKey: null,
+                  connectionError: {
+                    type: 'network_mismatch',
+                    detectedNetwork,
+                    expectedNetwork,
+                  },
+                });
+                return;
+              }
+
               set({
                 isConnected: true,
                 isConnecting: false,
                 address: stxAddress,
                 publicKey,
+                connectionError: null,
               });
 
               // Fetch balances after connecting
               get().fetchBalances();
               get().fetchBtcPrice();
             } else {
-              throw new Error('No STX address found in wallet response');
+              set({
+                isConnected: false,
+                isConnecting: false,
+                connectionError: {
+                  type: 'no_address',
+                  message: 'No STX address found in wallet response',
+                },
+              });
             }
           } else {
-            throw new Error('No addresses returned from wallet');
+            set({
+              isConnected: false,
+              isConnecting: false,
+              connectionError: {
+                type: 'no_address',
+                message: 'No addresses returned from wallet',
+              },
+            });
           }
         } catch (error) {
           console.error('Wallet connection failed:', error);
@@ -98,8 +156,11 @@ export const useWalletStore = create<WalletState>()(
             isConnecting: false,
             address: null,
             publicKey: null,
+            connectionError: {
+              type: 'connection_failed',
+              message: error instanceof Error ? error.message : 'Connection failed',
+            },
           });
-          throw error;
         }
       },
 
@@ -113,6 +174,7 @@ export const useWalletStore = create<WalletState>()(
           publicKey: null,
           stxBalance: BigInt(0),
           sbtcBalance: BigInt(0),
+          connectionError: null,
         });
       },
 
@@ -122,16 +184,42 @@ export const useWalletStore = create<WalletState>()(
           const stored = getLocalStorage();
           if (stored?.addresses?.stx?.[0]) {
             const stxAddr = stored.addresses.stx[0];
+            
+            // Validate network matches
+            const expectedNetwork = NETWORK_MODE;
+            const detectedNetwork = detectNetworkFromAddress(stxAddr.address);
+
+            if (!validateNetworkMatch(stxAddr.address, expectedNetwork)) {
+              // Network mismatch - disconnect stored session
+              stacksDisconnect();
+              set({
+                isConnected: false,
+                address: null,
+                publicKey: null,
+                connectionError: {
+                  type: 'network_mismatch',
+                  detectedNetwork,
+                  expectedNetwork,
+                },
+              });
+              return;
+            }
+
             set({
               isConnected: true,
               address: stxAddr.address,
               publicKey: stxAddr.publicKey || null,
+              connectionError: null,
             });
             // Refresh balances
             get().fetchBalances();
             get().fetchBtcPrice();
           }
         }
+      },
+
+      clearError: () => {
+        set({ connectionError: null });
       },
 
       fetchBalances: async () => {

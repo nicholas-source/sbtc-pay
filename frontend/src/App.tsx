@@ -14,6 +14,7 @@ import RefundsSkeleton from "@/components/dashboard/RefundsSkeleton";
 import SubscriptionsSkeleton from "@/components/dashboard/SubscriptionsSkeleton";
 import SettingsSkeleton from "@/components/dashboard/SettingsSkeleton";
 import { useWalletStore } from "@/stores/wallet-store";
+import { NetworkMismatchModal } from "@/components/wallet/NetworkMismatchModal";
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/Index"));
@@ -41,6 +42,31 @@ function WalletInitializer() {
   useEffect(() => {
     checkConnection();
   }, [checkConnection]);
+
+  return null;
+}
+
+// Global network error handler
+function GlobalNetworkErrorHandler() {
+  const connectionError = useWalletStore((state) => state.connectionError);
+  const clearError = useWalletStore((state) => state.clearError);
+  const connect = useWalletStore((state) => state.connect);
+
+  const handleRetry = async () => {
+    clearError();
+    await connect();
+  };
+
+  if (connectionError?.type === 'network_mismatch') {
+    return (
+      <NetworkMismatchModal
+        isOpen={true}
+        onClose={clearError}
+        onRetry={handleRetry}
+        detectedNetwork={connectionError.detectedNetwork}
+      />
+    );
+  }
 
   return null;
 }
@@ -98,6 +124,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <WalletInitializer />
+      <GlobalNetworkErrorHandler />
       <Toaster />
       <Sonner />
       <BrowserRouter>
