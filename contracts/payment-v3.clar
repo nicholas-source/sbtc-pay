@@ -190,3 +190,47 @@
   principal
   (list 50 uint)
 )
+
+;; Refund requests
+(define-map refunds
+  uint
+  {
+    invoice-id: uint,
+    merchant: principal,
+    customer: principal,
+    amount: uint,
+    reason: (string-utf8 256),
+    processed-at: uint
+  }
+)
+
+(define-data-var refund-counter uint u0)
+
+;; =============================================
+;; PRIVATE HELPER FUNCTIONS
+;; =============================================
+
+;; Calculate platform fee
+(define-private (calculate-fee (amount uint))
+  (/ (* amount (var-get platform-fee-bps)) BPS_DENOMINATOR)
+)
+
+;; Check if contract is operational
+(define-private (is-operational)
+  (not (var-get contract-paused))
+)
+
+;; Check if invoice expired
+(define-private (is-invoice-expired (expires-at uint))
+  (> burn-block-height expires-at)
+)
+
+;; Check if caller is owner
+(define-private (is-owner)
+  (is-eq tx-sender (var-get contract-owner))
+)
+
+;; Safe subtraction (returns 0 if would underflow)
+(define-private (safe-sub (a uint) (b uint))
+  (if (>= a b) (- a b) u0)
+)
