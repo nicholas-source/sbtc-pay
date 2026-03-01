@@ -1,7 +1,7 @@
-import { useWalletStore } from "@/stores/wallet-store";
+import { useWalletStore, useFormattedSbtcBalance, useSbtcBalanceInUsd, useFormattedStxBalance } from "@/stores/wallet-store";
 import { useUIStore } from "@/stores/ui-store";
 import { Button } from "@/components/ui/button";
-import { Wallet, ChevronDown, LogOut, Copy } from "lucide-react";
+import { Wallet, ChevronDown, LogOut, Copy, RefreshCw } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,18 +10,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-
-function truncateAddress(addr: string) {
-  return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
-}
-
-function formatSats(sbtc: number) {
-  return `${(sbtc * 1e8).toLocaleString()} sats`;
-}
+import { truncateAddress } from "@/lib/stacks/config";
 
 export function WalletButton() {
-  const { isConnected, address, sbtcBalance, stxBalance, usdRate, disconnect } = useWalletStore();
+  const { isConnected, address, disconnect, fetchBalances } = useWalletStore();
   const { setWalletModalOpen } = useUIStore();
+  const sbtcBalance = useFormattedSbtcBalance();
+  const sbtcUsd = useSbtcBalanceInUsd();
+  const stxBalance = useFormattedStxBalance();
 
   if (!isConnected) {
     return (
@@ -31,8 +27,6 @@ export function WalletButton() {
       </Button>
     );
   }
-
-  const usdValue = (sbtcBalance * usdRate).toFixed(2);
 
   return (
     <DropdownMenu>
@@ -48,16 +42,20 @@ export function WalletButton() {
           <div className="flex justify-between text-body-sm">
             <span className="text-muted-foreground">sBTC</span>
             <div className="text-right">
-              <div className="font-mono-nums font-semibold">{formatSats(sbtcBalance)}</div>
-              <div className="text-caption text-muted-foreground">≈ ${usdValue}</div>
+              <div className="font-mono-nums font-semibold">{sbtcBalance} sats</div>
+              <div className="text-caption text-muted-foreground">≈ ${sbtcUsd}</div>
             </div>
           </div>
           <div className="flex justify-between text-body-sm">
             <span className="text-muted-foreground">STX</span>
-            <span className="font-mono-nums font-semibold">{stxBalance.toLocaleString()}</span>
+            <span className="font-mono-nums font-semibold">{stxBalance}</span>
           </div>
         </div>
         <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => fetchBalances()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh Balances
+        </DropdownMenuItem>
         <DropdownMenuItem
           onClick={async () => {
             try {

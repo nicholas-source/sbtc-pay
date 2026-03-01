@@ -6,23 +6,24 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { useUIStore } from "@/stores/ui-store";
-import { useWalletStore, WalletProvider } from "@/stores/wallet-store";
+import { useWalletStore } from "@/stores/wallet-store";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-const wallets: { id: WalletProvider; name: string; description: string }[] = [
-  { id: "leather", name: "Leather", description: "Browser extension wallet" },
-  { id: "xverse", name: "Xverse", description: "Mobile & extension wallet" },
-  { id: "asigna", name: "Asigna", description: "Multisig wallet" },
-];
+import { toast } from "sonner";
 
 export function WalletModal() {
   const { walletModalOpen, setWalletModalOpen } = useUIStore();
   const { connect, isConnecting } = useWalletStore();
 
-  const handleConnect = async (provider: WalletProvider) => {
-    await connect(provider);
-    setWalletModalOpen(false);
+  const handleConnect = async () => {
+    try {
+      await connect();
+      setWalletModalOpen(false);
+      toast.success("Wallet connected successfully!");
+    } catch (error) {
+      console.error("Connection failed:", error);
+      toast.error("Failed to connect wallet. Please try again.");
+    }
   };
 
   return (
@@ -31,31 +32,39 @@ export function WalletModal() {
         <DialogHeader>
           <DialogTitle className="text-heading-sm">Connect Wallet</DialogTitle>
           <DialogDescription>
-            Select a Stacks wallet to connect to sBTC Pay.
+            Connect your Stacks wallet to use sBTC Pay. Supports Leather, Xverse, and other Stacks wallets.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2 pt-2">
-          {wallets.map((w) => (
-            <button
-              key={w.id}
-              disabled={isConnecting}
-              onClick={() => handleConnect(w.id)}
-              className={cn(
-                "w-full flex items-center gap-4 rounded-lg border border-border bg-surface-1 p-4 text-left transition-all",
-                "hover:border-primary/40 hover:bg-surface-2",
-                "disabled:opacity-50 disabled:pointer-events-none"
-              )}
-            >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary font-bold text-lg">
-                {w.name[0]}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="font-semibold text-foreground">{w.name}</div>
-                <div className="text-caption text-muted-foreground">{w.description}</div>
-              </div>
-              {isConnecting && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
-            </button>
-          ))}
+        <div className="space-y-4 pt-4">
+          <button
+            disabled={isConnecting}
+            onClick={handleConnect}
+            className={cn(
+              "w-full flex items-center justify-center gap-3 rounded-xl border border-primary/30 bg-gradient-to-b from-primary/20 to-primary/10 p-4 text-center transition-all",
+              "hover:border-primary/50 hover:from-primary/30 hover:to-primary/20",
+              "disabled:opacity-50 disabled:pointer-events-none"
+            )}
+          >
+            {isConnecting ? (
+              <>
+                <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                <span className="font-semibold text-foreground">Connecting...</span>
+              </>
+            ) : (
+              <>
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-lg">
+                  ₿
+                </div>
+                <div className="text-left">
+                  <div className="font-semibold text-foreground">Connect Stacks Wallet</div>
+                  <div className="text-caption text-muted-foreground">Leather, Xverse, or compatible wallet</div>
+                </div>
+              </>
+            )}
+          </button>
+          <p className="text-xs text-center text-muted-foreground">
+            By connecting, you agree to the Terms of Service and Privacy Policy.
+          </p>
         </div>
       </DialogContent>
     </Dialog>

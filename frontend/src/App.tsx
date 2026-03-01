@@ -3,7 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import CustomerLayout from "@/components/layout/CustomerLayout";
@@ -13,6 +13,7 @@ import InvoicesSkeleton from "@/components/dashboard/InvoicesSkeleton";
 import RefundsSkeleton from "@/components/dashboard/RefundsSkeleton";
 import SubscriptionsSkeleton from "@/components/dashboard/SubscriptionsSkeleton";
 import SettingsSkeleton from "@/components/dashboard/SettingsSkeleton";
+import { useWalletStore } from "@/stores/wallet-store";
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/Index"));
@@ -32,6 +33,17 @@ const SubscriptionWidget = lazy(() => import("./pages/widget/SubscriptionWidget"
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
+
+// Initialize wallet connection on app load
+function WalletInitializer() {
+  const checkConnection = useWalletStore((state) => state.checkConnection);
+
+  useEffect(() => {
+    checkConnection();
+  }, [checkConnection]);
+
+  return null;
+}
 
 function PageLoader() {
   return (
@@ -85,6 +97,7 @@ function AnimatedRoutes() {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <WalletInitializer />
       <Toaster />
       <Sonner />
       <BrowserRouter>
