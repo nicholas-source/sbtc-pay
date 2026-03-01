@@ -613,3 +613,74 @@
     )
   )
 )
+
+;; Pay exact invoice amount
+(define-public (pay-invoice-exact (invoice-id uint))
+  (let (
+    (invoice (unwrap! (map-get? invoices invoice-id) ERR_INVOICE_NOT_FOUND))
+    (remaining (safe-sub (get amount invoice) (get amount-paid invoice)))
+  )
+    (pay-invoice invoice-id remaining)
+  )
+)
+
+;; Direct payment to merchant
+(define-public (pay-merchant-direct (merchant-addr principal) (amount uint) (memo (string-utf8 256)))
+  (let (
+    (caller tx-sender)
+    (merchant (unwrap! (map-get? merchants merchant-addr) ERR_MERCHANT_NOT_FOUND))
+    (fee (calculate-fee amount))
+    (merchant-amount (- amount fee))
+  )
+    (try! (check-is-operational))
+    
+    ;; Check merchant is active
+    (asserts! (get is-active merchant) ERR_MERCHANT_INACTIVE)
+    
+    ;; Validate amount
+    (asserts! (>= amount MIN_INVOICE_AMOUNT) ERR_AMOUNT_TOO_LOW)
+    
+    ;; Transfer to merchant
+    (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+      merchant-amount
+      caller
+      merchant-addr
+      none
+    ))
+    
+    ;; Transfer fee
+    (if (> fee u0)
+      (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+        fee
+        caller
+        (var-get fee-recipient)
+        none
+      ))
+      true
+    )
+    
+    ;; Update stats
+    (map-set merchants merchant-addr (merge merchant {
+      total-received: (+ (get total-received merchant) merchant-amount)
+    }))
+    (var-set total-volume (+ (var-get total-volume) amount))
+    (var-set total-fees-collected (+ (var-get total-fees-collected) fee))
+    
+    (print {
+      event: "direct-payment",
+      payer: caller,
+      merchant: merchant-addr,
+      amount: amount,
+      fee: fee,
+      merchant-received: merchant-amount,
+      memo: memo,
+      block-height: burn-block-height
+    })
+    
+    (ok {
+      amount-paid: amount,
+      fee-paid: fee,
+      merchant-received: merchant-amount
+    })
+  )
+)
