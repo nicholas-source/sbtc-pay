@@ -1,0 +1,136 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Plus } from "lucide-react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Form, FormField, FormItem, FormLabel, FormControl, FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useSubscriptionStore } from "@/stores/subscription-store";
+
+const schema = z.object({
+  name: z.string().min(1, "Plan name is required").max(100),
+  description: z.string().max(300).optional().default(""),
+  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  interval: z.enum(["weekly", "monthly", "yearly"]),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+import { BTC_USD } from "@/lib/constants";
+
+export default function CreatePlanDialog() {
+  const [open, setOpen] = useState(false);
+  const createPlan = useSubscriptionStore((s) => s.createPlan);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "", description: "", amount: 0, interval: "monthly" },
+  });
+
+  const amount = form.watch("amount");
+  const usdEstimate = amount ? (amount * BTC_USD).toFixed(2) : "0.00";
+
+  function onSubmit(data: FormValues) {
+    createPlan({
+      name: data.name,
+      description: data.description || "",
+      amount: data.amount,
+      interval: data.interval,
+    });
+    toast.success("Subscription plan created");
+    form.reset();
+    setOpen(false);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">
+          <Plus className="mr-1 h-4 w-4" /> Create Plan
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create Subscription Plan</DialogTitle>
+          <DialogDescription>Set up a recurring payment plan for your subscribers.</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <FormField
+              control={form.control}
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Plan Name</FormLabel>
+                  <FormControl><Input placeholder="e.g. Pro Hosting" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl><Textarea placeholder="What's included…" className="resize-none" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="amount"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Amount (sats)</FormLabel>
+                  <FormControl><Input type="number" placeholder="50000" {...field} /></FormControl>
+                  {amount > 0 && (
+                    <p className="text-caption text-muted-foreground">≈ ${usdEstimate} USD</p>
+                  )}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="interval"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Billing Interval</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="yearly">Yearly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit">Create Plan</Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
