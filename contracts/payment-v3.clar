@@ -76,3 +76,70 @@
 
 ;; Initial owner
 (define-constant DEPLOYER tx-sender)
+
+;; =============================================
+;; DATA VARIABLES
+;; =============================================
+
+;; Global state
+(define-data-var contract-paused bool false)
+(define-data-var contract-owner principal DEPLOYER)
+(define-data-var pending-owner (optional principal) none)
+
+;; Counters
+(define-data-var invoice-counter uint u0)
+(define-data-var merchant-counter uint u0)
+(define-data-var subscription-counter uint u0)
+
+;; Statistics
+(define-data-var total-volume uint u0)
+(define-data-var total-fees-collected uint u0)
+(define-data-var total-refunds uint u0)
+
+;; Fee configuration
+(define-data-var fee-recipient principal DEPLOYER)
+(define-data-var platform-fee-bps uint PLATFORM_FEE_BPS)
+
+;; =============================================
+;; DATA MAPS
+;; =============================================
+
+;; Merchant registry
+(define-map merchants
+  principal
+  {
+    id: uint,
+    name: (string-utf8 64),
+    description: (optional (string-utf8 256)),
+    webhook-url: (optional (string-utf8 256)),
+    logo-url: (optional (string-utf8 256)),
+    total-received: uint,
+    total-refunded: uint,
+    invoice-count: uint,
+    subscription-count: uint,
+    registered-at: uint,
+    is-active: bool,
+    is-verified: bool
+  }
+)
+
+;; Invoice storage with partial payment support
+(define-map invoices
+  uint
+  {
+    merchant: principal,
+    amount: uint,
+    amount-paid: uint,
+    amount-refunded: uint,
+    memo: (string-utf8 256),
+    reference-id: (optional (string-utf8 64)),
+    status: uint,
+    payer: (optional principal),
+    allow-partial: bool,
+    allow-overpay: bool,
+    created-at: uint,
+    expires-at: uint,
+    paid-at: (optional uint),
+    refunded-at: (optional uint)
+  }
+)
