@@ -422,3 +422,53 @@
     (ok new-id)
   )
 )
+
+;; Simple invoice creation (backwards compatible)
+(define-public (create-simple-invoice
+  (amount uint)
+  (memo (string-utf8 256))
+  (expires-in-blocks uint)
+)
+  (create-invoice amount memo none expires-in-blocks false false)
+)
+
+;; Update invoice (before any payment)
+(define-public (update-invoice
+  (invoice-id uint)
+  (new-amount uint)
+  (new-memo (string-utf8 256))
+  (new-expires-in-blocks uint)
+)
+  (let (
+    (caller tx-sender)
+    (invoice (unwrap! (map-get? invoices invoice-id) ERR_INVOICE_NOT_FOUND))
+  )
+    (try! (check-is-operational))
+    
+    ;; Only merchant can update
+    (asserts! (is-eq caller (get merchant invoice)) ERR_NOT_AUTHORIZED)
+    
+    ;; Can only update pending invoices with no payments
+    (asserts! (is-eq (get status invoice) STATUS_PENDING) ERR_INVOICE_NOT_PAYABLE)
+    (asserts! (is-eq (get amount-paid invoice) u0) ERR_INVOICE_ALREADY_PAID)
+    
+    ;; Validate new amount
+    (asserts! (>= new-amount MIN_INVOICE_AMOUNT) ERR_AMOUNT_TOO_LOW)
+    (asserts! (<= new-amount MAX_INVOICE_AMOUNT) ERR_AMOUNT_TOO_HIGH)
+    
+    (map-set invoices invoice-id (merge invoice {
+      amount: new-amount,
+      memo: new-memo,
+      expires-at: (+ burn-block-height new-expires-in-blocks)
+    }))
+    
+    (print {
+      event: "invoice-updated",
+      invoice-id: invoice-id,
+      new-amount: new-amount,
+      new-memo: new-memo
+    })
+    
+    (ok true)
+  )
+)
