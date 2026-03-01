@@ -92,7 +92,13 @@ export default function CommandPalette() {
             await connect();
             const state = useWalletStore.getState();
             if (state.isConnected && !state.connectionError) {
-              toast.success("Wallet connected!");
+              toast.success("Wallet connected!", {
+                style: {
+                  background: 'hsl(var(--success))',
+                  color: 'hsl(var(--success-foreground))',
+                  border: '1px solid hsl(var(--success))',
+                },
+              });
             } else if (state.connectionError?.type === 'network_mismatch') {
               toast.error(`Wrong network! Please switch to ${NETWORK_MODE} in your wallet.`, { 
                 duration: 8000,
