@@ -929,3 +929,109 @@
     })
   )
 )
+
+;; Cancel subscription (subscriber or merchant)
+(define-public (cancel-subscription (subscription-id uint))
+  (let (
+    (caller tx-sender)
+    (sub (unwrap! (map-get? subscriptions subscription-id) ERR_SUBSCRIPTION_NOT_FOUND))
+  )
+    ;; Either subscriber or merchant can cancel
+    (asserts! (or 
+      (is-eq caller (get subscriber sub))
+      (is-eq caller (get merchant sub))
+    ) ERR_NOT_AUTHORIZED)
+    
+    (map-set subscriptions subscription-id (merge sub { status: SUB_CANCELLED }))
+    
+    (print {
+      event: "subscription-cancelled",
+      subscription-id: subscription-id,
+      cancelled-by: caller,
+      block-height: burn-block-height
+    })
+    
+    (ok true)
+  )
+)
+
+;; Pause subscription
+(define-public (pause-subscription (subscription-id uint))
+  (let (
+    (caller tx-sender)
+    (sub (unwrap! (map-get? subscriptions subscription-id) ERR_SUBSCRIPTION_NOT_FOUND))
+  )
+    (asserts! (is-eq caller (get subscriber sub)) ERR_NOT_AUTHORIZED)
+    (asserts! (is-eq (get status sub) SUB_ACTIVE) ERR_SUBSCRIPTION_INACTIVE)
+    
+    (map-set subscriptions subscription-id (merge sub { status: SUB_PAUSED }))
+    
+    (print { event: "subscription-paused", subscription-id: subscription-id })
+    (ok true)
+  )
+)
+
+;; Resume subscription
+(define-public (resume-subscription (subscription-id uint))
+  (let (
+    (caller tx-sender)
+    (sub (unwrap! (map-get? subscriptions subscription-id) ERR_SUBSCRIPTION_NOT_FOUND))
+  )
+    (try! (check-is-operational))
+    
+    (asserts! (is-eq caller (get subscriber sub)) ERR_NOT_AUTHORIZED)
+    (asserts! (is-eq (get status sub) SUB_PAUSED) ERR_SUBSCRIPTION_INACTIVE)
+    
+    (map-set subscriptions subscription-id (merge sub { 
+      status: SUB_ACTIVE,
+      next-payment-at: burn-block-height
+    }))
+    
+    (print { event: "subscription-resumed", subscription-id: subscription-id })
+    (ok true)
+  )
+)
+
+;; =============================================
+;; READ-ONLY FUNCTIONS
+;; =============================================
+
+;; Get merchant info
+(define-read-only (get-merchant (merchant-addr principal))
+  (map-get? merchants merchant-addr)
+)
+
+;; Is merchant registered
+(define-read-only (is-merchant (addr principal))
+  (is-some (map-get? merchants addr))
+)
+
+;; Get invoice details
+(define-read-only (get-invoice (invoice-id uint))
+  (map-get? invoices invoice-id)
+)
+
+;; Get invoice payment count
+(define-read-only (get-invoice-payment-count (invoice-id uint))
+  (default-to u0 (map-get? invoice-payment-count invoice-id))
+)
+
+;; Get specific payment for invoice
+(define-read-only (get-invoice-payment (invoice-id uint) (payment-index uint))
+  (map-get? invoice-payments { invoice-id: invoice-id, payment-index: payment-index })
+)
+
+;; Check if invoice is payable
+(define-read-only (is-invoice-payable (invoice-id uint))
+  (match (map-get? invoices invoice-id)
+    invoice (and
+      (is-operational)
+      (or
+        (is-eq (get status invoice) STATUS_PENDING)
+        (is-eq (get status invoice) STATUS_PARTIAL)
+      )
+      (not (is-invoice-expired (get expires-at invoice)))
+    )
+    false
+  )
+)
