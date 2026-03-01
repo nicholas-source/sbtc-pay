@@ -53,3 +53,26 @@
 (define-constant ERR_SUBSCRIPTION_INACTIVE (err u5002))
 (define-constant ERR_SUBSCRIPTION_EXISTS (err u5003))
 (define-constant ERR_NOT_DUE_YET (err u5004))
+
+;; Invoice status
+(define-constant STATUS_PENDING u0)
+(define-constant STATUS_PARTIAL u1)
+(define-constant STATUS_PAID u2)
+(define-constant STATUS_EXPIRED u3)
+(define-constant STATUS_CANCELLED u4)
+(define-constant STATUS_REFUNDED u5)
+
+;; Subscription status
+(define-constant SUB_ACTIVE u0)
+(define-constant SUB_PAUSED u1)
+(define-constant SUB_CANCELLED u2)
+
+;; Platform configuration
+(define-constant PLATFORM_FEE_BPS u50)       ;; 0.5% platform fee
+(define-constant BPS_DENOMINATOR u10000)
+(define-constant MIN_INVOICE_AMOUNT u1000)   ;; 1000 sats minimum
+(define-constant MAX_INVOICE_AMOUNT u100000000000) ;; 1000 BTC max
+(define-constant MAX_EXPIRY_BLOCKS u52560)   ;; ~1 year max expiry
+
+;; Initial owner
+(define-constant DEPLOYER tx-sender)
