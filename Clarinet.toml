@@ -1,0 +1,30 @@
+[project]
+name = 'sbtc-pay'
+description = 'Enterprise-grade sBTC payment infrastructure with invoices, refunds, and subscriptions'
+authors = []
+telemetry = true
+cache_dir = './.cache'
+
+# Testnet sBTC token requirement
+[[project.requirements]]
+contract_id = 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token'
+
+[contracts.payment-v3]
+path = 'contracts/payment-v3.clar'
+clarity_version = 4
+epoch = 'latest'
+
+[repl.analysis]
+passes = ['check_checker']
+
+[repl.analysis.lints]
+
+[repl.analysis.check_checker]
+strict = false
+trusted_sender = false
+trusted_caller = false
+callee_filter = false
+
+[repl.remote_data]
+enabled = false
+api_url = 'https://api.hiro.so'
