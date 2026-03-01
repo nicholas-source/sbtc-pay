@@ -21,12 +21,14 @@ import {
   Plus,
   CreditCard,
 } from "lucide-react";
-import { useUIStore } from "@/stores/ui-store";
+import { useWalletStore } from "@/stores/wallet-store";
+import { toast } from "sonner";
+import { NETWORK_MODE } from "@/lib/stacks/config";
 
 export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
-  const { setWalletModalOpen } = useUIStore();
+  const { connect, clearError, isConnected } = useWalletStore();
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -80,7 +82,28 @@ export default function CommandPalette() {
         <CommandSeparator />
 
         <CommandGroup heading="Actions">
-          <CommandItem onSelect={() => { setOpen(false); setWalletModalOpen(true); }}>
+          <CommandItem onSelect={async () => { 
+            setOpen(false); 
+            if (isConnected) {
+              toast.info("Wallet already connected");
+              return;
+            }
+            clearError();
+            await connect();
+            const state = useWalletStore.getState();
+            if (state.isConnected && !state.connectionError) {
+              toast.success("Wallet connected!");
+            } else if (state.connectionError?.type === 'network_mismatch') {
+              toast.error(`Wrong network! Please switch to ${NETWORK_MODE} in your wallet.`, { 
+                duration: 8000,
+                style: {
+                  background: 'hsl(var(--destructive))',
+                  color: 'hsl(var(--destructive-foreground))',
+                  border: '1px solid hsl(var(--destructive))',
+                },
+              });
+            }
+          }}>
             <Wallet className="mr-2 h-4 w-4" /> Connect Wallet
           </CommandItem>
           <CommandItem onSelect={() => go("/dashboard/invoices")}>

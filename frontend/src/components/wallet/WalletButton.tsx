@@ -1,7 +1,6 @@
 import { useWalletStore, useFormattedSbtcBalance, useSbtcBalanceInUsd, useFormattedStxBalance } from "@/stores/wallet-store";
-import { useUIStore } from "@/stores/ui-store";
 import { Button } from "@/components/ui/button";
-import { Wallet, ChevronDown, LogOut, Copy, RefreshCw } from "lucide-react";
+import { Wallet, ChevronDown, LogOut, Copy, RefreshCw, AlertTriangle, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,22 +8,84 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { toast } from "sonner";
-import { truncateAddress } from "@/lib/stacks/config";
+import { truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
 
 export function WalletButton() {
-  const { isConnected, address, disconnect, fetchBalances } = useWalletStore();
-  const { setWalletModalOpen } = useUIStore();
+  const { isConnected, isConnecting, address, disconnect, fetchBalances, connect, connectionError, clearError } = useWalletStore();
   const sbtcBalance = useFormattedSbtcBalance();
   const sbtcUsd = useSbtcBalanceInUsd();
   const stxBalance = useFormattedStxBalance();
 
+  const handleConnect = async () => {
+    clearError();
+    await connect();
+    const state = useWalletStore.getState();
+    if (state.isConnected && !state.connectionError) {
+      toast.success("Wallet connected successfully!");
+    } else if (state.connectionError?.type === 'network_mismatch') {
+      toast.error(
+        `Wrong network! Please switch to ${NETWORK_MODE} in your wallet settings, then try again.`,
+        { 
+          duration: 8000,
+          style: {
+            background: 'hsl(var(--destructive))',
+            color: 'hsl(var(--destructive-foreground))',
+            border: '1px solid hsl(var(--destructive))',
+          },
+        }
+      );
+    }
+  };
+
   if (!isConnected) {
     return (
-      <Button onClick={() => setWalletModalOpen(true)} className="gap-2" aria-label="Connect wallet">
-        <Wallet className="h-4 w-4" />
-        Connect Wallet
-      </Button>
+      <div className="flex items-center gap-2">
+        {/* Network indicator */}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-500/10 border border-orange-500/30 text-orange-500 text-caption font-medium cursor-help">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+              </span>
+              Testnet
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="bottom" className="max-w-xs">
+            <div className="space-y-1">
+              <p className="font-semibold">Testnet Mode</p>
+              <p className="text-muted-foreground">
+                sBTC Pay is running on Stacks Testnet. Make sure your wallet is set to Testnet before connecting.
+              </p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+
+        <Button 
+          onClick={handleConnect} 
+          disabled={isConnecting}
+          className="gap-2" 
+          aria-label="Connect wallet"
+        >
+          {isConnecting ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Connecting...
+            </>
+          ) : (
+            <>
+              <Wallet className="h-4 w-4" />
+              Connect Wallet
+            </>
+          )}
+        </Button>
+      </div>
     );
   }
 

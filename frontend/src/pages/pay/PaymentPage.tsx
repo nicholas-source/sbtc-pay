@@ -5,7 +5,6 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2 } from "lucide-react";
 import { useInvoiceStore, type Payment } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
-import { useUIStore } from "@/stores/ui-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,9 +15,8 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { WalletModal } from "@/components/wallet/WalletModal";
 import { payInvoice, getInvoice as getBlockchainInvoice, waitForTransaction } from "@/lib/stacks/contract";
-import { formatSats as formatSatsUtil, truncateAddress } from "@/lib/stacks/config";
+import { formatSats as formatSatsUtil, truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, BTC_USD_PRICE } from "@/lib/constants";
 
@@ -30,8 +28,7 @@ function PaymentPage() {
   const { invoiceId } = useParams();
   const invoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId));
   const simulatePayment = useInvoiceStore((s) => s.simulatePayment);
-  const { isConnected, address, sbtcBalance } = useWalletStore();
-  const { setWalletModalOpen } = useUIStore();
+  const { isConnected, isConnecting, address, sbtcBalance, connect, connectionError, clearError } = useWalletStore();
 
   const [paymentState, setPaymentState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [completedPayment, setCompletedPayment] = useState<Payment | null>(null);
@@ -204,7 +201,6 @@ function PaymentPage() {
 
   return (
     <PageShell>
-      <WalletModal />
       <InvoiceHeader invoice={invoice} />
 
       <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
@@ -298,13 +294,43 @@ function PaymentPage() {
         )}
 
         {!isConnected ? (
-          <Button
-            className="w-full h-12 text-body font-semibold gap-2"
-            onClick={() => setWalletModalOpen(true)}
-          >
-            <Wallet className="h-5 w-5" />
-            Connect Wallet & Pay
-          </Button>
+          <div className="space-y-3">
+            {/* Testnet warning */}
+            <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-orange-500/10 border border-orange-500/30">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+              </span>
+              <span className="text-caption text-orange-500">Testnet Mode - Switch wallet to Testnet before connecting</span>
+            </div>
+            <Button
+              disabled={isConnecting}
+              className="w-full h-12 text-body font-semibold gap-2"
+              onClick={async () => {
+                clearError();
+                await connect();
+                const state = useWalletStore.getState();
+                if (state.isConnected && !state.connectionError) {
+                  toast.success("Wallet connected!");
+                } else if (state.connectionError?.type === 'network_mismatch') {
+                  toast.error(`Wrong network! Please switch to ${NETWORK_MODE} in your wallet.`, { 
+                    duration: 8000,
+                    style: {
+                      background: 'hsl(var(--destructive))',
+                      color: 'hsl(var(--destructive-foreground))',
+                      border: '1px solid hsl(var(--destructive))',
+                    },
+                  });
+                }
+              }}
+            >
+              {isConnecting ? (
+                <><Loader2 className="h-5 w-5 animate-spin" />Connecting...</>
+              ) : (
+                <><Wallet className="h-5 w-5" />Connect Wallet & Pay</>
+              )}
+            </Button>
+          </div>
         ) : (
           <Button
             className="w-full h-12 text-body font-semibold gap-2"
