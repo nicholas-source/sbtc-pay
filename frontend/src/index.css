@@ -1,0 +1,234 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* sBTC Pay — Premium Dark Fintech Design System
+   All colors are HSL. Dark-mode only. */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+@layer base {
+  :root {
+    /* Force dark mode */
+    color-scheme: dark;
+
+    /* === Core Palette === */
+    --background: 220 16% 6%;
+    --foreground: 40 10% 92%;
+
+    --card: 220 14% 9%;
+    --card-foreground: 40 10% 92%;
+
+    --popover: 220 14% 9%;
+    --popover-foreground: 40 10% 92%;
+
+    /* Bitcoin Orange — Primary */
+    --primary: 27 98% 54%;
+    --primary-foreground: 220 16% 6%;
+
+    /* Stacks Purple — Secondary accent */
+    --secondary: 263 70% 58%;
+    --secondary-foreground: 40 10% 96%;
+
+    /* Warm neutral muted */
+    --muted: 220 12% 14%;
+    --muted-foreground: 220 10% 58%;
+
+    /* Accent — subtle warm */
+    --accent: 220 12% 14%;
+    --accent-foreground: 40 10% 92%;
+
+    /* Destructive — refined red */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 40 10% 96%;
+
+    /* Borders & inputs */
+    --border: 220 12% 16%;
+    --input: 220 12% 16%;
+    --ring: 27 98% 54%;
+
+    --radius: 0.75rem;
+
+    /* === Sidebar === */
+    --sidebar-background: 220 16% 7%;
+    --sidebar-foreground: 220 10% 68%;
+    --sidebar-primary: 27 98% 54%;
+    --sidebar-primary-foreground: 220 16% 6%;
+    --sidebar-accent: 220 12% 12%;
+    --sidebar-accent-foreground: 40 10% 92%;
+    --sidebar-border: 220 12% 13%;
+    --sidebar-ring: 27 98% 54%;
+
+    /* === Extended Palette (custom tokens) === */
+    --bitcoin-orange: 27 98% 54%;
+    --stacks-purple: 263 70% 58%;
+    --success: 152 60% 48%;
+    --success-foreground: 152 60% 96%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 38 92% 10%;
+    --info: 210 80% 56%;
+    --info-foreground: 210 80% 96%;
+
+    /* Surface layers */
+    --surface-1: 220 14% 9%;
+    --surface-2: 220 13% 12%;
+    --surface-3: 220 12% 16%;
+
+    /* Card glow */
+    --card-glow: 27 98% 54%;
+    --card-glow-purple: 263 70% 58%;
+
+    /* Gradient tokens */
+    --gradient-orange: linear-gradient(135deg, hsl(27 98% 54%), hsl(38 92% 50%));
+    --gradient-purple: linear-gradient(135deg, hsl(263 70% 58%), hsl(280 70% 50%));
+    --gradient-hero: radial-gradient(ellipse at 30% 20%, hsl(27 98% 54% / 0.15), transparent 50%),
+                     radial-gradient(ellipse at 70% 60%, hsl(263 70% 58% / 0.1), transparent 50%);
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.4);
+    --shadow-lg: 0 8px 30px hsl(0 0% 0% / 0.5);
+    --shadow-glow-orange: 0 0 20px hsl(27 98% 54% / 0.15);
+    --shadow-glow-purple: 0 0 20px hsl(263 70% 58% / 0.15);
+
+    /* Focus ring */
+    --focus-ring: 27 98% 54%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  }
+
+  /* Tabular figures for financial numbers */
+  .font-tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .font-mono-nums {
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum" 1;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--surface-3)) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--surface-3));
+    border-radius: 3px;
+  }
+
+  /* Card inner glow */
+  .card-glow {
+    box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.06),
+                0 0 0 1px hsl(var(--border)),
+                var(--shadow-md);
+  }
+
+  .card-glow-hover:hover {
+    box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.15),
+                0 0 30px hsl(var(--card-glow) / 0.12),
+                0 0 0 1px hsl(var(--card-glow) / 0.2),
+                var(--shadow-lg);
+  }
+
+  /* Grid pattern overlay */
+  .bg-grid {
+    background-image: linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
+                      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  /* Gradient text */
+  .text-gradient-orange {
+    background: linear-gradient(135deg, hsl(var(--bitcoin-orange)), hsl(38 92% 50%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .text-gradient-purple {
+    background: linear-gradient(135deg, hsl(var(--stacks-purple)), hsl(280 70% 50%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Skip navigation link */
+  .skip-link {
+    @apply sr-only;
+  }
+
+  .skip-link:focus {
+    @apply not-sr-only fixed top-4 left-4 z-[100] rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-lg;
+    outline: 2px solid hsl(var(--focus-ring));
+    outline-offset: 2px;
+  }
+
+  /* Global focus-visible utility for custom interactive elements */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  /* Button shimmer loading state */
+  .btn-shimmer {
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--primary) / 0.3) 50%,
+      transparent 100%
+    );
+    transform: translateX(-100%);
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    100% { transform: translateX(100%); }
+  }
+
+  /* Animated card glow keyframes */
+  .card-glow-animated {
+    animation: glow 3s ease-in-out infinite alternate;
+  }
+  @keyframes glow {
+    from {
+      box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.06),
+                  0 0 0 1px hsl(var(--border)),
+                  0 0 8px hsl(var(--card-glow) / 0.04);
+    }
+    to {
+      box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.12),
+                  0 0 0 1px hsl(var(--card-glow) / 0.15),
+                  0 0 20px hsl(var(--card-glow) / 0.1);
+    }
+  }
+}
