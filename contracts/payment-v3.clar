@@ -143,3 +143,50 @@
     refunded-at: (optional uint)
   }
 )
+
+;; Invoice payments tracking (for partial payments)
+(define-map invoice-payments
+  { invoice-id: uint, payment-index: uint }
+  {
+    payer: principal,
+    amount: uint,
+    block-height: uint
+  }
+)
+
+;; Payment count per invoice
+(define-map invoice-payment-count
+  uint
+  uint
+)
+
+;; Subscription plans
+(define-map subscriptions
+  uint
+  {
+    id: uint,
+    merchant: principal,
+    subscriber: principal,
+    name: (string-utf8 64),
+    amount: uint,
+    interval-blocks: uint,
+    status: uint,
+    payments-made: uint,
+    total-paid: uint,
+    created-at: uint,
+    last-payment-at: uint,
+    next-payment-at: uint
+  }
+)
+
+;; Merchant's subscriptions list
+(define-map merchant-subscriptions
+  principal
+  (list 100 uint)
+)
+
+;; Subscriber's subscriptions
+(define-map subscriber-subscriptions
+  principal
+  (list 50 uint)
+)
