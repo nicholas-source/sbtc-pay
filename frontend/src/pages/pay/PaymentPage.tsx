@@ -1,8 +1,8 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { Wallet, AlertTriangle, Bitcoin, Copy, Check } from "lucide-react";
+import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2 } from "lucide-react";
 import { useInvoiceStore, type Payment } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
 import { useUIStore } from "@/stores/ui-store";
@@ -17,6 +17,8 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
 import { WalletModal } from "@/components/wallet/WalletModal";
+import { payInvoice, getInvoice as getBlockchainInvoice, waitForTransaction } from "@/lib/stacks/contract";
+import { formatSats as formatSatsUtil, truncateAddress } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, BTC_USD_PRICE } from "@/lib/constants";
 
@@ -24,23 +26,24 @@ function formatSats(sats: number) {
   return sats.toLocaleString();
 }
 
-function truncateAddress(addr: string) {
-  if (addr.length <= 14) return addr;
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
 function PaymentPage() {
   const { invoiceId } = useParams();
   const invoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId));
   const simulatePayment = useInvoiceStore((s) => s.simulatePayment);
-  const { isConnected, address } = useWalletStore();
+  const { isConnected, address, sbtcBalance } = useWalletStore();
   const { setWalletModalOpen } = useUIStore();
 
-  const [paymentState, setPaymentState] = useState<"idle" | "confirming" | "confirmed">("idle");
+  const [paymentState, setPaymentState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [completedPayment, setCompletedPayment] = useState<Payment | null>(null);
   const [payAmount, setPayAmount] = useState<string>("");
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [txId, setTxId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const confirmedAmount = useRef<number>(0);
+
+  // Check if this is a blockchain invoice (numeric ID)
+  const isBlockchainInvoice = invoiceId && /^\d+$/.test(invoiceId);
+  const blockchainInvoiceId = isBlockchainInvoice ? parseInt(invoiceId, 10) : null;
 
   const remaining = useMemo(() => {
     if (!invoice) return 0;
@@ -61,13 +64,52 @@ function PaymentPage() {
     if (!invoice || effectivePayAmount <= 0) return;
     confirmedAmount.current = effectivePayAmount;
     setPaymentState("confirming");
+    setErrorMessage(null);
 
-    // Simulate blockchain delay
-    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      if (isBlockchainInvoice && blockchainInvoiceId !== null && address) {
+        // Real blockchain payment
+        toast.info("Please confirm the transaction in your wallet...");
+        
+        const result = await payInvoice(
+          blockchainInvoiceId,
+          BigInt(effectivePayAmount),
+          address
+        );
 
-    const payment = simulatePayment(invoice.id, effectivePayAmount);
-    setCompletedPayment(payment);
-    setPaymentState("confirmed");
+        if (result.txId) {
+          setTxId(result.txId);
+          toast.success("Transaction submitted! Waiting for confirmation...");
+          
+          // Wait for transaction confirmation
+          try {
+            await waitForTransaction(result.txId);
+            toast.success("Payment confirmed!");
+          } catch {
+            // Transaction may still be pending, that's ok
+            toast.info("Transaction submitted. Check back soon for confirmation.");
+          }
+        }
+
+        setCompletedPayment({
+          timestamp: new Date(),
+          amount: effectivePayAmount,
+          txId: result.txId || 'pending',
+        });
+        setPaymentState("confirmed");
+      } else {
+        // Mock payment for demo invoices
+        await new Promise((r) => setTimeout(r, 2000));
+        const payment = simulatePayment(invoice.id, effectivePayAmount);
+        setCompletedPayment(payment);
+        setPaymentState("confirmed");
+      }
+    } catch (error) {
+      console.error("Payment failed:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Payment failed");
+      setPaymentState("error");
+      toast.error("Payment failed. Please try again.");
+    }
   };
 
   // --- Not Found ---
@@ -126,13 +168,39 @@ function PaymentPage() {
     );
   }
 
+  // --- Error State ---
+  if (paymentState === "error") {
+    return (
+      <PageShell>
+        <InvoiceHeader invoice={invoice} />
+        <div className="flex flex-col items-center gap-4 py-8 text-center">
+          <AlertTriangle className="h-12 w-12 text-destructive" />
+          <p className="text-heading-sm text-foreground">Payment Failed</p>
+          <p className="text-body-sm text-muted-foreground max-w-xs">
+            {errorMessage || "An error occurred while processing your payment."}
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setPaymentState("idle");
+              setErrorMessage(null);
+            }}
+          >
+            Try Again
+          </Button>
+        </div>
+      </PageShell>
+    );
+  }
+
   // --- Awaiting Payment ---
   const paidPercent = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
   const usdAmount = (remaining / SATS_PER_BTC) * BTC_USD_PRICE;
   const feeSats = Math.round(remaining * 0.005); // 0.5% fee
   const merchantReceives = remaining - feeSats;
-  const walletBalance = useWalletStore.getState().sbtcBalance * SATS_PER_BTC;
-  const hasSufficient = isConnected && walletBalance >= remaining;
+  // sbtcBalance is in sats (bigint), convert to number for comparison
+  const walletBalanceSats = Number(sbtcBalance);
+  const hasSufficient = isConnected && walletBalanceSats >= remaining;
 
   return (
     <PageShell>
@@ -178,7 +246,7 @@ function PaymentPage() {
         <div className={`flex items-center justify-between rounded-lg p-3 text-body-sm ${hasSufficient ? "bg-success/10 border border-success/30" : "bg-destructive/10 border border-destructive/30"}`}>
           <span className="text-muted-foreground">Your sBTC:</span>
           <span className={`font-tabular ${hasSufficient ? "text-success" : "text-destructive"}`}>
-            {formatSats(Math.round(walletBalance))} sats — {hasSufficient ? "Sufficient" : "Insufficient"}
+            {formatSats(walletBalanceSats)} sats — {hasSufficient ? "Sufficient" : "Insufficient"}
           </span>
         </div>
       )}
