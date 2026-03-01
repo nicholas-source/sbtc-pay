@@ -472,3 +472,144 @@
     (ok true)
   )
 )
+
+;; Cancel invoice
+(define-public (cancel-invoice (invoice-id uint))
+  (let (
+    (caller tx-sender)
+    (invoice (unwrap! (map-get? invoices invoice-id) ERR_INVOICE_NOT_FOUND))
+  )
+    ;; Only merchant can cancel
+    (asserts! (is-eq caller (get merchant invoice)) ERR_NOT_AUTHORIZED)
+    
+    ;; Can only cancel unpaid invoices
+    (asserts! (or 
+      (is-eq (get status invoice) STATUS_PENDING)
+      (is-eq (get status invoice) STATUS_PARTIAL)
+    ) ERR_INVOICE_ALREADY_PAID)
+    
+    (map-set invoices invoice-id (merge invoice { status: STATUS_CANCELLED }))
+    
+    (print { event: "invoice-cancelled", invoice-id: invoice-id })
+    (ok true)
+  )
+)
+
+;; =============================================
+;; PAYMENT FUNCTIONS
+;; =============================================
+
+;; Pay invoice (supports partial payments)
+(define-public (pay-invoice (invoice-id uint) (amount uint))
+  (let (
+    (caller tx-sender)
+    (invoice (unwrap! (map-get? invoices invoice-id) ERR_INVOICE_NOT_FOUND))
+    (merchant-addr (get merchant invoice))
+    (invoice-amount (get amount invoice))
+    (already-paid (get amount-paid invoice))
+    (remaining (safe-sub invoice-amount already-paid))
+    (merchant (unwrap! (map-get? merchants merchant-addr) ERR_MERCHANT_NOT_FOUND))
+    (payment-count (default-to u0 (map-get? invoice-payment-count invoice-id)))
+  )
+    (try! (check-is-operational))
+    
+    ;; Validate invoice status
+    (asserts! (or 
+      (is-eq (get status invoice) STATUS_PENDING)
+      (is-eq (get status invoice) STATUS_PARTIAL)
+    ) ERR_INVOICE_NOT_PAYABLE)
+    
+    ;; Check not expired
+    (asserts! (not (is-invoice-expired (get expires-at invoice))) ERR_INVOICE_EXPIRED)
+    
+    ;; Validate amount
+    (asserts! (> amount u0) ERR_INVALID_AMOUNT)
+    
+    ;; Handle overpayment
+    (asserts! (or 
+      (get allow-overpay invoice)
+      (<= amount remaining)
+    ) ERR_OVERPAYMENT)
+    
+    ;; Handle partial payment
+    (asserts! (or 
+      (get allow-partial invoice)
+      (>= amount remaining)
+    ) ERR_INSUFFICIENT_PAYMENT)
+    
+    ;; Calculate fee and merchant amount
+    (let (
+      (actual-payment (if (get allow-overpay invoice) amount (if (> amount remaining) remaining amount)))
+      (fee (calculate-fee actual-payment))
+      (merchant-amount (- actual-payment fee))
+      (new-total-paid (+ already-paid actual-payment))
+      (new-status (if (>= new-total-paid invoice-amount) STATUS_PAID STATUS_PARTIAL))
+    )
+      ;; Transfer to merchant
+      (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+        merchant-amount
+        caller
+        merchant-addr
+        none
+      ))
+      
+      ;; Transfer fee
+      (if (> fee u0)
+        (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+          fee
+          caller
+          (var-get fee-recipient)
+          none
+        ))
+        true
+      )
+      
+      ;; Record payment
+      (map-set invoice-payments 
+        { invoice-id: invoice-id, payment-index: payment-count }
+        { payer: caller, amount: actual-payment, block-height: burn-block-height }
+      )
+      (map-set invoice-payment-count invoice-id (+ payment-count u1))
+      
+      ;; Update invoice
+      (map-set invoices invoice-id (merge invoice {
+        amount-paid: new-total-paid,
+        status: new-status,
+        payer: (some caller),
+        paid-at: (if (is-eq new-status STATUS_PAID) (some burn-block-height) (get paid-at invoice))
+      }))
+      
+      ;; Update merchant stats
+      (map-set merchants merchant-addr (merge merchant {
+        total-received: (+ (get total-received merchant) merchant-amount)
+      }))
+      
+      ;; Update global stats
+      (var-set total-volume (+ (var-get total-volume) actual-payment))
+      (var-set total-fees-collected (+ (var-get total-fees-collected) fee))
+      
+      (print {
+        event: "payment-received",
+        invoice-id: invoice-id,
+        payer: caller,
+        merchant: merchant-addr,
+        amount: actual-payment,
+        fee: fee,
+        merchant-received: merchant-amount,
+        total-paid: new-total-paid,
+        status: new-status,
+        block-height: burn-block-height
+      })
+      
+      (ok {
+        invoice-id: invoice-id,
+        amount-paid: actual-payment,
+        fee-paid: fee,
+        merchant-received: merchant-amount,
+        total-paid: new-total-paid,
+        remaining: (safe-sub invoice-amount new-total-paid),
+        status: new-status
+      })
+    )
+  )
+)
