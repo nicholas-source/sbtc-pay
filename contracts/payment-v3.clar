@@ -684,3 +684,102 @@
     })
   )
 )
+
+;; =============================================
+;; REFUND FUNCTIONS
+;; =============================================
+
+;; Process refund (merchant initiated)
+(define-public (refund-invoice (invoice-id uint) (refund-amount uint) (reason (string-utf8 256)))
+  (let (
+    (caller tx-sender)
+    (invoice (unwrap! (map-get? invoices invoice-id) ERR_INVOICE_NOT_FOUND))
+    (merchant-addr (get merchant invoice))
+    (customer (unwrap! (get payer invoice) ERR_NO_REFUND_AVAILABLE))
+    (merchant (unwrap! (map-get? merchants merchant-addr) ERR_MERCHANT_NOT_FOUND))
+    (already-refunded (get amount-refunded invoice))
+    (amount-paid (get amount-paid invoice))
+    (refund-id (+ (var-get refund-counter) u1))
+  )
+    (try! (check-is-operational))
+    
+    ;; Only merchant can refund
+    (asserts! (is-eq caller merchant-addr) ERR_NOT_AUTHORIZED)
+    
+    ;; Must have payments to refund
+    (asserts! (> amount-paid u0) ERR_NO_REFUND_AVAILABLE)
+    
+    ;; Can't refund more than paid minus already refunded
+    (asserts! (<= refund-amount (safe-sub amount-paid already-refunded)) ERR_REFUND_EXCEEDS_PAID)
+    
+    ;; Validate refund amount
+    (asserts! (> refund-amount u0) ERR_INVALID_AMOUNT)
+    
+    ;; Transfer refund from merchant to customer
+    (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+      refund-amount
+      caller
+      customer
+      none
+    ))
+    
+    ;; Record refund
+    (map-set refunds refund-id {
+      invoice-id: invoice-id,
+      merchant: merchant-addr,
+      customer: customer,
+      amount: refund-amount,
+      reason: reason,
+      processed-at: burn-block-height
+    })
+    (var-set refund-counter refund-id)
+    
+    ;; Update invoice
+    (let (
+      (new-refunded (+ already-refunded refund-amount))
+      (new-status (if (>= new-refunded amount-paid) STATUS_REFUNDED (get status invoice)))
+    )
+      (map-set invoices invoice-id (merge invoice {
+        amount-refunded: new-refunded,
+        status: new-status,
+        refunded-at: (some burn-block-height)
+      }))
+      
+      ;; Update merchant stats
+      (map-set merchants merchant-addr (merge merchant {
+        total-refunded: (+ (get total-refunded merchant) refund-amount)
+      }))
+      
+      ;; Update global stats
+      (var-set total-refunds (+ (var-get total-refunds) refund-amount))
+      
+      (print {
+        event: "refund-processed",
+        refund-id: refund-id,
+        invoice-id: invoice-id,
+        merchant: merchant-addr,
+        customer: customer,
+        amount: refund-amount,
+        reason: reason,
+        block-height: burn-block-height
+      })
+      
+      (ok {
+        refund-id: refund-id,
+        amount-refunded: refund-amount,
+        total-refunded: new-refunded,
+        remaining-refundable: (safe-sub amount-paid new-refunded)
+      })
+    )
+  )
+)
+
+;; Full refund
+(define-public (refund-invoice-full (invoice-id uint) (reason (string-utf8 256)))
+  (let (
+    (invoice (unwrap! (map-get? invoices invoice-id) ERR_INVOICE_NOT_FOUND))
+    (refundable (safe-sub (get amount-paid invoice) (get amount-refunded invoice)))
+  )
+    (refund-invoice invoice-id refundable reason)
+  )
+)
