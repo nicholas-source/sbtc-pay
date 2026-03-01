@@ -1035,3 +1035,208 @@
     false
   )
 )
+
+;; Get remaining amount for invoice
+(define-read-only (get-invoice-remaining (invoice-id uint))
+  (match (map-get? invoices invoice-id)
+    invoice (safe-sub (get amount invoice) (get amount-paid invoice))
+    u0
+  )
+)
+
+;; Get refundable amount for invoice
+(define-read-only (get-refundable-amount (invoice-id uint))
+  (match (map-get? invoices invoice-id)
+    invoice (safe-sub (get amount-paid invoice) (get amount-refunded invoice))
+    u0
+  )
+)
+
+;; Get subscription details
+(define-read-only (get-subscription (subscription-id uint))
+  (map-get? subscriptions subscription-id)
+)
+
+;; Is subscription due
+(define-read-only (is-subscription-due (subscription-id uint))
+  (match (map-get? subscriptions subscription-id)
+    sub (and
+      (is-eq (get status sub) SUB_ACTIVE)
+      (>= burn-block-height (get next-payment-at sub))
+    )
+    false
+  )
+)
+
+;; Get refund details
+(define-read-only (get-refund (refund-id uint))
+  (map-get? refunds refund-id)
+)
+
+;; Calculate payment breakdown
+(define-read-only (calculate-payment-breakdown (amount uint))
+  (let (
+    (fee (calculate-fee amount))
+  )
+    {
+      total: amount,
+      fee: fee,
+      merchant-receives: (- amount fee),
+      fee-percentage: (var-get platform-fee-bps)
+    }
+  )
+)
+
+;; Get platform stats
+(define-read-only (get-platform-stats)
+  {
+    total-merchants: (var-get merchant-counter),
+    total-invoices: (var-get invoice-counter),
+    total-subscriptions: (var-get subscription-counter),
+    total-volume: (var-get total-volume),
+    total-fees-collected: (var-get total-fees-collected),
+    total-refunds: (var-get total-refunds),
+    is-paused: (var-get contract-paused),
+    platform-fee-bps: (var-get platform-fee-bps)
+  }
+)
+
+;; Get contract configuration
+(define-read-only (get-contract-config)
+  {
+    owner: (var-get contract-owner),
+    fee-recipient: (var-get fee-recipient),
+    platform-fee-bps: (var-get platform-fee-bps),
+    min-invoice-amount: MIN_INVOICE_AMOUNT,
+    max-invoice-amount: MAX_INVOICE_AMOUNT,
+    max-expiry-blocks: MAX_EXPIRY_BLOCKS,
+    is-paused: (var-get contract-paused)
+  }
+)
+
+;; Get status name
+(define-read-only (get-status-name (status uint))
+  (if (is-eq status STATUS_PENDING) "pending"
+    (if (is-eq status STATUS_PARTIAL) "partial"
+      (if (is-eq status STATUS_PAID) "paid"
+        (if (is-eq status STATUS_EXPIRED) "expired"
+          (if (is-eq status STATUS_CANCELLED) "cancelled"
+            (if (is-eq status STATUS_REFUNDED) "refunded"
+              "unknown"
+            )
+          )
+        )
+      )
+    )
+  )
+)
+
+;; =============================================
+;; ADMIN FUNCTIONS
+;; =============================================
+
+;; Emergency pause
+(define-public (pause-contract)
+  (begin
+    (try! (check-is-owner))
+    (var-set contract-paused true)
+    (print { event: "contract-paused", by: tx-sender, block-height: burn-block-height })
+    (ok true)
+  )
+)
+
+;; Resume contract
+(define-public (unpause-contract)
+  (begin
+    (try! (check-is-owner))
+    (var-set contract-paused false)
+    (print { event: "contract-unpaused", by: tx-sender, block-height: burn-block-height })
+    (ok true)
+  )
+)
+
+;; Initiate ownership transfer
+(define-public (transfer-ownership (new-owner principal))
+  (begin
+    (try! (check-is-owner))
+    (var-set pending-owner (some new-owner))
+    (print { 
+      event: "ownership-transfer-initiated", 
+      current-owner: tx-sender, 
+      pending-owner: new-owner 
+    })
+    (ok true)
+  )
+)
+
+;; Accept ownership (new owner must call)
+(define-public (accept-ownership)
+  (let (
+    (pending (unwrap! (var-get pending-owner) ERR_OWNERSHIP_TRANSFER_PENDING))
+  )
+    (asserts! (is-eq tx-sender pending) ERR_NOT_AUTHORIZED)
+    (var-set contract-owner tx-sender)
+    (var-set pending-owner none)
+    (print { 
+      event: "ownership-transferred", 
+      new-owner: tx-sender,
+      block-height: burn-block-height
+    })
+    (ok true)
+  )
+)
+
+;; Cancel ownership transfer
+(define-public (cancel-ownership-transfer)
+  (begin
+    (try! (check-is-owner))
+    (var-set pending-owner none)
+    (print { event: "ownership-transfer-cancelled" })
+    (ok true)
+  )
+)
+
+;; Update fee recipient
+(define-public (set-fee-recipient (new-recipient principal))
+  (begin
+    (try! (check-is-owner))
+    (var-set fee-recipient new-recipient)
+    (print { event: "fee-recipient-updated", new-recipient: new-recipient })
+    (ok true)
+  )
+)
+
+;; Update platform fee (max 5%)
+(define-public (set-platform-fee (new-fee-bps uint))
+  (begin
+    (try! (check-is-owner))
+    (asserts! (<= new-fee-bps u500) ERR_INVALID_AMOUNT) ;; Max 5%
+    (var-set platform-fee-bps new-fee-bps)
+    (print { event: "platform-fee-updated", new-fee-bps: new-fee-bps })
+    (ok true)
+  )
+)
+
+;; Verify merchant (owner only)
+(define-public (verify-merchant (merchant-addr principal))
+  (let (
+    (merchant (unwrap! (map-get? merchants merchant-addr) ERR_MERCHANT_NOT_FOUND))
+  )
+    (try! (check-is-owner))
+    (map-set merchants merchant-addr (merge merchant { is-verified: true }))
+    (print { event: "merchant-verified", merchant: merchant-addr })
+    (ok true)
+  )
+)
+
+;; Suspend merchant (owner only - for bad actors)
+(define-public (suspend-merchant (merchant-addr principal))
+  (let (
+    (merchant (unwrap! (map-get? merchants merchant-addr) ERR_MERCHANT_NOT_FOUND))
+  )
+    (try! (check-is-owner))
+    (map-set merchants merchant-addr (merge merchant { is-active: false }))
+    (print { event: "merchant-suspended", merchant: merchant-addr })
+    (ok true)
+  )
+)
