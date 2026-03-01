@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useLocation } from "react-router-dom";
+import { Outlet, NavLink, useLocation, Link } from "react-router-dom";
 import { useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
@@ -14,6 +14,7 @@ import {
   X,
   Bitcoin,
   Code2,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
@@ -76,7 +77,7 @@ export function DashboardLayout() {
         )}
       >
         {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+        <Link to="/" className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4 hover:bg-sidebar-accent transition-colors">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
             <Bitcoin className="h-5 w-5 text-primary-foreground" />
           </div>
@@ -89,7 +90,7 @@ export function DashboardLayout() {
               sBTC Pay
             </motion.span>
           )}
-        </div>
+        </Link>
 
         {/* Nav */}
         <nav aria-label="Dashboard navigation" className="flex-1 overflow-y-auto scrollbar-thin px-2 py-4 space-y-1">
@@ -113,6 +114,20 @@ export function DashboardLayout() {
             </NavLink>
           ))}
         </nav>
+
+        {/* Home link at bottom */}
+        <div className="px-2 py-2 border-t border-sidebar-border">
+          <Link
+            to="/"
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2.5 text-body-sm font-medium transition-colors focus-ring",
+              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <Home className="h-5 w-5 shrink-0" />
+            {sidebarOpen && <span>Back to Home</span>}
+          </Link>
+        </div>
 
         {/* Network badge at bottom */}
         {sidebarOpen && (
