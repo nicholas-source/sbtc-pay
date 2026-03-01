@@ -1,11 +1,10 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { Wallet, AlertTriangle, Bitcoin, Copy, Check } from "lucide-react";
+import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2 } from "lucide-react";
 import { useInvoiceStore, type Payment } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
-import { useUIStore } from "@/stores/ui-store";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,7 +15,8 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { WalletModal } from "@/components/wallet/WalletModal";
+import { payInvoice, getInvoice as getBlockchainInvoice, waitForTransaction } from "@/lib/stacks/contract";
+import { formatSats as formatSatsUtil, truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, BTC_USD_PRICE } from "@/lib/constants";
 
@@ -24,23 +24,23 @@ function formatSats(sats: number) {
   return sats.toLocaleString();
 }
 
-function truncateAddress(addr: string) {
-  if (addr.length <= 14) return addr;
-  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-}
-
 function PaymentPage() {
   const { invoiceId } = useParams();
   const invoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId));
   const simulatePayment = useInvoiceStore((s) => s.simulatePayment);
-  const { isConnected, address } = useWalletStore();
-  const { setWalletModalOpen } = useUIStore();
+  const { isConnected, isConnecting, address, sbtcBalance, connect, connectionError, clearError } = useWalletStore();
 
-  const [paymentState, setPaymentState] = useState<"idle" | "confirming" | "confirmed">("idle");
+  const [paymentState, setPaymentState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [completedPayment, setCompletedPayment] = useState<Payment | null>(null);
   const [payAmount, setPayAmount] = useState<string>("");
   const [copiedAddress, setCopiedAddress] = useState(false);
+  const [txId, setTxId] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const confirmedAmount = useRef<number>(0);
+
+  // Check if this is a blockchain invoice (numeric ID)
+  const isBlockchainInvoice = invoiceId && /^\d+$/.test(invoiceId);
+  const blockchainInvoiceId = isBlockchainInvoice ? parseInt(invoiceId, 10) : null;
 
   const remaining = useMemo(() => {
     if (!invoice) return 0;
@@ -61,13 +61,52 @@ function PaymentPage() {
     if (!invoice || effectivePayAmount <= 0) return;
     confirmedAmount.current = effectivePayAmount;
     setPaymentState("confirming");
+    setErrorMessage(null);
 
-    // Simulate blockchain delay
-    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      if (isBlockchainInvoice && blockchainInvoiceId !== null && address) {
+        // Real blockchain payment
+        toast.info("Please confirm the transaction in your wallet...");
+        
+        const result = await payInvoice(
+          blockchainInvoiceId,
+          BigInt(effectivePayAmount),
+          address
+        );
 
-    const payment = simulatePayment(invoice.id, effectivePayAmount);
-    setCompletedPayment(payment);
-    setPaymentState("confirmed");
+        if (result.txId) {
+          setTxId(result.txId);
+          toast.success("Transaction submitted! Waiting for confirmation...");
+          
+          // Wait for transaction confirmation
+          try {
+            await waitForTransaction(result.txId);
+            toast.success("Payment confirmed!");
+          } catch {
+            // Transaction may still be pending, that's ok
+            toast.info("Transaction submitted. Check back soon for confirmation.");
+          }
+        }
+
+        setCompletedPayment({
+          timestamp: new Date(),
+          amount: effectivePayAmount,
+          txId: result.txId || 'pending',
+        });
+        setPaymentState("confirmed");
+      } else {
+        // Mock payment for demo invoices
+        await new Promise((r) => setTimeout(r, 2000));
+        const payment = simulatePayment(invoice.id, effectivePayAmount);
+        setCompletedPayment(payment);
+        setPaymentState("confirmed");
+      }
+    } catch (error) {
+      console.error("Payment failed:", error);
+      setErrorMessage(error instanceof Error ? error.message : "Payment failed");
+      setPaymentState("error");
+      toast.error("Payment failed. Please try again.");
+    }
   };
 
   // --- Not Found ---
@@ -126,17 +165,42 @@ function PaymentPage() {
     );
   }
 
+  // --- Error State ---
+  if (paymentState === "error") {
+    return (
+      <PageShell>
+        <InvoiceHeader invoice={invoice} />
+        <div className="flex flex-col items-center gap-4 py-8 text-center">
+          <AlertTriangle className="h-12 w-12 text-destructive" />
+          <p className="text-heading-sm text-foreground">Payment Failed</p>
+          <p className="text-body-sm text-muted-foreground max-w-xs">
+            {errorMessage || "An error occurred while processing your payment."}
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setPaymentState("idle");
+              setErrorMessage(null);
+            }}
+          >
+            Try Again
+          </Button>
+        </div>
+      </PageShell>
+    );
+  }
+
   // --- Awaiting Payment ---
   const paidPercent = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
   const usdAmount = (remaining / SATS_PER_BTC) * BTC_USD_PRICE;
   const feeSats = Math.round(remaining * 0.005); // 0.5% fee
   const merchantReceives = remaining - feeSats;
-  const walletBalance = useWalletStore.getState().sbtcBalance * SATS_PER_BTC;
-  const hasSufficient = isConnected && walletBalance >= remaining;
+  // sbtcBalance is in sats (bigint), convert to number for comparison
+  const walletBalanceSats = Number(sbtcBalance);
+  const hasSufficient = isConnected && walletBalanceSats >= remaining;
 
   return (
     <PageShell>
-      <WalletModal />
       <InvoiceHeader invoice={invoice} />
 
       <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
@@ -178,7 +242,7 @@ function PaymentPage() {
         <div className={`flex items-center justify-between rounded-lg p-3 text-body-sm ${hasSufficient ? "bg-success/10 border border-success/30" : "bg-destructive/10 border border-destructive/30"}`}>
           <span className="text-muted-foreground">Your sBTC:</span>
           <span className={`font-tabular ${hasSufficient ? "text-success" : "text-destructive"}`}>
-            {formatSats(Math.round(walletBalance))} sats — {hasSufficient ? "Sufficient" : "Insufficient"}
+            {formatSats(walletBalanceSats)} sats — {hasSufficient ? "Sufficient" : "Insufficient"}
           </span>
         </div>
       )}
@@ -230,13 +294,43 @@ function PaymentPage() {
         )}
 
         {!isConnected ? (
-          <Button
-            className="w-full h-12 text-body font-semibold gap-2"
-            onClick={() => setWalletModalOpen(true)}
-          >
-            <Wallet className="h-5 w-5" />
-            Connect Wallet & Pay
-          </Button>
+          <div className="space-y-3">
+            {/* Testnet warning */}
+            <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-orange-500/10 border border-orange-500/30">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+              </span>
+              <span className="text-caption text-orange-500">Testnet Mode - Switch wallet to Testnet before connecting</span>
+            </div>
+            <Button
+              disabled={isConnecting}
+              className="w-full h-12 text-body font-semibold gap-2"
+              onClick={async () => {
+                clearError();
+                await connect();
+                const state = useWalletStore.getState();
+                if (state.isConnected && !state.connectionError) {
+                  toast.success("Wallet connected!");
+                } else if (state.connectionError?.type === 'network_mismatch') {
+                  toast.error(`Wrong network! Please switch to ${NETWORK_MODE} in your wallet.`, { 
+                    duration: 8000,
+                    style: {
+                      background: 'hsl(var(--destructive))',
+                      color: 'hsl(var(--destructive-foreground))',
+                      border: '1px solid hsl(var(--destructive))',
+                    },
+                  });
+                }
+              }}
+            >
+              {isConnecting ? (
+                <><Loader2 className="h-5 w-5 animate-spin" />Connecting...</>
+              ) : (
+                <><Wallet className="h-5 w-5" />Connect Wallet & Pay</>
+              )}
+            </Button>
+          </div>
         ) : (
           <Button
             className="w-full h-12 text-body font-semibold gap-2"
