@@ -40,6 +40,7 @@ export default function PricingSection() {
           transition={{ delay: 0.15 }}
         >
           <Card className="border-primary/30 relative overflow-hidden">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
             <CardContent className="p-5 sm:p-8">
               <div className="text-center">
                 <motion.div

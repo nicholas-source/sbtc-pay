@@ -14,7 +14,7 @@ const fadeUp = {
 
 export default function HeroSection() {
   return (
-    <section id="main-content" className="relative pt-32 pb-24 lg:pt-44 lg:pb-32">
+    <section id="main-content" className="relative pt-32 pb-24 lg:pt-44 lg:pb-32 bg-grid">
       <div className="container relative">
         <motion.div
           className="mx-auto max-w-3xl text-center"
