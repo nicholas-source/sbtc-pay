@@ -37,7 +37,7 @@ export default function MerchantRegistration() {
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
-      <Card className="card-glow w-full max-w-lg">
+      <Card className="w-full max-w-lg">
         <CardHeader className="text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Store className="h-6 w-6 text-primary" />
@@ -108,7 +108,7 @@ export default function MerchantRegistration() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className={`w-full ${isRegistering ? "btn-shimmer" : ""}`} size="lg">
+                <Button type="submit" className="w-full" size="lg">
                   Register Merchant
                 </Button>
               </form>
