@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Code2, Copy, Check, Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,6 +21,11 @@ export default function WidgetGeneratorPage() {
   const [interval, setInterval] = useState("monthly");
   const [theme, setTheme] = useState("dark");
   const [copied, setCopied] = useState(false);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => clearTimeout(copyTimerRef.current);
+  }, []);
 
   const previewUrl = useMemo(() => {
     const base = window.location.origin;
@@ -44,14 +49,15 @@ export default function WidgetGeneratorPage() {
     }
   }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme]);
 
-  const embedCode = `<iframe src="${previewUrl}" width="380" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;" allow="clipboard-write"></iframe>`;
+  const embedCode = `<iframe src="${previewUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:380px;" allow="clipboard-write"></iframe>`;
 
   const copyEmbed = async () => {
     try {
       await navigator.clipboard.writeText(embedCode);
       setCopied(true);
-      toast.success("Embed code copied!");
-      setTimeout(() => setCopied(false), 2000);
+      toast.success("Embed code copied");
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch {
       toast.error("Failed to copy embed code");
     }
@@ -70,7 +76,7 @@ export default function WidgetGeneratorPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Configuration */}
-        <Card className="card-glow">
+        <Card>
           <CardHeader>
             <CardTitle className="text-heading-sm">Configuration</CardTitle>
           </CardHeader>
@@ -145,7 +151,7 @@ export default function WidgetGeneratorPage() {
 
         {/* Preview & Embed */}
         <div className="space-y-4">
-          <Card className="card-glow">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-heading-sm flex items-center gap-2">
                 <Eye className="h-4 w-4" /> Live Preview
@@ -161,7 +167,7 @@ export default function WidgetGeneratorPage() {
             </CardContent>
           </Card>
 
-          <Card className="card-glow">
+          <Card>
             <CardHeader>
               <CardTitle className="text-heading-sm">Embed Code</CardTitle>
             </CardHeader>
