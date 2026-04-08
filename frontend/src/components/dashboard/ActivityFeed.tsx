@@ -1,5 +1,4 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { motion } from "framer-motion";
 import { ArrowDownLeft, FileText, RefreshCcw, Repeat } from "lucide-react";
 import { formatDistanceToNow, subMinutes, subHours, subDays } from "date-fns";
 
@@ -27,10 +26,10 @@ const colorMap = {
 };
 
 const bgMap = {
-  payment: "bg-success/10",
-  invoice: "bg-primary/10",
-  refund: "bg-destructive/10",
-  subscription: "bg-info/10",
+  payment: "bg-success/20",
+  invoice: "bg-primary/20",
+  refund: "bg-destructive/20",
+  subscription: "bg-info/20",
 };
 
 const now = new Date();
@@ -50,7 +49,7 @@ const events: ActivityEvent[] = [
 
 export default function ActivityFeed() {
   return (
-    <Card className="card-glow">
+    <Card>
       <CardHeader>
         <CardTitle className="text-heading-sm">Recent Activity</CardTitle>
       </CardHeader>
@@ -62,13 +61,11 @@ export default function ActivityFeed() {
           <div className="space-y-1">
             {events.map((event, i) => {
               const Icon = iconMap[event.type];
+              const stagger = i < 8 ? `stagger-${i + 1}` : "";
               return (
-                <motion.div
+                <div
                   key={event.id}
-                  initial={{ opacity: 0, x: -12 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.05, duration: 0.3 }}
-                  className="relative flex items-start gap-3 py-2 pl-1"
+                  className={`relative flex items-start gap-3 py-2 pl-1 animate-fade-slide-up ${stagger}`}
                 >
                   {/* Dot */}
                   <div className={`relative z-10 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full ${bgMap[event.type]}`}>
@@ -90,7 +87,7 @@ export default function ActivityFeed() {
                       </p>
                     </div>
                   </div>
-                </motion.div>
+                </div>
               );
             })}
           </div>

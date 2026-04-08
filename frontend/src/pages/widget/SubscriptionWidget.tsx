@@ -19,18 +19,18 @@ export default function SubscriptionWidget() {
   return (
     <PageTransition>
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="w-full max-w-xs card-glow border-border">
+        <Card className="w-full max-w-xs border-border">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-4 w-4 text-primary" />
-              <span className="text-body font-bold text-gradient-orange">sBTC Pay</span>
+              <span className="text-body font-bold text-primary">sBTC Pay</span>
               <Badge variant="outline" className="text-[10px] border-stacks text-stacks">Subscribe</Badge>
             </div>
 
             <div className="text-center space-y-1">
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
-              <p className="text-sats text-gradient-orange font-tabular">{satsAmount.toLocaleString()} sats</p>
+              <p className="text-2xl sm:text-sats text-primary font-tabular">{satsAmount.toLocaleString()} sats</p>
               <p className="text-caption text-muted-foreground">per {interval}</p>
             </div>
 

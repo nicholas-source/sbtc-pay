@@ -25,7 +25,7 @@ export default function LandingFooter() {
   return (
     <footer role="contentinfo" aria-label="Site footer" className="border-t border-border bg-background">
       <div className="container py-12 lg:py-16">
-        <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-4 sm:gap-6 md:gap-8 md:grid-cols-4">
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1 space-y-4">
             <div className="flex items-center gap-2">

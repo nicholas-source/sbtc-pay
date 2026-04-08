@@ -14,11 +14,7 @@ const fadeUp = {
 
 export default function HeroSection() {
   return (
-    <section id="main-content" className="relative pt-32 pb-24 lg:pt-44 lg:pb-32">
-      <div className="absolute inset-0 bg-grid opacity-40" />
-      <div className="absolute top-20 left-1/4 h-96 w-96 rounded-full bg-primary/8 blur-[120px] animate-pulse-glow" />
-      <div className="absolute bottom-10 right-1/4 h-80 w-80 rounded-full bg-stacks/8 blur-[100px] animate-pulse-glow" style={{ animationDelay: "1.5s" }} />
-
+    <section id="main-content" className="relative pt-32 pb-24 lg:pt-44 lg:pb-32 bg-grid">
       <div className="container relative">
         <motion.div
           className="mx-auto max-w-3xl text-center"
@@ -27,7 +23,7 @@ export default function HeroSection() {
           variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
         >
           <motion.div variants={fadeUp} custom={0}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-4 py-1.5 text-caption font-semibold text-primary">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-caption font-semibold text-primary">
               <Bitcoin className="h-3.5 w-3.5" />
               Powered by Stacks & sBTC
             </span>
@@ -36,10 +32,10 @@ export default function HeroSection() {
           <motion.h1
             variants={fadeUp}
             custom={1}
-            className="mt-6 text-display-xl tracking-tight"
+            className="mt-6 text-3xl sm:text-4xl md:text-display-lg lg:text-display-xl tracking-tight"
           >
             Accept Bitcoin payments.{" "}
-            <span className="text-gradient-orange">Built on Stacks.</span>
+            <span className="text-primary">Built on Stacks.</span>
           </motion.h1>
 
           <motion.p
@@ -51,14 +47,14 @@ export default function HeroSection() {
             and embeddable widgets — all trustlessly on the blockchain.
           </motion.p>
 
-          <motion.div variants={fadeUp} custom={3} className="mt-8 flex items-center justify-center gap-4">
-            <Button size="lg" className="gap-2 text-base h-12 px-6" asChild>
+          <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+            <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" asChild>
               <Link to="/dashboard">
                 Get Started
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-            <Button variant="outline" size="lg" className="h-12 px-6 text-base" asChild>
+            <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
               <a href="#features">Learn More</a>
             </Button>
           </motion.div>

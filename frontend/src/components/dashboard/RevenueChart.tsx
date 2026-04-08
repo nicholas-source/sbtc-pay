@@ -43,7 +43,7 @@ function generateData(period: Period) {
   });
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; payload: { usd: number } }>; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
@@ -64,7 +64,7 @@ export default function RevenueChart() {
   const data = useMemo(() => generateData(period), [period]);
 
   return (
-    <Card className="card-glow">
+    <Card>
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <CardTitle className="text-heading-sm">Revenue</CardTitle>
         <ToggleGroup
@@ -86,7 +86,8 @@ export default function RevenueChart() {
               <defs>
                 <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="hsl(27, 98%, 54%)" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="hsl(27, 98%, 54%)" stopOpacity={0} />
+                  <stop offset="50%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />

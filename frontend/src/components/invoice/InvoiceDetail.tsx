@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
 import { Copy, XCircle, ArrowDownLeft, ArrowUpRight, RotateCcw } from "lucide-react";
-import { cn } from "@/lib/utils";
 import type { Invoice } from "@/stores/invoice-store";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import InvoiceStatusBadge from "./InvoiceStatusBadge";
 import RefundDialog from "./RefundDialog";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
@@ -33,15 +32,15 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
   async function copyLink() {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/pay/${invoice!.id}`);
-      toast({ title: "Payment link copied" });
+      toast.success("Payment link copied");
     } catch {
-      toast({ title: "Copy failed", description: "Could not copy to clipboard", variant: "destructive" });
+      toast.error("Couldn't copy the link. Check your browser permissions.");
     }
   }
 
   function handleCancel() {
     cancelInvoice(invoice!.id);
-    toast({ title: "Invoice cancelled" });
+    toast.success("Invoice cancelled");
     onOpenChange(false);
   }
 
@@ -90,7 +89,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
             </Button>
             {invoice.status === "pending" && (
               <Button variant="destructive" size="sm" onClick={handleCancel} className="flex-1" aria-label={`Cancel invoice ${invoice.id}`}>
-                <XCircle className="mr-2 h-3.5 w-3.5" />Cancel
+                <XCircle className="mr-2 h-3.5 w-3.5" />Cancel Invoice
               </Button>
             )}
             {invoice.amountPaid > 0 && (invoice.status === "paid" || invoice.status === "partial") && (
@@ -109,10 +108,10 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               <p className="text-xs text-muted-foreground">No payments yet</p>
             ) : (
               <div className="space-y-3">
-                {invoice.payments.map((p, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm">
-                    <div className="mt-0.5 rounded-full bg-emerald-400/10 p-1.5">
-                      <ArrowDownLeft className="h-3 w-3 text-emerald-400" />
+                {invoice.payments.map((p) => (
+                  <div key={p.txId} className="flex items-start gap-3 text-sm">
+                    <div className="mt-0.5 rounded-full bg-success/10 p-1.5">
+                      <ArrowDownLeft className="h-3 w-3 text-success" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
@@ -134,10 +133,10 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               <div>
                 <h4 className="text-sm font-medium mb-3">Refunds</h4>
                 <div className="space-y-3">
-                  {invoice.refunds.map((r, i) => (
-                    <div key={i} className="flex items-start gap-3 text-sm">
-                      <div className="mt-0.5 rounded-full bg-red-400/10 p-1.5">
-                        <ArrowUpRight className="h-3 w-3 text-red-400" />
+                  {invoice.refunds.map((r) => (
+                    <div key={r.txId} className="flex items-start gap-3 text-sm">
+                      <div className="mt-0.5 rounded-full bg-destructive/10 p-1.5">
+                        <ArrowUpRight className="h-3 w-3 text-destructive" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -158,13 +157,13 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
 
           {/* Info */}
           <div className="space-y-2 text-xs">
-            {invoice.memo && <div><span className="text-muted-foreground">Memo:</span> <span>{invoice.memo}</span></div>}
-            {invoice.referenceId && <div><span className="text-muted-foreground">Ref:</span> <span className="font-mono">{invoice.referenceId}</span></div>}
-            <div><span className="text-muted-foreground">Merchant:</span> <span className="font-mono truncate">{invoice.merchantAddress}</span></div>
-            {invoice.payerAddress && <div><span className="text-muted-foreground">Payer:</span> <span className="font-mono truncate">{invoice.payerAddress}</span></div>}
+            {invoice.memo && <div className="flex gap-1"><span className="text-muted-foreground shrink-0">Memo:</span> <span className="break-words line-clamp-3">{invoice.memo}</span></div>}
+            {invoice.referenceId && <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Reference:</span> <span className="font-mono truncate">{invoice.referenceId}</span></div>}
+            <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Merchant:</span> <span className="font-mono truncate">{invoice.merchantAddress}</span></div>
+            {invoice.payerAddress && <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Payer:</span> <span className="font-mono truncate">{invoice.payerAddress}</span></div>}
             <div className="flex gap-4">
               {invoice.allowPartial && <span className="text-muted-foreground">✓ Partial payments</span>}
-              {invoice.allowOverpay && <span className="text-muted-foreground">✓ Overpayments</span>}
+              {invoice.allowOverpay && <span className="text-muted-foreground">✓ Accepts overpayments</span>}
             </div>
           </div>
         </div>

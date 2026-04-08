@@ -5,7 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { RotateCcw } from "lucide-react";
 import type { Invoice } from "@/stores/invoice-store";
 import { useInvoiceStore } from "@/stores/invoice-store";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -82,11 +82,11 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
     const values = form.getValues();
     const success = refundInvoice(invoice.id, values.amount, values.reason);
     if (success) {
-      toast({ title: "Refund processed", description: `${values.amount.toLocaleString()} sats refunded` });
+      toast.success("Refund processed", { description: `${values.amount.toLocaleString()} sats refunded` });
       setConfirmOpen(false);
       onOpenChange(false);
     } else {
-      toast({ title: "Refund failed", description: "Invalid refund amount", variant: "destructive" });
+      toast.error("Refund failed", { description: "Invalid refund amount" });
       setConfirmOpen(false);
     }
   }
@@ -188,12 +188,12 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
                 <p>Invoice: <span className="font-mono font-semibold">{invoice.id}</span></p>
                 <p>Amount: <span className="font-mono font-semibold">{amount.toLocaleString()} sats</span> (${usd})</p>
                 <p>Reason: {form.getValues("reason")}</p>
-                <p className="text-destructive font-medium mt-2">This action cannot be undone.</p>
+                <p className="text-destructive font-medium mt-2">This refund is permanent and cannot be reversed.</p>
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Process Refund
             </AlertDialogAction>

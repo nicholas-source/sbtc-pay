@@ -1,8 +1,8 @@
 import { Outlet, NavLink, useLocation, Link } from "react-router-dom";
 import { useEffect, useRef, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
-import { PageTransition } from "@/components/layout/PageTransition";
+
 import {
   LayoutDashboard,
   FileText,
@@ -19,7 +19,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
 import DashboardBreadcrumb from "@/components/dashboard/DashboardBreadcrumb";
-import { useWalletStore } from "@/stores/wallet-store";
 import { WalletButton } from "@/components/wallet/WalletButton";
 import { NetworkBadge } from "@/components/wallet/NetworkBadge";
 
@@ -104,7 +103,7 @@ export function DashboardLayout() {
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-body-sm font-medium transition-colors focus-ring",
                   isActive
-                    ? "bg-sidebar-accent text-primary"
+                    ? "bg-sidebar-accent text-primary border-l-3 border-primary"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )
               }
@@ -140,7 +139,7 @@ export function DashboardLayout() {
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-30 bg-background/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
           role="presentation"
           onClick={handleOverlayClick}
         />
@@ -149,7 +148,7 @@ export function DashboardLayout() {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header aria-label="Dashboard toolbar" className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background/80 backdrop-blur-md px-4 lg:px-6">
+        <header aria-label="Dashboard toolbar" className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 lg:px-6">
           <button
             ref={toggleButtonRef}
             onClick={toggleSidebar}
@@ -165,14 +164,12 @@ export function DashboardLayout() {
 
         {/* Page content */}
         <div id="main-content" className="flex-1 overflow-y-auto scrollbar-thin">
-          <AnimatePresence mode="wait">
-            <PageTransition key={location.pathname} className="p-4 lg:p-6">
+          <div className="p-4 lg:p-6">
               <DashboardBreadcrumb />
               <ErrorBoundary>
                 <Outlet />
               </ErrorBoundary>
-            </PageTransition>
-          </AnimatePresence>
+          </div>
         </div>
       </main>
     </div>

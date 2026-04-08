@@ -78,7 +78,6 @@ function notifyEvent(eventKey: NotifEventKey, label: string) {
   const hasEmail = !!profile.notifications.email;
   const hasWebhook = !!profile.notifications.webhookUrl;
 
-  console.log(`[Notification] ${label} — email: ${profile.notifications.email || "(none)"}, webhook: ${profile.notifications.webhookUrl || "(none)"}`);
   if (hasWebhook) {
     toast.info(`Webhook notification sent for: ${label}`);
   }

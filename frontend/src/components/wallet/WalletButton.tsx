@@ -1,6 +1,6 @@
 import { useWalletStore, useFormattedSbtcBalance, useSbtcBalanceInUsd, useFormattedStxBalance } from "@/stores/wallet-store";
 import { Button } from "@/components/ui/button";
-import { Wallet, ChevronDown, LogOut, Copy, RefreshCw, AlertTriangle, Loader2 } from "lucide-react";
+import { Wallet, ChevronDown, LogOut, Copy, RefreshCw, Loader2 } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,7 +27,7 @@ export function WalletButton() {
     await connect();
     const state = useWalletStore.getState();
     if (state.isConnected && !state.connectionError) {
-      toast.success("Wallet connected successfully!", {
+      toast.success("Wallet connected", {
         style: {
           background: 'hsl(var(--success))',
           color: 'hsl(var(--success-foreground))',
@@ -36,7 +36,7 @@ export function WalletButton() {
       });
     } else if (state.connectionError?.type === 'network_mismatch') {
       toast.error(
-        `Wrong network! Please switch to ${NETWORK_MODE} in your wallet settings, then try again.`,
+        `Wrong network. Please switch to ${NETWORK_MODE} in your wallet settings, then try again`,
         { 
           duration: 8000,
           style: {
@@ -55,10 +55,10 @@ export function WalletButton() {
         {/* Network indicator */}
         <Tooltip>
           <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-orange-500/10 border border-orange-500/30 text-orange-500 text-caption font-medium cursor-help">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/30 text-primary text-caption font-medium cursor-help">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
               Testnet
             </div>
@@ -129,7 +129,7 @@ export function WalletButton() {
               await navigator.clipboard.writeText(address!);
               toast.success("Address copied");
             } catch {
-              toast.error("Failed to copy address");
+              toast.error("Couldn't copy the address. Check your browser permissions.");
             }
           }}
         >

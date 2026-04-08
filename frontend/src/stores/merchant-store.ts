@@ -56,19 +56,24 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
   setRegistering: (isRegistering) => set({ isRegistering }),
   registerMerchant: async (data) => {
     set({ isRegistering: true });
-    // Simulate blockchain transaction delay
-    await new Promise((r) => setTimeout(r, 2500));
-    const profile: MerchantProfile = {
-      id: `SP${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-      name: data.name,
-      description: data.description,
-      logoUrl: data.logoUrl,
-      webhookUrl: data.webhookUrl,
-      isVerified: false,
-      isRegistered: true,
-      notifications: { ...defaultNotificationSettings },
-    };
-    set({ profile, isRegistering: false });
+    try {
+      // Simulate blockchain transaction delay
+      await new Promise((r) => setTimeout(r, 2500));
+      const profile: MerchantProfile = {
+        id: `SP${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+        name: data.name,
+        description: data.description,
+        logoUrl: data.logoUrl,
+        webhookUrl: data.webhookUrl,
+        isVerified: false,
+        isRegistered: true,
+        notifications: { ...defaultNotificationSettings },
+      };
+      set({ profile, isRegistering: false });
+    } catch {
+      set({ isRegistering: false });
+      throw new Error("Registration failed. Please try again");
+    }
   },
   updateProfile: async (data) => {
     await new Promise((r) => setTimeout(r, 1000));

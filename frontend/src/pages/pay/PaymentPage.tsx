@@ -1,6 +1,5 @@
-import { useState, useMemo, useRef, useEffect } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import { motion } from "framer-motion";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2 } from "lucide-react";
 import { useInvoiceStore, type Payment } from "@/stores/invoice-store";
@@ -15,8 +14,8 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { payInvoice, getInvoice as getBlockchainInvoice, waitForTransaction } from "@/lib/stacks/contract";
-import { formatSats as formatSatsUtil, truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
+import { payInvoice, waitForTransaction } from "@/lib/stacks/contract";
+import { truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, BTC_USD_PRICE } from "@/lib/constants";
 
@@ -37,6 +36,15 @@ function PaymentPage() {
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const confirmedAmount = useRef<number>(0);
+  const mountedRef = useRef(true);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+      clearTimeout(copyTimerRef.current);
+    };
+  }, []);
 
   // Check if this is a blockchain invoice (numeric ID)
   const isBlockchainInvoice = invoiceId && /^\d+$/.test(invoiceId);
@@ -57,8 +65,8 @@ function PaymentPage() {
     return remaining;
   }, [invoice, payAmount, remaining]);
 
-  const handlePay = async () => {
-    if (!invoice || effectivePayAmount <= 0) return;
+  const handlePay = useCallback(async () => {
+    if (!invoice || effectivePayAmount <= 0 || paymentState !== "idle") return;
     confirmedAmount.current = effectivePayAmount;
     setPaymentState("confirming");
     setErrorMessage(null);
@@ -66,7 +74,7 @@ function PaymentPage() {
     try {
       if (isBlockchainInvoice && blockchainInvoiceId !== null && address) {
         // Real blockchain payment
-        toast.info("Please confirm the transaction in your wallet...");
+        toast.info("Please confirm the transaction in your wallet");
         
         const result = await payInvoice(
           blockchainInvoiceId,
@@ -74,20 +82,25 @@ function PaymentPage() {
           address
         );
 
+        if (!mountedRef.current) return;
+
         if (result.txId) {
           setTxId(result.txId);
-          toast.success("Transaction submitted! Waiting for confirmation...");
+          toast.success("Transaction submitted, waiting for confirmation");
           
           // Wait for transaction confirmation
           try {
             await waitForTransaction(result.txId);
-            toast.success("Payment confirmed!");
+            if (!mountedRef.current) return;
+            toast.success("Payment confirmed");
           } catch {
+            if (!mountedRef.current) return;
             // Transaction may still be pending, that's ok
-            toast.info("Transaction submitted. Check back soon for confirmation.");
+            toast.info("Transaction submitted. Check back soon for confirmation");
           }
         }
 
+        if (!mountedRef.current) return;
         setCompletedPayment({
           timestamp: new Date(),
           amount: effectivePayAmount,
@@ -97,17 +110,18 @@ function PaymentPage() {
       } else {
         // Mock payment for demo invoices
         await new Promise((r) => setTimeout(r, 2000));
+        if (!mountedRef.current) return;
         const payment = simulatePayment(invoice.id, effectivePayAmount);
         setCompletedPayment(payment);
         setPaymentState("confirmed");
       }
     } catch (error) {
-      console.error("Payment failed:", error);
+      if (!mountedRef.current) return;
       setErrorMessage(error instanceof Error ? error.message : "Payment failed");
       setPaymentState("error");
-      toast.error("Payment failed. Please try again.");
+      toast.error(error instanceof Error ? error.message : "Something went wrong with your payment. Please try again.");
     }
-  };
+  }, [invoice, effectivePayAmount, paymentState, isBlockchainInvoice, blockchainInvoiceId, address, simulatePayment]);
 
   // --- Not Found ---
   if (!invoice) {
@@ -174,7 +188,7 @@ function PaymentPage() {
           <AlertTriangle className="h-12 w-12 text-destructive" />
           <p className="text-heading-sm text-foreground">Payment Failed</p>
           <p className="text-body-sm text-muted-foreground max-w-xs">
-            {errorMessage || "An error occurred while processing your payment."}
+            {errorMessage || "Something went wrong while processing your payment."}
           </p>
           <Button
             variant="outline"
@@ -203,12 +217,12 @@ function PaymentPage() {
     <PageShell>
       <InvoiceHeader invoice={invoice} />
 
-      <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-8">
+      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
         <PaymentQRCode address={invoice.merchantAddress} />
 
         <div className="flex flex-col gap-1 text-center sm:text-left">
           <span className="text-caption text-muted-foreground uppercase tracking-wider">Amount Due</span>
-          <span className="text-sats text-gradient-orange font-tabular">
+          <span className="text-2xl sm:text-sats text-primary font-tabular">
             {formatSats(remaining)} sats
           </span>
           <span className="text-body-sm text-muted-foreground">
@@ -296,12 +310,12 @@ function PaymentPage() {
         {!isConnected ? (
           <div className="space-y-3">
             {/* Testnet warning */}
-            <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-orange-500/10 border border-orange-500/30">
+            <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-orange-400 opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-orange-500" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
-              <span className="text-caption text-orange-500">Testnet Mode - Switch wallet to Testnet before connecting</span>
+              <span className="text-caption text-primary">Testnet Mode - Switch wallet to Testnet before connecting</span>
             </div>
             <Button
               disabled={isConnecting}
@@ -311,7 +325,7 @@ function PaymentPage() {
                 await connect();
                 const state = useWalletStore.getState();
                 if (state.isConnected && !state.connectionError) {
-                  toast.success("Wallet connected!", {
+                  toast.success("Wallet connected", {
                     style: {
                       background: 'hsl(var(--success))',
                       color: 'hsl(var(--success-foreground))',
@@ -319,7 +333,7 @@ function PaymentPage() {
                     },
                   });
                 } else if (state.connectionError?.type === 'network_mismatch') {
-                  toast.error(`Wrong network! Please switch to ${NETWORK_MODE} in your wallet.`, { 
+                  toast.error(`Wrong network. Please switch to ${NETWORK_MODE} in your wallet`, { 
                     duration: 8000,
                     style: {
                       background: 'hsl(var(--destructive))',
@@ -341,9 +355,13 @@ function PaymentPage() {
           <Button
             className="w-full h-12 text-body font-semibold gap-2"
             onClick={handlePay}
+            disabled={paymentState !== "idle"}
           >
-            <Bitcoin className="h-5 w-5" />
-            Pay {formatSats(effectivePayAmount)} sats
+            {paymentState === "confirming" ? (
+              <><Loader2 className="h-5 w-5 animate-spin" />Processing...</>
+            ) : (
+              <><Bitcoin className="h-5 w-5" />Pay {formatSats(effectivePayAmount)} sats</>
+            )}
           </Button>
         )}
 
@@ -375,7 +393,8 @@ function PaymentPage() {
             await navigator.clipboard.writeText(invoice.merchantAddress);
             setCopiedAddress(true);
             toast.success("Address copied to clipboard");
-            setTimeout(() => setCopiedAddress(false), 2000);
+            clearTimeout(copyTimerRef.current);
+            copyTimerRef.current = setTimeout(() => setCopiedAddress(false), 2000);
           }}
         >
           {copiedAddress ? (
@@ -395,13 +414,13 @@ export default PaymentPage;
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <PageTransition>
-      <div className="flex min-h-screen items-center justify-center bg-background p-4 bg-grid">
-        <Card className="w-full max-w-md card-glow border-border">
+      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+        <Card className="w-full max-w-md border-border">
           <CardContent className="p-6 sm:p-8 space-y-6">
             {/* Branding */}
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-6 w-6 text-primary" />
-              <span className="text-heading-sm text-gradient-orange">sBTC Pay</span>
+              <span className="text-heading-sm text-primary">sBTC Pay</span>
               <Badge
                 variant="outline"
                 className="ml-2 border-stacks text-stacks text-caption"

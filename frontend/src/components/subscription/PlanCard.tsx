@@ -28,7 +28,7 @@ export default function PlanCard({ plan }: PlanCardProps) {
   const usd = (plan.amount * BTC_USD).toFixed(2);
 
   return (
-    <Card className="group card-glow card-glow-hover transition-all duration-300 hover:scale-[1.02]">
+    <Card className="card-accent-secondary">
       <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
         <div className="space-y-1">
           <CardTitle className="text-heading-sm">{plan.name}</CardTitle>

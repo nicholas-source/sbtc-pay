@@ -49,10 +49,10 @@ function generateData(period: Period) {
   });
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey: string; value: number; payload: { revenueUsd: number } }>; label?: string }) => {
   if (!active || !payload?.length) return null;
-  const subs = payload.find((p: any) => p.dataKey === "subscribers");
-  const rev = payload.find((p: any) => p.dataKey === "revenue");
+  const subs = payload.find((p) => p.dataKey === "subscribers");
+  const rev = payload.find((p) => p.dataKey === "revenue");
   return (
     <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
       <p className="text-caption text-muted-foreground mb-1">{label}</p>
@@ -81,7 +81,7 @@ export default function SubscriptionAnalyticsChart() {
   const data = useMemo(() => generateData(period), [period]);
 
   return (
-    <Card className="card-glow">
+    <Card>
       <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
         <div className="flex items-center gap-4">
           <CardTitle className="text-heading-sm">Subscription Analytics</CardTitle>
@@ -118,8 +118,8 @@ export default function SubscriptionAnalyticsChart() {
                   <stop offset="100%" stopColor="hsl(27, 98%, 54%)" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="subAnalyticsRevGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(210, 98%, 54%)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="hsl(210, 98%, 54%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -162,7 +162,7 @@ export default function SubscriptionAnalyticsChart() {
                 yAxisId={isMobile ? "left" : "right"}
                 type="monotone"
                 dataKey="revenue"
-                stroke="hsl(210, 98%, 54%)"
+                stroke="hsl(263, 70%, 58%)"
                 strokeWidth={2}
                 fill="url(#subAnalyticsRevGrad)"
                 animationDuration={800}

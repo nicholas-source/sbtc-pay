@@ -7,7 +7,7 @@ import { format } from "date-fns";
 import { CalendarIcon, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInvoiceStore } from "@/stores/invoice-store";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -71,7 +71,7 @@ export default function CreateInvoiceDialog() {
   function onSubmit(data: FormValues) {
     const expiresAt = expirationPreset === "custom" ? (customDate ?? null) : getExpirationDate(expirationPreset);
     const invoice = createInvoice({ amount: data.amount, memo: data.memo, referenceId: data.referenceId, allowPartial: data.allowPartial, allowOverpay: data.allowOverpay, expiresAt });
-    toast({ title: "Invoice created", description: `${invoice.id} for ${data.amount.toLocaleString()} sats` });
+    toast.success("Invoice created", { description: `${invoice.id} for ${data.amount.toLocaleString()} sats` });
     form.reset();
     setExpirationPreset("7d");
     setCustomDate(undefined);

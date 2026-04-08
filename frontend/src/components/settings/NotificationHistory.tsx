@@ -8,18 +8,18 @@ import { useNotificationLogStore, type NotifEventKey } from "@/stores/notificati
 import { History, RefreshCw, XCircle, AlertTriangle, UserPlus, PauseCircle } from "lucide-react";
 
 const eventConfig: Record<NotifEventKey, { icon: React.ElementType; color: string }> = {
-  renewal: { icon: RefreshCw, color: "text-green-500" },
-  cancellation: { icon: XCircle, color: "text-red-500" },
-  failedPayment: { icon: AlertTriangle, color: "text-orange-500" },
-  newSubscriber: { icon: UserPlus, color: "text-blue-500" },
-  pauseResume: { icon: PauseCircle, color: "text-yellow-500" },
+  renewal: { icon: RefreshCw, color: "text-success" },
+  cancellation: { icon: XCircle, color: "text-destructive" },
+  failedPayment: { icon: AlertTriangle, color: "text-warning" },
+  newSubscriber: { icon: UserPlus, color: "text-info" },
+  pauseResume: { icon: PauseCircle, color: "text-warning" },
 };
 
 export default function NotificationHistory() {
   const { logs, clearLogs } = useNotificationLogStore();
 
   return (
-    <Card className="card-glow">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="space-y-1">
           <CardTitle className="text-heading-sm flex items-center gap-2">

@@ -91,7 +91,7 @@ function CustomerSubscriptions() {
                 const usd = (plan.amount * BTC_USD).toFixed(2);
 
                 return (
-                  <Card key={sub.id} className="card-glow card-glow-hover transition-all duration-300">
+                  <Card key={sub.id}>
                     <CardHeader className="flex flex-row items-center justify-between pb-2">
                       <CardTitle className="text-heading-sm">{plan.name}</CardTitle>
                       <Badge variant="outline" className={statusStyles[sub.status]}>

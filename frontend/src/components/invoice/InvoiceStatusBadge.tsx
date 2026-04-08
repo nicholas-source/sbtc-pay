@@ -2,12 +2,12 @@ import { cn } from "@/lib/utils";
 import type { InvoiceStatus } from "@/stores/invoice-store";
 
 const config: Record<InvoiceStatus, { label: string; dot: string; bg: string; text: string }> = {
-  paid: { label: "Paid", dot: "bg-emerald-400", bg: "bg-emerald-400/10", text: "text-emerald-400" },
-  pending: { label: "Pending", dot: "bg-amber-400", bg: "bg-amber-400/10", text: "text-amber-400" },
-  partial: { label: "Partial", dot: "bg-sky-400", bg: "bg-sky-400/10", text: "text-sky-400" },
-  expired: { label: "Expired", dot: "bg-red-400", bg: "bg-red-400/10", text: "text-red-400" },
+  paid: { label: "Paid", dot: "bg-success", bg: "bg-success/20", text: "text-success" },
+  pending: { label: "Pending", dot: "bg-warning", bg: "bg-warning/20", text: "text-warning" },
+  partial: { label: "Partial", dot: "bg-info", bg: "bg-info/20", text: "text-info" },
+  expired: { label: "Expired", dot: "bg-destructive", bg: "bg-destructive/20", text: "text-destructive" },
   cancelled: { label: "Cancelled", dot: "bg-muted-foreground", bg: "bg-muted/50", text: "text-muted-foreground" },
-  refunded: { label: "Refunded", dot: "bg-violet-400", bg: "bg-violet-400/10", text: "text-violet-400" },
+  refunded: { label: "Refunded", dot: "bg-secondary", bg: "bg-secondary/20", text: "text-secondary" },
 };
 
 export default function InvoiceStatusBadge({ status, className }: { status: InvoiceStatus; className?: string }) {
