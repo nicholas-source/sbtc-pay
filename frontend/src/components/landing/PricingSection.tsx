@@ -25,7 +25,7 @@ export default function PricingSection() {
         >
           <h2 className="text-display text-foreground">
             Simple, transparent{" "}
-            <span className="text-gradient-orange">pricing</span>
+            <span className="text-primary">pricing</span>
           </h2>
           <p className="mt-4 text-body-lg text-muted-foreground">
             No subscriptions. No hidden fees. Just 0.5% per transaction.
@@ -39,12 +39,11 @@ export default function PricingSection() {
           viewport={{ once: true }}
           transition={{ delay: 0.15 }}
         >
-          <Card className="card-glow border-primary/20 relative overflow-hidden">
-            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
-            <CardContent className="p-8">
+          <Card className="border-primary/30 relative overflow-hidden">
+            <CardContent className="p-5 sm:p-8">
               <div className="text-center">
                 <motion.div
-                  className="text-display-xl text-gradient-orange font-black"
+                  className="text-4xl sm:text-display-lg md:text-display-xl text-primary font-black"
                   initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}
