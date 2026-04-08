@@ -60,7 +60,7 @@ function SettingsPage() {
     return (
       <div>
         <h1 className="text-heading-lg text-foreground">Settings</h1>
-        <p className="text-body-sm text-muted-foreground mt-1">Register as a merchant first to access settings.</p>
+        <p className="text-body-sm text-muted-foreground mt-1">You need to register as a merchant before you can update settings.</p>
       </div>
     );
   }
@@ -96,7 +96,7 @@ function SettingsPage() {
       await navigator.clipboard.writeText(profile.id);
       toast.success("Merchant ID copied");
     } catch {
-      toast.error("Failed to copy Merchant ID");
+      toast.error("Couldn't copy the Merchant ID. Check your browser permissions.");
     }
   };
 
@@ -108,7 +108,7 @@ function SettingsPage() {
       </div>
 
       {/* Profile Header */}
-      <Card className="card-glow">
+      <Card>
         <CardContent className="flex items-center gap-4 pt-6">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
             {profile.name.charAt(0).toUpperCase()}
@@ -134,7 +134,7 @@ function SettingsPage() {
       </Card>
 
       {/* Edit Form */}
-      <Card className="card-glow">
+      <Card>
         <CardHeader>
           <CardTitle className="text-heading-sm">Profile Details</CardTitle>
           <CardDescription>Update your merchant information.</CardDescription>
@@ -170,7 +170,7 @@ function SettingsPage() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <Button type="submit" disabled={saving} className={saving ? "btn-shimmer" : ""}>
+              <Button type="submit" disabled={saving}>
                 {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Save Changes
               </Button>
@@ -180,7 +180,7 @@ function SettingsPage() {
       </Card>
 
       {/* Notifications */}
-      <Card className="card-glow">
+      <Card>
         <CardHeader>
           <CardTitle className="text-heading-sm flex items-center gap-2">
             <Bell className="h-5 w-5" /> Notifications
@@ -225,7 +225,7 @@ function SettingsPage() {
             ))}
           </div>
           <Separator />
-          <Button onClick={handleSaveNotifications} disabled={savingNotif} className={savingNotif ? "btn-shimmer" : ""}>
+          <Button onClick={handleSaveNotifications} disabled={savingNotif}>
             {savingNotif && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Save Notification Settings
           </Button>
@@ -254,13 +254,13 @@ function SettingsPage() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogTitle>Disconnect your merchant profile?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove your merchant profile. You will need to re-register to accept payments again.
+                    This will remove your merchant profile and all settings. You'll need to re-register to accept payments again.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel>Keep Profile</AlertDialogCancel>
                   <AlertDialogAction onClick={clearProfile}>Disconnect</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
