@@ -1,11 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* sBTC Pay — Premium Dark Fintech Design System
    All colors are HSL. Dark-mode only. */
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
 
 @layer base {
   :root {
@@ -74,22 +74,10 @@
     --surface-2: 220 13% 12%;
     --surface-3: 220 12% 16%;
 
-    /* Card glow */
-    --card-glow: 27 98% 54%;
-    --card-glow-purple: 263 70% 58%;
-
-    /* Gradient tokens */
-    --gradient-orange: linear-gradient(135deg, hsl(27 98% 54%), hsl(38 92% 50%));
-    --gradient-purple: linear-gradient(135deg, hsl(263 70% 58%), hsl(280 70% 50%));
-    --gradient-hero: radial-gradient(ellipse at 30% 20%, hsl(27 98% 54% / 0.15), transparent 50%),
-                     radial-gradient(ellipse at 70% 60%, hsl(263 70% 58% / 0.1), transparent 50%);
-
     /* Shadows */
     --shadow-sm: 0 1px 2px hsl(0 0% 0% / 0.3);
     --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.4);
     --shadow-lg: 0 8px 30px hsl(0 0% 0% / 0.5);
-    --shadow-glow-orange: 0 0 20px hsl(27 98% 54% / 0.15);
-    --shadow-glow-purple: 0 0 20px hsl(263 70% 58% / 0.15);
 
     /* Focus ring */
     --focus-ring: 27 98% 54%;
@@ -141,42 +129,6 @@
     border-radius: 3px;
   }
 
-  /* Card inner glow */
-  .card-glow {
-    box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.06),
-                0 0 0 1px hsl(var(--border)),
-                var(--shadow-md);
-  }
-
-  .card-glow-hover:hover {
-    box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.15),
-                0 0 30px hsl(var(--card-glow) / 0.12),
-                0 0 0 1px hsl(var(--card-glow) / 0.2),
-                var(--shadow-lg);
-  }
-
-  /* Grid pattern overlay */
-  .bg-grid {
-    background-image: linear-gradient(hsl(var(--border) / 0.3) 1px, transparent 1px),
-                      linear-gradient(90deg, hsl(var(--border) / 0.3) 1px, transparent 1px);
-    background-size: 64px 64px;
-  }
-
-  /* Gradient text */
-  .text-gradient-orange {
-    background: linear-gradient(135deg, hsl(var(--bitcoin-orange)), hsl(38 92% 50%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .text-gradient-purple {
-    background: linear-gradient(135deg, hsl(var(--stacks-purple)), hsl(280 70% 50%));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
   /* Skip navigation link */
   .skip-link {
     @apply sr-only;
@@ -193,42 +145,62 @@
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background;
   }
 
-  /* Button shimmer loading state */
-  .btn-shimmer {
-    position: relative;
-    overflow: hidden;
-  }
-  .btn-shimmer::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      90deg,
-      transparent 0%,
-      hsl(var(--primary) / 0.3) 50%,
-      transparent 100%
-    );
-    transform: translateX(-100%);
-    animation: shimmer 1.5s infinite;
-  }
-  @keyframes shimmer {
-    100% { transform: translateX(100%); }
+  /* Micro-interaction: satisfying button press */
+  .btn-press {
+    @apply transition-transform duration-100 active:scale-[0.97];
   }
 
-  /* Animated card glow keyframes */
-  .card-glow-animated {
-    animation: glow 3s ease-in-out infinite alternate;
+  /* Entrance animation utility */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out both;
   }
-  @keyframes glow {
-    from {
-      box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.06),
-                  0 0 0 1px hsl(var(--border)),
-                  0 0 8px hsl(var(--card-glow) / 0.04);
-    }
-    to {
-      box-shadow: inset 0 1px 0 0 hsl(var(--card-glow) / 0.12),
-                  0 0 0 1px hsl(var(--card-glow) / 0.15),
-                  0 0 20px hsl(var(--card-glow) / 0.1);
-    }
+
+  .animate-fade-slide-up {
+    animation: fadeSlideUp 0.4s cubic-bezier(0.25, 1, 0.5, 1) both;
   }
+
+  /* Stagger delay helpers (for CSS-only stagger) */
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+  .stagger-5 { animation-delay: 0.25s; }
+  .stagger-6 { animation-delay: 0.3s; }
+  .stagger-7 { animation-delay: 0.35s; }
+  .stagger-8 { animation-delay: 0.4s; }
+
+  /* Card accent border (left) */
+  .card-accent-primary { border-left: 3px solid hsl(var(--primary)); }
+  .card-accent-secondary { border-left: 3px solid hsl(var(--secondary)); }
+  .card-accent-success { border-left: 3px solid hsl(var(--success)); }
+  .card-accent-warning { border-left: 3px solid hsl(var(--warning)); }
+  .card-accent-destructive { border-left: 3px solid hsl(var(--destructive)); }
+  .card-accent-info { border-left: 3px solid hsl(var(--info)); }
+
+  /* Row hover for tables */
+  .row-hover {
+    @apply transition-colors hover:bg-surface-2/50;
+  }
+
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes successPulse {
+  0% { box-shadow: 0 0 0 0 hsl(var(--success) / 0.4); }
+  70% { box-shadow: 0 0 0 10px hsl(var(--success) / 0); }
+  100% { box-shadow: 0 0 0 0 hsl(var(--success) / 0); }
 }

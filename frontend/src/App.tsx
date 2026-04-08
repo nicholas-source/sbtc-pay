@@ -1,10 +1,9 @@
-import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
-import { AnimatePresence } from "framer-motion";
+import { MotionConfig } from "framer-motion";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import CustomerLayout from "@/components/layout/CustomerLayout";
 import CommandPalette from "@/components/dashboard/CommandPalette";
@@ -14,6 +13,7 @@ import RefundsSkeleton from "@/components/dashboard/RefundsSkeleton";
 import SubscriptionsSkeleton from "@/components/dashboard/SubscriptionsSkeleton";
 import SettingsSkeleton from "@/components/dashboard/SettingsSkeleton";
 import { useWalletStore } from "@/stores/wallet-store";
+import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/Index"));
@@ -54,11 +54,8 @@ function PageLoader() {
 }
 
 function AnimatedRoutes() {
-  const location = useLocation();
-
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes>
         <Route path="/" element={<LandingPage />} />
 
         {/* Dashboard routes */}
@@ -72,33 +69,32 @@ function AnimatedRoutes() {
         </Route>
 
         {/* Admin */}
-        <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
 
         {/* Customer */}
-        <Route path="/customer" element={<CustomerLayout />}>
+        <Route path="/customer" element={<ErrorBoundary><CustomerLayout /></ErrorBoundary>}>
           <Route path="subscriptions" element={<CustomerSubscriptions />} />
           <Route path="payments" element={<CustomerPayments />} />
         </Route>
 
         {/* Widget embeds */}
-        <Route path="/widget/:merchantAddress" element={<DirectPaymentWidget />} />
-        <Route path="/widget/invoice/:invoiceId" element={<InvoicePaymentWidget />} />
-        <Route path="/widget/subscribe/:merchantAddress" element={<SubscriptionWidget />} />
+        <Route path="/widget/:merchantAddress" element={<ErrorBoundary><DirectPaymentWidget /></ErrorBoundary>} />
+        <Route path="/widget/invoice/:invoiceId" element={<ErrorBoundary><InvoicePaymentWidget /></ErrorBoundary>} />
+        <Route path="/widget/subscribe/:merchantAddress" element={<ErrorBoundary><SubscriptionWidget /></ErrorBoundary>} />
 
         {/* Public payment page */}
-        <Route path="/pay/:invoiceId" element={<PaymentPage />} />
+        <Route path="/pay/:invoiceId" element={<ErrorBoundary><PaymentPage /></ErrorBoundary>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </AnimatePresence>
   );
 }
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
+    <MotionConfig reducedMotion="user">
     <TooltipProvider>
       <WalletInitializer />
-      <Toaster />
       <Sonner />
       <BrowserRouter>
         <CommandPalette />
@@ -107,6 +103,7 @@ const App = () => (
         </Suspense>
       </BrowserRouter>
     </TooltipProvider>
+    </MotionConfig>
   </QueryClientProvider>
 );
 
