@@ -160,14 +160,15 @@ export default function SubscriberTable({ planId }: Props) {
         <p className="text-body-sm text-muted-foreground py-4 text-center">No matching subscribers.</p>
       ) : (
         <>
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-10" />
                 <TableHead>Address</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Started</TableHead>
-                <TableHead>Next Payment</TableHead>
+                <TableHead className="hidden sm:table-cell">Started</TableHead>
+                <TableHead className="hidden sm:table-cell">Next Payment</TableHead>
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -180,7 +181,18 @@ export default function SubscriberTable({ planId }: Props) {
 
                 return (
                   <Fragment key={sub.id}>
-                    <TableRow className="cursor-pointer" onClick={() => toggleExpanded(sub.id)}>
+                    <TableRow
+                      className="cursor-pointer"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => toggleExpanded(sub.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          toggleExpanded(sub.id);
+                        }
+                      }}
+                    >
                       <TableCell className="pr-0">
                         <ChevronDown
                           className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
@@ -192,10 +204,10 @@ export default function SubscriberTable({ planId }: Props) {
                           {sub.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-body-sm text-muted-foreground">
+                      <TableCell className="text-body-sm text-muted-foreground hidden sm:table-cell">
                         {format(sub.startedAt, "MMM d, yyyy")}
                       </TableCell>
-                      <TableCell className="text-body-sm text-muted-foreground">
+                      <TableCell className="text-body-sm text-muted-foreground hidden sm:table-cell">
                         {sub.status === "cancelled" ? "—" : format(sub.nextPaymentAt, "MMM d, yyyy")}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -268,6 +280,7 @@ export default function SubscriberTable({ planId }: Props) {
               })}
             </TableBody>
           </Table>
+          </div>
 
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3">
