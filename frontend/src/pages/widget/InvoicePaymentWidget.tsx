@@ -34,7 +34,7 @@ export default function InvoicePaymentWidget() {
     return (
       <WidgetShell>
         <p className="text-center text-heading-sm text-success">✓ Paid</p>
-        <p className="text-center text-sats text-gradient-orange font-tabular">{formatSats(invoice.amountPaid)} sats</p>
+        <p className="text-center text-sats text-primary font-tabular">{formatSats(invoice.amountPaid)} sats</p>
       </WidgetShell>
     );
   }
@@ -62,7 +62,7 @@ export default function InvoicePaymentWidget() {
       </div>
 
       <div className="text-center">
-        <span className="text-sats text-gradient-orange font-tabular">{formatSats(remaining)} sats</span>
+        <span className="text-2xl sm:text-sats text-primary font-tabular">{formatSats(remaining)} sats</span>
       </div>
 
       {invoice.amountPaid > 0 && <Progress value={paidPct} className="h-2" />}
@@ -84,11 +84,11 @@ function WidgetShell({ children }: { children: React.ReactNode }) {
   return (
     <PageTransition>
       <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <Card className="w-full max-w-xs card-glow border-border">
+        <Card className="w-full max-w-xs border-border">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-4 w-4 text-primary" />
-              <span className="text-body font-bold text-gradient-orange">sBTC Pay</span>
+              <span className="text-body font-bold text-primary">sBTC Pay</span>
               <Badge variant="outline" className="text-[10px] border-stacks text-stacks">Widget</Badge>
             </div>
             {children}
