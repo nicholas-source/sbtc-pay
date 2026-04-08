@@ -270,16 +270,16 @@ export default function AdminPage() {
                     <TableCell>
                       <div className="flex gap-1">
                         {!m.isVerified && (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { verifyMerchant(m.id); toast.success(`${m.name} verified`); }}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Verify ${m.name}`} onClick={() => { verifyMerchant(m.id); toast.success(`${m.name} verified`); }}>
                             <BadgeCheck className="h-4 w-4 text-success" />
                           </Button>
                         )}
                         {m.isSuspended ? (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { unsuspendMerchant(m.id); toast.success(`${m.name} unsuspended`); }}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Unsuspend ${m.name}`} onClick={() => { unsuspendMerchant(m.id); toast.success(`${m.name} unsuspended`); }}>
                             <CheckCircle2 className="h-4 w-4 text-success" />
                           </Button>
                         ) : (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { suspendMerchant(m.id); toast.success(`${m.name} suspended`); }}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Suspend ${m.name}`} onClick={() => { suspendMerchant(m.id); toast.success(`${m.name} suspended`); }}>
                             <Ban className="h-4 w-4 text-destructive" />
                           </Button>
                         )}
