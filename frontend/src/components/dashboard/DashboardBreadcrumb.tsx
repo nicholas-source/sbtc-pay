@@ -1,3 +1,4 @@
+import React from "react";
 import { useLocation, Link } from "react-router-dom";
 import {
   Breadcrumb,
@@ -34,16 +35,18 @@ export default function DashboardBreadcrumb() {
     <Breadcrumb className="mb-4">
       <BreadcrumbList>
         {crumbs.map((crumb, i) => (
-          <BreadcrumbItem key={crumb.path}>
+          <React.Fragment key={crumb.path}>
             {i > 0 && <BreadcrumbSeparator />}
-            {crumb.isLast ? (
-              <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
-            ) : (
-              <BreadcrumbLink asChild>
-                <Link to={crumb.path}>{crumb.label}</Link>
-              </BreadcrumbLink>
-            )}
-          </BreadcrumbItem>
+            <BreadcrumbItem>
+              {crumb.isLast ? (
+                <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+              ) : (
+                <BreadcrumbLink asChild>
+                  <Link to={crumb.path}>{crumb.label}</Link>
+                </BreadcrumbLink>
+              )}
+            </BreadcrumbItem>
+          </React.Fragment>
         ))}
       </BreadcrumbList>
     </Breadcrumb>
