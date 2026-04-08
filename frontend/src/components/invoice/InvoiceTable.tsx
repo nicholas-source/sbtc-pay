@@ -5,7 +5,7 @@ import EmptyState from "@/components/dashboard/EmptyState";
 import { cn } from "@/lib/utils";
 import { useInvoiceStore, type Invoice, type InvoiceStatus } from "@/stores/invoice-store";
 import InvoiceStatusBadge from "./InvoiceStatusBadge";
-import { toast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,7 +13,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { motion } from "framer-motion";
 
 import { BTC_USD } from "@/lib/constants";
 
@@ -84,9 +83,9 @@ export default function InvoiceTable({ onSelect }: Props) {
   async function copyLink(id: string) {
     try {
       await navigator.clipboard.writeText(`${window.location.origin}/pay/${id}`);
-      toast({ title: "Link copied", description: id });
+      toast.success("Link copied", { description: id });
     } catch {
-      toast({ title: "Copy failed", description: "Could not copy to clipboard", variant: "destructive" });
+      toast.error("Couldn't copy the link. Check your browser permissions.");
     }
   }
 
@@ -139,7 +138,7 @@ export default function InvoiceTable({ onSelect }: Props) {
         <div className="flex flex-wrap gap-2 items-center">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("flex-1 min-w-[130px] justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {customFrom ? format(customFrom, "PP") : "From"}
               </Button>
@@ -151,7 +150,7 @@ export default function InvoiceTable({ onSelect }: Props) {
           <span className="text-muted-foreground text-sm">→</span>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("w-[160px] justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("flex-1 min-w-[130px] justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {customTo ? format(customTo, "PP") : "To"}
               </Button>
@@ -171,6 +170,7 @@ export default function InvoiceTable({ onSelect }: Props) {
         />
       ) : (
         <div className="rounded-lg border overflow-hidden">
+          <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -187,12 +187,9 @@ export default function InvoiceTable({ onSelect }: Props) {
               {filtered.map((inv, i) => {
                 const pct = inv.amount > 0 ? Math.round((inv.amountPaid / inv.amount) * 100) : 0;
                 return (
-                  <motion.tr
+                  <tr
                     key={inv.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.02 }}
-                    className="border-b transition-colors hover:bg-muted/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
+                    className="border-b transition-colors hover:bg-accent/50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset"
                     onClick={() => onSelect(inv)}
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(inv); } }}
@@ -204,9 +201,9 @@ export default function InvoiceTable({ onSelect }: Props) {
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {inv.status === "paid" ? (
-                        <Check className="h-4 w-4 text-emerald-400" />
+                        <Check className="h-4 w-4 text-success" />
                       ) : inv.status === "partial" ? (
-                        <span className="text-xs font-mono text-sky-400">{pct}%</span>
+                        <span className="text-xs font-mono text-info">{pct}%</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
@@ -233,18 +230,19 @@ export default function InvoiceTable({ onSelect }: Props) {
                             <Copy className="mr-2 h-4 w-4" />Copy link
                           </DropdownMenuItem>
                           {inv.status === "pending" && (
-                            <DropdownMenuItem aria-label={`Cancel invoice ${inv.id}`} className="text-destructive" onClick={(e) => { e.stopPropagation(); cancelInvoice(inv.id); toast({ title: "Invoice cancelled" }); }}>
-                              <XCircle className="mr-2 h-4 w-4" />Cancel
+                            <DropdownMenuItem aria-label={`Cancel invoice ${inv.id}`} className="text-destructive" onClick={(e) => { e.stopPropagation(); cancelInvoice(inv.id); toast.success("Invoice cancelled"); }}>
+                              <XCircle className="mr-2 h-4 w-4" />Cancel Invoice
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
-                  </motion.tr>
+                  </tr>
                 );
               })}
             </TableBody>
           </Table>
+          </div>
         </div>
       )}
     </div>
