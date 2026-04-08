@@ -71,12 +71,16 @@ export default function CustomerPayments() {
       {allPayments.length === 0 ? (
         <div className="flex flex-col items-center py-20 text-center">
           <Inbox className="h-12 w-12 text-muted-foreground/40 mb-4" />
-          <p className="text-body text-muted-foreground">No payments yet.</p>
+          <p className="text-body text-muted-foreground">No payments yet</p>
+          <p className="text-body-sm text-muted-foreground mt-1 max-w-xs">
+            When you pay an invoice or subscribe to a plan, your payment history will appear here.
+          </p>
         </div>
       ) : (
-        <Card className="card-glow">
+        <Card>
           <CardContent className="p-0">
             <div className="rounded-lg border overflow-hidden">
+              <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -90,7 +94,7 @@ export default function CustomerPayments() {
                 <TableBody>
                   {allPayments.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-medium text-foreground">{p.label}</TableCell>
+                      <TableCell className="font-medium text-foreground max-w-[200px] truncate">{p.label}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={p.type === "invoice" ? "border-primary/30 text-primary" : "border-stacks/30 text-stacks"}>
                           {p.type}
@@ -110,6 +114,7 @@ export default function CustomerPayments() {
                   ))}
                 </TableBody>
               </Table>
+              </div>
             </div>
           </CardContent>
         </Card>
