@@ -214,7 +214,7 @@ export default function SubscriberTable({ planId }: Props) {
                         {sub.status !== "cancelled" && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Subscription actions">
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -260,8 +260,8 @@ export default function SubscriberTable({ planId }: Props) {
                                   <span>Amount</span>
                                   <span>TX ID</span>
                                 </div>
-                                {sortedPayments.map((p, i) => (
-                                  <div key={i} className="grid grid-cols-3 gap-4 text-body-sm px-2 py-1 rounded hover:bg-muted/50">
+                                {sortedPayments.map((p) => (
+                                  <div key={p.txId} className="grid grid-cols-3 gap-4 text-body-sm px-2 py-1 rounded hover:bg-muted/50">
                                     <span>{format(p.timestamp, "MMM d, yyyy HH:mm")}</span>
                                     <span>{p.amount.toLocaleString()} sats</span>
                                     <span className="font-mono text-muted-foreground" title={p.txId}>
