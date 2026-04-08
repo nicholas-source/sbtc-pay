@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Bitcoin, Wallet } from "lucide-react";
+import { AlertTriangle, Bitcoin, Wallet } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,20 +22,38 @@ export default function DirectPaymentWidget() {
 
   const addr = merchantAddress || "";
 
+  if (!addr) {
+    return (
+      <PageTransition>
+        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+          <Card className="w-full max-w-sm border-border">
+            <CardContent className="p-6 flex flex-col items-center gap-4 text-center">
+              <AlertTriangle className="h-10 w-10 text-destructive" />
+              <p className="text-heading-sm text-foreground">Invalid Widget</p>
+              <p className="text-body-sm text-muted-foreground">
+                No merchant address provided. The widget URL must include a valid merchant address.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </PageTransition>
+    );
+  }
+
   return (
     <PageTransition>
       <div className={`min-h-screen flex items-center justify-center p-4 ${theme === "dark" ? "bg-background" : "bg-white"}`}>
-        <Card className="w-full max-w-sm card-glow border-border">
+        <Card className="w-full max-w-sm border-border">
           <CardContent className="p-6 space-y-5">
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-5 w-5 text-primary" />
-              <span className="text-heading-sm text-gradient-orange">sBTC Pay</span>
+              <span className="text-heading-sm text-primary">sBTC Pay</span>
               <Badge variant="outline" className="text-[10px] border-stacks text-stacks">Widget</Badge>
             </div>
 
             <div className="flex justify-center">
-              <div className="rounded-lg bg-white p-3">
-                <QRCodeSVG value={addr} size={140} level="M" />
+              <div className="rounded-lg bg-white p-2.5 sm:p-3">
+                <QRCodeSVG value={addr} size={140} level="M" className="h-[110px] w-[110px] sm:h-[140px] sm:w-[140px]" />
               </div>
             </div>
 
