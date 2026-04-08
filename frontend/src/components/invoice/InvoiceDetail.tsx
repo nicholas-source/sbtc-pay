@@ -108,8 +108,8 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               <p className="text-xs text-muted-foreground">No payments yet</p>
             ) : (
               <div className="space-y-3">
-                {invoice.payments.map((p, i) => (
-                  <div key={i} className="flex items-start gap-3 text-sm">
+                {invoice.payments.map((p) => (
+                  <div key={p.txId} className="flex items-start gap-3 text-sm">
                     <div className="mt-0.5 rounded-full bg-success/10 p-1.5">
                       <ArrowDownLeft className="h-3 w-3 text-success" />
                     </div>
@@ -133,8 +133,8 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               <div>
                 <h4 className="text-sm font-medium mb-3">Refunds</h4>
                 <div className="space-y-3">
-                  {invoice.refunds.map((r, i) => (
-                    <div key={i} className="flex items-start gap-3 text-sm">
+                  {invoice.refunds.map((r) => (
+                    <div key={r.txId} className="flex items-start gap-3 text-sm">
                       <div className="mt-0.5 rounded-full bg-destructive/10 p-1.5">
                         <ArrowUpRight className="h-3 w-3 text-destructive" />
                       </div>
