@@ -20,13 +20,14 @@ export function PaymentQRCode({ address }: Props) {
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="rounded-lg bg-white p-3">
+      <div className="rounded-lg bg-white p-2.5 sm:p-3">
         <QRCodeSVG
           value={address}
-          size={150}
+          size={120}
           level="M"
           bgColor="#ffffff"
           fgColor="#0a0a0f"
+          className="h-[120px] w-[120px] sm:h-[150px] sm:w-[150px]"
         />
       </div>
 
@@ -39,6 +40,7 @@ export function PaymentQRCode({ address }: Props) {
           size="icon"
           className="shrink-0 h-9 w-9"
           onClick={copyAddress}
+          aria-label="Copy wallet address"
         >
           {copied ? (
             <Check className="h-4 w-4 text-success" />
