@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { PageTransition, StaggerContainer, StaggerItem } from "@/components/layout/PageTransition";
 import { format } from "date-fns";
 import {
   Shield, Pause, Play, Settings, Users, FileText, Repeat,
@@ -21,14 +20,36 @@ import {
 import { toast } from "sonner";
 import { useAdminStore } from "@/stores/admin-store";
 
-import { BTC_USD } from "@/lib/constants";
+import { cn } from "@/lib/utils";
 
-function StatCard({ label, value, icon: Icon }: { label: string; value: string; icon: React.ElementType }) {
+type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
+
+const iconBgMap: Record<AccentColor, string> = {
+  primary: "bg-primary/15 text-primary",
+  secondary: "bg-secondary/15 text-secondary",
+  success: "bg-success/15 text-success",
+  warning: "bg-warning/15 text-warning",
+  destructive: "bg-destructive/15 text-destructive",
+  info: "bg-info/15 text-info",
+};
+
+const accentBorderMap: Record<AccentColor, string> = {
+  primary: "card-accent-primary",
+  secondary: "card-accent-secondary",
+  success: "card-accent-success",
+  warning: "card-accent-warning",
+  destructive: "card-accent-destructive",
+  info: "card-accent-info",
+};
+
+function StatCard({ label, value, icon: Icon, accent = "primary" }: { label: string; value: string; icon: React.ElementType; accent?: AccentColor }) {
   return (
-    <Card className="card-glow">
+    <Card className={cn("animate-fade-slide-up", accentBorderMap[accent])}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-body-sm font-medium text-muted-foreground">{label}</CardTitle>
-        <Icon className="h-4 w-4 text-muted-foreground" />
+        <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", iconBgMap[accent])}>
+          <Icon className="h-4 w-4" />
+        </div>
       </CardHeader>
       <CardContent>
         <div className="font-mono-nums text-sats text-foreground">{value}</div>
@@ -38,6 +59,14 @@ function StatCard({ label, value, icon: Icon }: { label: string; value: string; 
 }
 
 export default function AdminPage() {
+
+  function formatVolume(sats: number): string {
+    if (sats >= 1e9) return `${(sats / 1e9).toFixed(1)}B`;
+    if (sats >= 1e6) return `${(sats / 1e6).toFixed(1)}M`;
+    if (sats >= 1e3) return `${(sats / 1e3).toFixed(1)}K`;
+    return sats.toLocaleString();
+  }
+
   const {
     contractPaused, toggleContractPause, feeBps, updateFeeBps,
     feeRecipient, updateFeeRecipient, pendingOwner, currentOwner,
@@ -51,9 +80,8 @@ export default function AdminPage() {
   const [showSettings, setShowSettings] = useState(false);
 
   return (
-    <StaggerContainer className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-6">
       {/* Header */}
-      <StaggerItem>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-heading-lg text-foreground flex items-center gap-2">
@@ -67,20 +95,18 @@ export default function AdminPage() {
           {contractPaused ? "Contract Paused" : "Contract Active"}
         </Badge>
       </div>
-      </StaggerItem>
 
       {/* Platform Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StaggerItem><StatCard label="Merchants" value={stats.totalMerchants.toString()} icon={Users} /></StaggerItem>
-        <StaggerItem><StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} /></StaggerItem>
-        <StaggerItem><StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} /></StaggerItem>
-        <StaggerItem><StatCard label="Total Volume" value={`${(stats.totalVolume / 1e6).toFixed(1)}M sats`} icon={TrendingUp} /></StaggerItem>
-        <StaggerItem><StatCard label="Fees Collected" value={`${stats.feesCollected.toLocaleString()} sats`} icon={Bitcoin} /></StaggerItem>
+        <StatCard label="Merchants" value={stats.totalMerchants.toString()} icon={Users} accent="info" />
+        <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
+        <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
+        <StatCard label="Total Volume" value={`${formatVolume(stats.totalVolume)} sats`} icon={TrendingUp} accent="success" />
+        <StatCard label="Fees Collected" value={`${stats.feesCollected.toLocaleString()} sats`} icon={Bitcoin} accent="warning" />
       </div>
 
       {/* Contract Controls */}
-      <StaggerItem>
-      <Card className="card-glow">
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-heading-sm">Contract Controls</CardTitle>
           <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)}>
@@ -185,16 +211,15 @@ export default function AdminPage() {
           )}
         </CardContent>
       </Card>
-      </StaggerItem>
 
       {/* Merchant Management */}
-      <StaggerItem>
-      <Card className="card-glow">
+      <Card>
         <CardHeader>
           <CardTitle className="text-heading-sm">Merchant Management</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="rounded-lg border overflow-hidden">
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -207,11 +232,17 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {merchants.map((m) => (
+                {merchants.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No merchants registered yet
+                    </TableCell>
+                  </TableRow>
+                ) : merchants.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-foreground">{m.name}</p>
+                        <p className="font-medium text-foreground max-w-[180px] truncate">{m.name}</p>
                         <p className="text-caption text-muted-foreground">{m.invoiceCount} invoices</p>
                       </div>
                     </TableCell>
@@ -234,21 +265,21 @@ export default function AdminPage() {
                       {format(m.registeredAt, "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-right hidden sm:table-cell font-mono text-caption">
-                      {(m.totalVolume / 1e6).toFixed(2)}M
+                      {formatVolume(m.totalVolume)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
                         {!m.isVerified && (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { verifyMerchant(m.id); toast.success(`${m.name} verified`); }}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { verifyMerchant(m.id); toast.success(`${m.name} verified`); }}>
                             <BadgeCheck className="h-4 w-4 text-success" />
                           </Button>
                         )}
                         {m.isSuspended ? (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { unsuspendMerchant(m.id); toast.success(`${m.name} unsuspended`); }}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { unsuspendMerchant(m.id); toast.success(`${m.name} unsuspended`); }}>
                             <CheckCircle2 className="h-4 w-4 text-success" />
                           </Button>
                         ) : (
-                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { suspendMerchant(m.id); toast.success(`${m.name} suspended`); }}>
+                          <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => { suspendMerchant(m.id); toast.success(`${m.name} suspended`); }}>
                             <Ban className="h-4 w-4 text-destructive" />
                           </Button>
                         )}
@@ -258,10 +289,10 @@ export default function AdminPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           </div>
         </CardContent>
       </Card>
-      </StaggerItem>
-    </StaggerContainer>
+    </div>
   );
 }
