@@ -69,10 +69,14 @@ export default function SubscriberTable({ planId }: Props) {
     return result;
   }, [subscribers, statusFilter, searchQuery]);
 
-  const pause = useSubscriptionStore((s) => s.pauseSubscription);
-  const resume = useSubscriptionStore((s) => s.resumeSubscription);
-  const cancel = useSubscriptionStore((s) => s.cancelSubscription);
+  const pauseRaw = useSubscriptionStore((s) => s.pauseSubscription);
+  const resumeRaw = useSubscriptionStore((s) => s.resumeSubscription);
+  const cancelRaw = useSubscriptionStore((s) => s.cancelSubscription);
   const simulateRenewal = useSubscriptionStore((s) => s.simulateRenewal);
+
+  const pause = (id: string) => { try { pauseRaw(id); toast.success("Subscription paused"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to pause"); } };
+  const resume = (id: string) => { try { resumeRaw(id); toast.success("Subscription resumed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to resume"); } };
+  const cancel = (id: string) => { try { cancelRaw(id); toast.success("Subscription cancelled"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to cancel"); } };
 
   const totalPages = Math.max(1, Math.ceil(filteredSubscribers.length / PAGE_SIZE));
   const paginatedSubscribers = filteredSubscribers.slice(
