@@ -40,7 +40,11 @@ function PaymentPage() {
   useEffect(() => {
     if (storeInvoice || !invoiceId) return;
     const numericId = parseInt(invoiceId, 10);
-    if (isNaN(numericId)) return;
+    if (isNaN(numericId)) {
+      // Non-numeric ID (e.g. INV-U7FD) = optimistic invoice link. Not yet on-chain.
+      setInvoiceLoading(false);
+      return;
+    }
 
     setInvoiceLoading(true);
     (async () => {
@@ -214,16 +218,29 @@ function PaymentPage() {
     );
   }
 
-  // --- Not Found ---
+  // --- Not Found or Pending Confirmation ---
   if (!invoice) {
+    const isPendingOptimistic = invoiceId && isNaN(parseInt(invoiceId, 10));
     return (
       <PageShell>
         <div className="flex flex-col items-center gap-4 py-12 text-center">
-          <AlertTriangle className="h-12 w-12 text-muted-foreground" />
-          <h1 className="text-heading-sm text-foreground">Invoice Not Found</h1>
-          <p className="text-body-sm text-muted-foreground max-w-xs">
-            The invoice <code className="text-primary">{invoiceId}</code> doesn't exist or has been removed.
-          </p>
+          {isPendingOptimistic ? (
+            <>
+              <Loader2 className="h-12 w-12 animate-spin text-primary" />
+              <h1 className="text-heading-sm text-foreground">Invoice Pending Confirmation</h1>
+              <p className="text-body-sm text-muted-foreground max-w-xs">
+                This invoice is still being confirmed on-chain. Please wait a few minutes and try again.
+              </p>
+            </>
+          ) : (
+            <>
+              <AlertTriangle className="h-12 w-12 text-muted-foreground" />
+              <h1 className="text-heading-sm text-foreground">Invoice Not Found</h1>
+              <p className="text-body-sm text-muted-foreground max-w-xs">
+                The invoice <code className="text-primary">{invoiceId}</code> doesn't exist or has been removed.
+              </p>
+            </>
+          )}
         </div>
       </PageShell>
     );

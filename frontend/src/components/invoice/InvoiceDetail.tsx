@@ -32,9 +32,14 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
   const pct = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
 
   async function copyLink() {
-    const linkId = invoice!.dbId > 0 ? invoice!.dbId.toString() : invoice!.id;
+    if (invoice!.dbId === 0) {
+      toast.warning("Payment link not ready yet", {
+        description: "This invoice is still confirming on-chain. Try again in a few minutes.",
+      });
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/pay/${linkId}`);
+      await navigator.clipboard.writeText(`${window.location.origin}/pay/${invoice!.dbId}`);
       toast.success("Payment link copied");
     } catch {
       toast.error("Couldn't copy the link. Check your browser permissions.");
@@ -89,12 +94,19 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
             </div>
           )}
 
+          {/* Optimistic invoice banner */}
+          {invoice.dbId === 0 && (
+            <div className="rounded-md bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-400">
+              ⏳ Confirming on-chain… Payment link will be available once confirmed.
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={copyLink} className="flex-1">
-              <Copy className="mr-2 h-3.5 w-3.5" />Copy link
+            <Button variant="outline" size="sm" onClick={copyLink} className="flex-1" disabled={invoice.dbId === 0}>
+              <Copy className="mr-2 h-3.5 w-3.5" />{invoice.dbId === 0 ? "Pending…" : "Copy link"}
             </Button>
-            {invoice.status === "pending" && (
+            {invoice.status === "pending" && invoice.dbId > 0 && (
               <Button variant="destructive" size="sm" onClick={handleCancel} className="flex-1" aria-label={`Cancel invoice ${invoice.id}`}>
                 <XCircle className="mr-2 h-3.5 w-3.5" />Cancel Invoice
               </Button>

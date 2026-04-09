@@ -83,10 +83,14 @@ export default function InvoiceTable({ onSelect }: Props) {
   }, [invoices, search, statusFilter, dateRange, customFrom, customTo, sortKey, sortDir]);
 
   async function copyLink(inv: { id: string; dbId: number }) {
-    // Use the DB/on-chain ID for blockchain invoices, fallback to display ID
-    const linkId = inv.dbId > 0 ? inv.dbId.toString() : inv.id;
+    if (inv.dbId === 0) {
+      toast.warning("Payment link not ready yet", {
+        description: "This invoice is still confirming on-chain. Try again in a few minutes.",
+      });
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/pay/${linkId}`);
+      await navigator.clipboard.writeText(`${window.location.origin}/pay/${inv.dbId}`);
       toast.success("Link copied", { description: `Invoice ${inv.id}` });
     } catch {
       toast.error("Couldn't copy the link. Check your browser permissions.");
@@ -198,7 +202,12 @@ export default function InvoiceTable({ onSelect }: Props) {
                     tabIndex={0}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(inv); } }}
                   >
-                    <TableCell className="font-mono text-xs">{inv.id}</TableCell>
+                    <TableCell className="font-mono text-xs">
+                      {inv.id}
+                      {inv.dbId === 0 && (
+                        <span className="ml-1.5 text-[10px] text-yellow-400" title="Confirming on-chain">⏳</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right font-mono font-tabular">
                       <div>{formatSbtc(inv.amount)} <span className="text-muted-foreground text-[10px]">sBTC</span></div>
                       <div className="text-[10px] text-muted-foreground">${satsToUsd(inv.amount)}</div>

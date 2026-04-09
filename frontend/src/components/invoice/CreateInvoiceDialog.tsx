@@ -129,7 +129,7 @@ export default function CreateInvoiceDialog() {
       setCustomDate(undefined);
 
       // Monitor the transaction in background, then refresh real data from Supabase
-      waitForTransaction(txId, 90, 10000).then((result) => {
+      waitForTransaction(txId, 90, 10000).then(async (result) => {
         if (result.status === 'success') {
           toast.success("Invoice confirmed on-chain!");
         } else if (result.status === 'failed') {
@@ -137,8 +137,14 @@ export default function CreateInvoiceDialog() {
             description: "The optimistic invoice will be replaced on next refresh.",
           });
         }
-        // Refresh from Supabase regardless — replaces optimistic with real data
-        if (walletAddress) fetchInvoices(walletAddress);
+        // Chainhook takes time after tx confirms to index into Supabase.
+        // Retry fetch with increasing delays to catch it.
+        if (walletAddress) {
+          for (const delay of [5_000, 15_000, 30_000, 60_000]) {
+            await new Promise((r) => setTimeout(r, delay));
+            await fetchInvoices(walletAddress);
+          }
+        }
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to create invoice";

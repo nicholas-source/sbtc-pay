@@ -35,6 +35,44 @@ export interface Invoice {
   expiresAt: Date | null;
   payments: Payment[];
   refunds: Refund[];
+  /** The on-chain tx ID that created this invoice (set for optimistic invoices) */
+  txId?: string;
+}
+
+// --- localStorage persistence for optimistic invoices ---
+const OPTIMISTIC_STORAGE_KEY = "sbtc-pay-optimistic-invoices";
+
+function saveOptimisticToStorage(invoices: Invoice[]) {
+  const optimistic = invoices.filter((inv) => inv.dbId === 0);
+  if (optimistic.length === 0) {
+    localStorage.removeItem(OPTIMISTIC_STORAGE_KEY);
+    return;
+  }
+  // Serialize dates so they survive JSON round-trip
+  localStorage.setItem(OPTIMISTIC_STORAGE_KEY, JSON.stringify(optimistic));
+}
+
+function loadOptimisticFromStorage(): Invoice[] {
+  try {
+    const raw = localStorage.getItem(OPTIMISTIC_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as Invoice[];
+    // Rehydrate Date objects
+    return parsed.map((inv) => ({
+      ...inv,
+      createdAt: new Date(inv.createdAt),
+      expiresAt: inv.expiresAt ? new Date(inv.expiresAt) : null,
+      payments: (inv.payments || []).map((p) => ({ ...p, timestamp: new Date(p.timestamp) })),
+      refunds: (inv.refunds || []).map((r) => ({ ...r, timestamp: new Date(r.timestamp) })),
+    }));
+  } catch {
+    localStorage.removeItem(OPTIMISTIC_STORAGE_KEY);
+    return [];
+  }
+}
+
+function clearOptimisticFromStorage() {
+  localStorage.removeItem(OPTIMISTIC_STORAGE_KEY);
 }
 
 interface CreateInvoiceData {
@@ -119,7 +157,7 @@ function randomTxId(): string {
 }
 
 export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
-  invoices: [],
+  invoices: loadOptimisticFromStorage(),
   isLoading: false,
   error: null,
 
@@ -138,6 +176,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       if (!invoiceRows || invoiceRows.length === 0) {
         // Keep optimistic invoices (dbId === 0) that haven't been indexed yet
         const optimistic = get().invoices.filter((inv) => inv.dbId === 0);
+        saveOptimisticToStorage(optimistic);
         set({ invoices: optimistic, isLoading: false });
         return;
       }
@@ -169,15 +208,18 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       );
 
       // Preserve optimistic invoices (dbId === 0) that haven't been indexed yet.
-      // Match by amount + merchantAddress to detect when the on-chain version appears.
+      // Match by memo + amount + merchantAddress to detect when the on-chain version appears.
       const optimistic = get().invoices.filter((inv) => {
         if (inv.dbId !== 0) return false;
-        // If a real invoice with same amount + merchant exists, the optimistic one is superseded
+        // If a real invoice with same memo + amount + merchant exists, the optimistic one is superseded
         return !invoices.some(
-          (real) => real.amount === inv.amount && real.merchantAddress === inv.merchantAddress,
+          (real) => real.amount === inv.amount
+            && real.merchantAddress === inv.merchantAddress
+            && real.memo === inv.memo,
         );
       });
 
+      saveOptimisticToStorage(optimistic);
       set({ invoices: [...optimistic, ...invoices], isLoading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to fetch invoices";
@@ -205,8 +247,13 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       expiresAt: data.expiresAt ?? null,
       payments: [],
       refunds: [],
+      txId: data.txId,
     };
-    set((state) => ({ invoices: [invoice, ...state.invoices] }));
+    set((state) => {
+      const next = [invoice, ...state.invoices];
+      saveOptimisticToStorage(next);
+      return { invoices: next };
+    });
     return invoice;
   },
 
