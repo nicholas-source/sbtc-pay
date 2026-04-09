@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 const REASON_PRESETS = [
   "Customer request",
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
+  const satsToUsd = useSatsToUsd();
   const refundInvoice = useInvoiceStore((s) => s.refundInvoice);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [refundType, setRefundType] = useState<"full" | "partial">("full");
@@ -41,7 +43,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
     amount: z.coerce
       .number()
       .positive("Amount must be positive")
-      .max(invoice.amountPaid, `Cannot exceed ${invoice.amountPaid.toLocaleString()} sats`),
+      .max(satsToSbtc(invoice.amountPaid), `Cannot exceed ${formatSbtc(invoice.amountPaid)} sBTC`),
     reason: z.string().trim().min(1, "Reason is required").max(200, "Max 200 characters"),
   });
 
@@ -50,18 +52,19 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      amount: invoice.amountPaid,
+      amount: satsToSbtc(invoice.amountPaid),
       reason: "Customer request",
     },
   });
 
   const amount = form.watch("amount");
-  const usd = (amount * BTC_USD).toFixed(2);
+  const amountInSats = sbtcToSats(amount);
+  const usd = satsToUsd(amountInSats);
 
   function handleTypeChange(type: "full" | "partial") {
     setRefundType(type);
     if (type === "full") {
-      form.setValue("amount", invoice.amountPaid);
+      form.setValue("amount", satsToSbtc(invoice.amountPaid));
     }
   }
 
@@ -80,9 +83,10 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
 
   function handleConfirm() {
     const values = form.getValues();
-    const success = refundInvoice(invoice.id, values.amount, values.reason);
+    const refundSats = sbtcToSats(values.amount);
+    const success = refundInvoice(invoice.id, refundSats, values.reason);
     if (success) {
-      toast.success("Refund processed", { description: `${values.amount.toLocaleString()} sats refunded` });
+      toast.success("Refund processed", { description: `${formatSbtc(refundSats)} sBTC refunded` });
       setConfirmOpen(false);
       onOpenChange(false);
     } else {
@@ -100,7 +104,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
               <RotateCcw className="h-4 w-4" /> Refund {invoice.id}
             </DialogTitle>
             <DialogDescription>
-              Available: {invoice.amountPaid.toLocaleString()} sats (${(invoice.amountPaid * BTC_USD).toFixed(2)})
+              Available: {formatSbtc(invoice.amountPaid)} sBTC (${satsToUsd(invoice.amountPaid)})
             </DialogDescription>
           </DialogHeader>
 
@@ -129,7 +133,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount (sats)</FormLabel>
+                      <FormLabel>Amount (sBTC)</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
@@ -186,7 +190,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 <p>Invoice: <span className="font-mono font-semibold">{invoice.id}</span></p>
-                <p>Amount: <span className="font-mono font-semibold">{amount.toLocaleString()} sats</span> (${usd})</p>
+                <p>Amount: <span className="font-mono font-semibold">{formatSbtc(amountInSats)} sBTC</span> (${usd})</p>
                 <p>Reason: {form.getValues("reason")}</p>
                 <p className="text-destructive font-medium mt-2">This refund is permanent and cannot be reversed.</p>
               </div>
