@@ -14,7 +14,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 type SortKey = "id" | "amount" | "createdAt" | "expiresAt" | "status";
 type SortDir = "asc" | "desc";
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export default function InvoiceTable({ onSelect }: Props) {
+  const satsToUsd = useSatsToUsd();
   const invoices = useInvoiceStore((s) => s.invoices);
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const [search, setSearch] = useState("");
@@ -80,10 +82,12 @@ export default function InvoiceTable({ onSelect }: Props) {
     });
   }, [invoices, search, statusFilter, dateRange, customFrom, customTo, sortKey, sortDir]);
 
-  async function copyLink(id: string) {
+  async function copyLink(inv: { id: string; dbId: number }) {
+    // Use the DB/on-chain ID for blockchain invoices, fallback to display ID
+    const linkId = inv.dbId > 0 ? inv.dbId.toString() : inv.id;
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/pay/${id}`);
-      toast.success("Link copied", { description: id });
+      await navigator.clipboard.writeText(`${window.location.origin}/pay/${linkId}`);
+      toast.success("Link copied", { description: `Invoice ${inv.id}` });
     } catch {
       toast.error("Couldn't copy the link. Check your browser permissions.");
     }
@@ -196,8 +200,8 @@ export default function InvoiceTable({ onSelect }: Props) {
                   >
                     <TableCell className="font-mono text-xs">{inv.id}</TableCell>
                     <TableCell className="text-right font-mono font-tabular">
-                      <div>{inv.amount.toLocaleString()} <span className="text-muted-foreground text-[10px]">sats</span></div>
-                      <div className="text-[10px] text-muted-foreground">${(inv.amount * BTC_USD).toFixed(2)}</div>
+                      <div>{formatSbtc(inv.amount)} <span className="text-muted-foreground text-[10px]">sBTC</span></div>
+                      <div className="text-[10px] text-muted-foreground">${satsToUsd(inv.amount)}</div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {inv.status === "paid" ? (
@@ -226,7 +230,7 @@ export default function InvoiceTable({ onSelect }: Props) {
                           <DropdownMenuItem aria-label={`View invoice ${inv.id}`} onClick={(e) => { e.stopPropagation(); onSelect(inv); }}>
                             <Eye className="mr-2 h-4 w-4" />View
                           </DropdownMenuItem>
-                          <DropdownMenuItem aria-label={`Copy payment link for ${inv.id}`} onClick={(e) => { e.stopPropagation(); copyLink(inv.id); }}>
+                          <DropdownMenuItem aria-label={`Copy payment link for ${inv.id}`} onClick={(e) => { e.stopPropagation(); copyLink(inv); }}>
                             <Copy className="mr-2 h-4 w-4" />Copy link
                           </DropdownMenuItem>
                           {inv.status === "pending" && (

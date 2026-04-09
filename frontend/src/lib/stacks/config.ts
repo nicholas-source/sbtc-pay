@@ -104,7 +104,7 @@ export function truncateAddress(address: string, chars = 6): string {
 }
 
 export function formatSats(sats: number | bigint): string {
-  return Number(sats).toLocaleString();
+  return (Number(sats) / SATS_PER_BTC).toFixed(8);
 }
 
 export function satsToUsd(sats: number | bigint, btcPriceUsd: number): string {

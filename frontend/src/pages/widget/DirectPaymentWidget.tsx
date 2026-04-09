@@ -58,7 +58,7 @@ export default function DirectPaymentWidget() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-caption text-muted-foreground">Amount (sats)</label>
+              <label className="text-caption text-muted-foreground">Amount (sBTC)</label>
               <Input
                 type="number"
                 min={1}
@@ -79,7 +79,7 @@ export default function DirectPaymentWidget() {
             </div>
 
             <Button className="w-full h-11 gap-2 font-semibold" onClick={() => toast.info("Connect wallet to pay (blockchain integration pending)")}>
-              <Wallet className="h-4 w-4" /> Pay {payAmount ? `${parseInt(payAmount).toLocaleString()} sats` : ""}
+              <Wallet className="h-4 w-4" /> Pay {payAmount ? `${payAmount} sBTC` : ""}
             </Button>
 
             <p className="text-[10px] text-muted-foreground text-center">

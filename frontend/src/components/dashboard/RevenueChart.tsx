@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { format, subDays, subWeeks, subMonths } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { satsToSbtc, formatSbtcCompact } from "@/lib/constants";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -49,7 +50,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
     <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
       <p className="text-caption text-muted-foreground mb-1">{label}</p>
       <p className="font-mono-nums text-sm font-semibold text-foreground">
-        {payload[0].value.toLocaleString()} <span className="text-muted-foreground">sats</span>
+        {satsToSbtc(payload[0].value).toFixed(8)} <span className="text-muted-foreground">sBTC</span>
       </p>
       <p className="font-mono-nums text-caption text-muted-foreground">
         ${payload[0].payload.usd.toLocaleString()}
@@ -103,7 +104,7 @@ export default function RevenueChart() {
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => formatSbtcCompact(v)}
                 />
               )}
               <Tooltip content={<CustomTooltip />} />

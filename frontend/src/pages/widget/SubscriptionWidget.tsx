@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { formatSbtc } from "@/lib/constants";
 import { PageTransition } from "@/components/layout/PageTransition";
 
 export default function SubscriptionWidget() {
@@ -30,7 +31,7 @@ export default function SubscriptionWidget() {
             <div className="text-center space-y-1">
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
-              <p className="text-2xl sm:text-sats text-primary font-tabular">{satsAmount.toLocaleString()} sats</p>
+              <p className="text-2xl sm:text-sats text-primary font-tabular">{formatSbtc(satsAmount)} sBTC</p>
               <p className="text-caption text-muted-foreground">per {interval}</p>
             </div>
 

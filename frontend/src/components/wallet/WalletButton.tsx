@@ -109,7 +109,7 @@ export function WalletButton() {
           <div className="flex justify-between text-body-sm">
             <span className="text-muted-foreground">sBTC</span>
             <div className="text-right">
-              <div className="font-mono-nums font-semibold">{sbtcBalance} sats</div>
+              <div className="font-mono-nums font-semibold">{sbtcBalance} sBTC</div>
               <div className="text-caption text-muted-foreground">≈ ${sbtcUsd}</div>
             </div>
           </div>

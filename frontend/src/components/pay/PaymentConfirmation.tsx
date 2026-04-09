@@ -4,6 +4,8 @@ import { CheckCircle2, Loader2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import type { Payment } from "@/stores/invoice-store";
+import { formatSbtc } from "@/lib/constants";
+import { NETWORK_MODE } from "@/lib/stacks/config";
 
 interface Props {
   payment: Payment | null;
@@ -11,18 +13,16 @@ interface Props {
 }
 
 export function PaymentConfirmation({ payment, amount }: Props) {
-  const [confirmed, setConfirmed] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     if (payment) {
-      const timer = setTimeout(() => setConfirmed(true), 2000);
+      const timer = setTimeout(() => setShowSuccess(true), 800);
       return () => clearTimeout(timer);
     }
   }, [payment]);
 
-  const formatSats = (sats: number) => sats.toLocaleString();
-
-  if (!confirmed) {
+  if (!payment || !showSuccess) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -39,6 +39,10 @@ export function PaymentConfirmation({ payment, amount }: Props) {
       </motion.div>
     );
   }
+
+  const explorerUrl = payment.txId && payment.txId !== "pending"
+    ? `https://explorer.hiro.so/txid/${payment.txId}?chain=${NETWORK_MODE}`
+    : null;
 
   return (
     <motion.div
@@ -83,7 +87,7 @@ export function PaymentConfirmation({ payment, amount }: Props) {
       <div className="text-center">
         <p className="text-heading-sm text-success">Payment Confirmed</p>
         <p className="text-sats text-primary mt-2 font-tabular">
-          {formatSats(amount)} sats
+          {formatSbtc(amount)} sBTC
         </p>
       </div>
 
@@ -104,10 +108,23 @@ export function PaymentConfirmation({ payment, amount }: Props) {
         </div>
       )}
 
-      <Button variant="ghost" className="gap-2 text-muted-foreground" disabled>
-        <ExternalLink className="h-4 w-4" />
-        View Receipt
-      </Button>
+      {explorerUrl ? (
+        <Button
+          variant="ghost"
+          className="gap-2 text-muted-foreground"
+          asChild
+        >
+          <a href={explorerUrl} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="h-4 w-4" />
+            View on Explorer
+          </a>
+        </Button>
+      ) : (
+        <Button variant="ghost" className="gap-2 text-muted-foreground" disabled>
+          <ExternalLink className="h-4 w-4" />
+          View Receipt
+        </Button>
+      )}
     </motion.div>
   );
 }

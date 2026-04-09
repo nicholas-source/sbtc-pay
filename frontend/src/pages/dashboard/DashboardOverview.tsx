@@ -1,23 +1,34 @@
 import { TrendingUp, FileText, Repeat, RefreshCcw } from "lucide-react";
 import { useMerchantStore } from "@/stores/merchant-store";
+import { useInvoiceStore } from "@/stores/invoice-store";
+import { useSubscriptionStore } from "@/stores/subscription-store";
 import MerchantRegistration from "@/components/dashboard/MerchantRegistration";
 import StatCard from "@/components/dashboard/StatCard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
-
-const stats = [
-  { label: "Total Revenue", value: 2847500, displayValue: "2,847,500", unit: "sats", usd: "$2,776.31", icon: TrendingUp, change: "+12.5%", accent: "success" as const },
-  { label: "Active Invoices", value: 23, displayValue: "23", unit: "", usd: "", icon: FileText, change: "+3", accent: "primary" as const },
-  { label: "Subscriptions", value: 8, displayValue: "8", unit: "", usd: "", icon: Repeat, change: "+1", accent: "secondary" as const },
-  { label: "Refunds", value: 2, displayValue: "2", unit: "", usd: "$54.20", icon: RefreshCcw, change: "0", accent: "destructive" as const },
-];
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 function DashboardOverview() {
   const profile = useMerchantStore((s) => s.profile);
+  const invoices = useInvoiceStore((s) => s.invoices);
+  const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const satsToUsd = useSatsToUsd();
 
   if (!profile) {
     return <MerchantRegistration />;
   }
+
+  const totalRevenue = invoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
+  const activeInvoices = invoices.filter((inv) => inv.status === "pending" || inv.status === "partial").length;
+  const activeSubs = subscribers.filter((s) => s.status === "active").length;
+  const totalRefunds = invoices.reduce((sum, inv) => sum + inv.refunds.length, 0);
+
+  const stats = [
+    { label: "Total Revenue", value: totalRevenue, displayValue: (totalRevenue / 1e8).toFixed(8), unit: "sBTC", usd: totalRevenue > 0 ? `$${satsToUsd(totalRevenue)}` : "", icon: TrendingUp, change: "", accent: "success" as const },
+    { label: "Active Invoices", value: activeInvoices, displayValue: String(activeInvoices), unit: "", usd: "", icon: FileText, change: "", accent: "primary" as const },
+    { label: "Subscriptions", value: activeSubs, displayValue: String(activeSubs), unit: "", usd: "", icon: Repeat, change: "", accent: "secondary" as const },
+    { label: "Refunds", value: totalRefunds, displayValue: String(totalRefunds), unit: "", usd: "", icon: RefreshCcw, change: "", accent: "destructive" as const },
+  ];
 
   return (
     <div className="space-y-6">

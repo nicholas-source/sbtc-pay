@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { useAdminStore } from "@/stores/admin-store";
 
 import { cn } from "@/lib/utils";
+import { formatSbtcCompact, formatSbtc } from "@/lib/constants";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -101,8 +102,8 @@ export default function AdminPage() {
         <StatCard label="Merchants" value={stats.totalMerchants.toString()} icon={Users} accent="info" />
         <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
         <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
-        <StatCard label="Total Volume" value={`${formatVolume(stats.totalVolume)} sats`} icon={TrendingUp} accent="success" />
-        <StatCard label="Fees Collected" value={`${stats.feesCollected.toLocaleString()} sats`} icon={Bitcoin} accent="warning" />
+        <StatCard label="Total Volume" value={`${formatSbtcCompact(stats.totalVolume)} sBTC`} icon={TrendingUp} accent="success" />
+        <StatCard label="Fees Collected" value={`${formatSbtc(stats.feesCollected)} sBTC`} icon={Bitcoin} accent="warning" />
       </div>
 
       {/* Contract Controls */}
@@ -265,7 +266,7 @@ export default function AdminPage() {
                       {format(m.registeredAt, "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-right hidden sm:table-cell font-mono text-caption">
-                      {formatVolume(m.totalVolume)}
+                      {formatSbtcCompact(m.totalVolume)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">

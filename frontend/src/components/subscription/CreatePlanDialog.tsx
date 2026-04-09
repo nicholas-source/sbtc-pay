@@ -28,9 +28,10 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-import { BTC_USD } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 export default function CreatePlanDialog() {
+  const satsToUsd = useSatsToUsd();
   const [open, setOpen] = useState(false);
   const createPlan = useSubscriptionStore((s) => s.createPlan);
 
@@ -40,7 +41,7 @@ export default function CreatePlanDialog() {
   });
 
   const amount = form.watch("amount");
-  const usdEstimate = amount ? (amount * BTC_USD).toFixed(2) : "0.00";
+  const usdEstimate = amount ? satsToUsd(amount) : "0.00";
 
   function onSubmit(data: FormValues) {
     createPlan({
@@ -95,7 +96,7 @@ export default function CreatePlanDialog() {
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount (sats)</FormLabel>
+                  <FormLabel>Amount (sBTC)</FormLabel>
                   <FormControl><Input type="number" placeholder="50000" {...field} /></FormControl>
                   {amount > 0 && (
                     <p className="text-caption text-muted-foreground">≈ ${usdEstimate} USD</p>

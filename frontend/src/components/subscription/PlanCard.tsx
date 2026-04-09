@@ -7,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { useSubscriptionStore, type SubscriptionPlan } from "@/stores/subscription-store";
 import SubscriberTable from "./SubscriberTable";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 interface PlanCardProps {
   plan: SubscriptionPlan;
 }
 
 export default function PlanCard({ plan }: PlanCardProps) {
+  const satsToUsd = useSatsToUsd();
   const [expanded, setExpanded] = useState(false);
   const togglePlan = useSubscriptionStore((s) => s.togglePlan);
   const allSubscribers = useSubscriptionStore((s) => s.subscribers);
@@ -25,7 +27,7 @@ export default function PlanCard({ plan }: PlanCardProps) {
     () => subscribers.filter((s) => s.status === "active").length,
     [subscribers]
   );
-  const usd = (plan.amount * BTC_USD).toFixed(2);
+  const usd = satsToUsd(plan.amount);
 
   return (
     <Card className="card-accent-secondary">
@@ -48,9 +50,9 @@ export default function PlanCard({ plan }: PlanCardProps) {
       <CardContent className="space-y-4">
         <div className="flex items-baseline gap-2">
           <span className="font-mono-nums text-sats text-foreground">
-            {plan.amount.toLocaleString()}
+            {formatSbtc(plan.amount)}
           </span>
-          <span className="text-caption text-muted-foreground">sats / {plan.interval}</span>
+          <span className="text-caption text-muted-foreground">sBTC / {plan.interval}</span>
         </div>
         <p className="text-caption text-muted-foreground">≈ ${usd} USD</p>
 

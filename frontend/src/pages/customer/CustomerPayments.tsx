@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 interface PaymentRow {
   id: string;
@@ -20,6 +21,7 @@ interface PaymentRow {
 }
 
 export default function CustomerPayments() {
+  const satsToUsd = useSatsToUsd();
   const invoices = useInvoiceStore((s) => s.invoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
 
@@ -101,8 +103,8 @@ export default function CustomerPayments() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono font-tabular">
-                        <div>{p.amount.toLocaleString()} <span className="text-muted-foreground text-[10px]">sats</span></div>
-                        <div className="text-[10px] text-muted-foreground">${(p.amount * BTC_USD).toFixed(2)}</div>
+                        <div>{formatSbtc(p.amount)} <span className="text-muted-foreground text-[10px]">sBTC</span></div>
+                        <div className="text-[10px] text-muted-foreground">${satsToUsd(p.amount)}</div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-mono text-caption text-muted-foreground">
                         {p.txId.slice(0, 10)}…
