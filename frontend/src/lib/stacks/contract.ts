@@ -1,7 +1,7 @@
 /**
  * Payment Contract Service
  * 
- * Provides methods to interact with the payment-v3 smart contract
+ * Provides methods to interact with the payment-v4 smart contract
  * using the latest @stacks/connect and @stacks/transactions APIs.
  */
 
