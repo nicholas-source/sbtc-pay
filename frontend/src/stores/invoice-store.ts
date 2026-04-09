@@ -1,5 +1,7 @@
 import { create } from "zustand";
 import { supabaseWithWallet } from "@/lib/supabase/client";
+import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain } from "@/lib/stacks/contract";
+import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
 export type InvoiceStatus = "pending" | "partial" | "paid" | "expired" | "cancelled" | "refunded";
@@ -51,8 +53,8 @@ interface InvoiceStore {
   fetchInvoices: (merchantPrincipal: string) => Promise<void>;
   createInvoice: (data: CreateInvoiceData) => Invoice;
   updateInvoice: (id: string, data: Partial<Pick<Invoice, "memo" | "amount" | "referenceId">>) => void;
-  cancelInvoice: (id: string) => void;
-  refundInvoice: (id: string, amount: number, reason: string) => boolean;
+  cancelInvoice: (id: string) => Promise<void>;
+  refundInvoice: (id: string, amount: number, reason: string) => Promise<boolean>;
   getInvoice: (id: string) => Invoice | undefined;
   simulatePayment: (id: string, amount: number) => Payment | null;
 }
@@ -199,23 +201,53 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
     }));
   },
 
-  cancelInvoice: (id) => {
-    set((state) => ({
-      invoices: state.invoices.map((inv) =>
-        inv.id === id ? { ...inv, status: "cancelled" as InvoiceStatus } : inv
-      ),
-    }));
+  cancelInvoice: async (id) => {
+    const invoice = get().invoices.find((inv) => inv.id === id);
+    if (!invoice) return;
+
+    if (invoice.dbId > 0) {
+      // On-chain invoice — call contract
+      toast.info("Please confirm the cancellation in your wallet");
+      const { txId } = await cancelInvoiceOnChain(invoice.dbId);
+      toast.success("Cancellation submitted!", { description: "Will update once confirmed." });
+      // Optimistic local update
+      set((state) => ({
+        invoices: state.invoices.map((inv) =>
+          inv.id === id ? { ...inv, status: "cancelled" as InvoiceStatus } : inv
+        ),
+      }));
+    } else {
+      // Local-only invoice
+      set((state) => ({
+        invoices: state.invoices.map((inv) =>
+          inv.id === id ? { ...inv, status: "cancelled" as InvoiceStatus } : inv
+        ),
+      }));
+    }
   },
 
-  refundInvoice: (id, amount, reason) => {
+  refundInvoice: async (id, amount, reason) => {
     const invoice = get().invoices.find((inv) => inv.id === id);
     if (!invoice || amount <= 0 || amount > invoice.amountPaid) return false;
 
+    if (invoice.dbId > 0) {
+      // On-chain invoice — call contract
+      toast.info("Please confirm the refund in your wallet");
+      const { txId } = await refundInvoiceOnChain({
+        invoiceId: invoice.dbId,
+        refundAmount: BigInt(amount),
+        reason,
+        merchantAddress: invoice.merchantAddress,
+      });
+      toast.success("Refund submitted!", { description: "Will update once confirmed." });
+    }
+
+    // Optimistic local update
     const refund: Refund = {
       timestamp: new Date(),
       amount,
       reason,
-      txId: randomTxId(),
+      txId: "",
     };
 
     set((state) => ({
