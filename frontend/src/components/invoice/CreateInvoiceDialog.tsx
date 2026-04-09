@@ -2,14 +2,13 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { addHours, addDays } from "date-fns";
 import { format } from "date-fns";
 import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
 import { toast } from "sonner";
-import { createInvoice as createInvoiceOnChain, waitForTransaction } from "@/lib/stacks/contract";
+import { createInvoice as createInvoiceOnChain } from "@/lib/stacks/contract";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -49,19 +48,6 @@ const expirationPresets = [
   { label: "Custom", value: "custom" },
   { label: "Never", value: "never" },
 ];
-
-function getExpirationDate(preset: string): Date | null {
-  const now = new Date();
-  switch (preset) {
-    case "1h": return addHours(now, 1);
-    case "24h": return addHours(now, 24);
-    case "7d": return addDays(now, 7);
-    case "30d": return addDays(now, 30);
-    case "365d": return addDays(now, 365);
-    case "never": return null;
-    default: return null;
-  }
-}
 
 /** Convert expiration preset to approximate Stacks blocks (~10 min/block on testnet) */
 function presetToBlocks(preset: string, customDate?: Date): number {
@@ -117,28 +103,17 @@ export default function CreateInvoiceDialog() {
         allowOverpay: data.allowOverpay,
       });
 
-      toast.success("Transaction submitted", { description: "Waiting for confirmation..." });
+      toast.success("Transaction submitted!", { description: "Invoice will appear once confirmed on-chain." });
       setOpen(false);
       form.reset();
       setExpirationPreset("7d");
       setCustomDate(undefined);
 
-      // Wait for on-chain confirmation, then refresh from Supabase
-      const result = await waitForTransaction(txId);
-      if (result.status === "success") {
-        toast.success("Invoice created on-chain!");
-        // Give chainhook a moment to index, then refresh
-        if (walletAddress) {
-          setTimeout(() => fetchInvoices(walletAddress), 5000);
-          setTimeout(() => fetchInvoices(walletAddress), 15000);
-        }
-      } else if (result.status === "failed") {
-        toast.error("Invoice transaction failed on-chain");
-      } else {
-        toast.info("Transaction still pending. Invoices will update once confirmed.");
-        if (walletAddress) {
-          setTimeout(() => fetchInvoices(walletAddress), 30000);
-        }
+      // Poll for chainhook indexing instead of blocking on waitForTransaction
+      if (walletAddress) {
+        setTimeout(() => fetchInvoices(walletAddress), 10000);
+        setTimeout(() => fetchInvoices(walletAddress), 30000);
+        setTimeout(() => fetchInvoices(walletAddress), 60000);
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to create invoice");
