@@ -132,7 +132,7 @@ function mapDbInvoice(
     merchantAddress: row.merchant_principal,
     payerAddress: row.payer || "",
     createdAt: new Date(row.created_at),
-    expiresAt: null, // block-based expiry; not date-based
+    expiresAt: blockHeightToDate(row.created_at, row.created_at_block, row.expires_at_block),
     payments: payments.map((p) => ({
       timestamp: new Date(p.created_at),
       amount: p.amount,
@@ -145,6 +145,19 @@ function mapDbInvoice(
       txId: r.tx_id || "",
     })),
   };
+}
+
+/**
+ * Convert a block-height-based expiration to a Date.
+ * Returns null if the invoice never expires (expires_at_block <= created_at_block or 0).
+ * Uses ~10 min/block average for Stacks and anchors to the invoice creation timestamp.
+ */
+function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtBlock: number): Date | null {
+  if (!expiresAtBlock || expiresAtBlock <= createdAtBlock) return null;
+  const blockDelta = expiresAtBlock - createdAtBlock;
+  const msFromCreation = blockDelta * 10 * 60 * 1000; // ~10 min per block
+  const createdTime = new Date(createdAt).getTime();
+  return new Date(createdTime + msFromCreation);
 }
 
 function generateId(): string {

@@ -13,19 +13,27 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /**
- * Return the shared Supabase client with a per-request wallet header for RLS.
- * Uses a single GoTrueClient instance to avoid the "multiple instances" warning.
- * The x-wallet-address header is set globally (last caller wins) — this is fine
- * because the frontend only ever has one connected wallet at a time.
+ * Return a Supabase client that sends the x-wallet-address header for RLS.
+ * Uses a SINGLE cached client with auth disabled (no session, no refresh)
+ * to avoid the "Multiple GoTrueClient instances" warning.
  */
+let walletClient: ReturnType<typeof createClient<Database>> | null = null;
 let currentWallet = "";
 
 export function supabaseWithWallet(walletAddress: string) {
-  if (walletAddress !== currentWallet) {
-    currentWallet = walletAddress;
-    // Update the global headers on the existing client
-    // @ts-expect-error — accessing internal rest client headers
-    supabase.rest.headers["x-wallet-address"] = walletAddress;
-  }
-  return supabase;
+  if (!walletAddress) return supabase;
+  if (walletClient && walletAddress === currentWallet) return walletClient;
+
+  currentWallet = walletAddress;
+  walletClient = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: {
+      headers: { "x-wallet-address": walletAddress },
+    },
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
+  return walletClient;
 }
