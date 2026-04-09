@@ -6,6 +6,7 @@ import { RotateCcw } from "lucide-react";
 import type { Invoice } from "@/stores/invoice-store";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { toast } from "sonner";
+import { CONTRACT_LIMITS } from "@/lib/stacks/contract";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -44,7 +45,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
       .number()
       .positive("Amount must be positive")
       .max(satsToSbtc(invoice.amountPaid), `Cannot exceed ${formatSbtc(invoice.amountPaid)} sBTC`),
-    reason: z.string().trim().min(1, "Reason is required").max(200, "Max 200 characters"),
+    reason: z.string().trim().min(1, "Reason is required").max(CONTRACT_LIMITS.REASON, `Max ${CONTRACT_LIMITS.REASON} characters`),
   });
 
   type FormValues = z.infer<typeof schema>;
