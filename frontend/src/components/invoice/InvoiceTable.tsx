@@ -234,7 +234,7 @@ export default function InvoiceTable({ onSelect }: Props) {
                             <Copy className="mr-2 h-4 w-4" />Copy link
                           </DropdownMenuItem>
                           {inv.status === "pending" && (
-                            <DropdownMenuItem aria-label={`Cancel invoice ${inv.id}`} className="text-destructive" onClick={(e) => { e.stopPropagation(); cancelInvoice(inv.id); toast.success("Invoice cancelled"); }}>
+                            <DropdownMenuItem aria-label={`Cancel invoice ${inv.id}`} className="text-destructive" onClick={async (e) => { e.stopPropagation(); try { await cancelInvoice(inv.id); toast.success("Invoice cancelled"); } catch (err) { toast.error(err instanceof Error ? err.message : "Cancel failed"); } }}>
                               <XCircle className="mr-2 h-4 w-4" />Cancel Invoice
                             </DropdownMenuItem>
                           )}
