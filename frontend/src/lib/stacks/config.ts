@@ -32,12 +32,10 @@ export const API_ENDPOINTS = {
 export const API_URL = import.meta.env.VITE_STACKS_API_URL || API_ENDPOINTS[NETWORK_MODE];
 
 // Explorer URLs
-export const EXPLORER_URLS = {
-  testnet: 'https://explorer.hiro.so/?chain=testnet',
-  mainnet: 'https://explorer.hiro.so',
-} as const;
+export const EXPLORER_BASE = 'https://explorer.hiro.so';
+export const EXPLORER_CHAIN_SUFFIX = NETWORK_MODE === 'testnet' ? '?chain=testnet' : '';
 
-export const EXPLORER_URL = import.meta.env.VITE_EXPLORER_URL || EXPLORER_URLS[NETWORK_MODE];
+export const EXPLORER_URL = import.meta.env.VITE_EXPLORER_URL || EXPLORER_BASE;
 
 // Payment contract configuration
 const PAYMENT_CONTRACT_ADDRESS =
@@ -93,15 +91,15 @@ export const EXPIRATION_PRESETS = [
 // Utility functions
 export function getExplorerTxUrl(txId: string): string {
   const cleanTxId = txId.startsWith('0x') ? txId : `0x${txId}`;
-  return `${EXPLORER_URL}/txid/${cleanTxId}`;
+  return `${EXPLORER_URL}/txid/${cleanTxId}${EXPLORER_CHAIN_SUFFIX}`;
 }
 
 export function getExplorerAddressUrl(address: string): string {
-  return `${EXPLORER_URL}/address/${address}`;
+  return `${EXPLORER_URL}/address/${address}${EXPLORER_CHAIN_SUFFIX}`;
 }
 
 export function getExplorerContractUrl(contractId: string): string {
-  return `${EXPLORER_URL}/txid/${contractId}`;
+  return `${EXPLORER_URL}/txid/${contractId}${EXPLORER_CHAIN_SUFFIX}`;
 }
 
 export function truncateAddress(address: string, chars = 6): string {

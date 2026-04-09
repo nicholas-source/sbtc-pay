@@ -454,12 +454,13 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
               webhook_url: onChainMerchant.webhookUrl,
               is_active: onChainMerchant.isActive,
               is_verified: onChainMerchant.isVerified,
+              registered_at: onChainMerchant.registeredAt,
             }, { onConflict: "id" });
           }
         }
 
         if (merchantId !== null) {
-          const { error } = await db.from("invoices").insert({
+          const { error } = await db.from("invoices").upsert({
             id: onchainId,
             merchant_id: merchantId,
             merchant_principal: merchantPrincipal,
@@ -473,8 +474,8 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
             allow_overpay: allowOverpay,
             created_at_block: blockHeight,
             expires_at_block: expiresInBlocks > 0 ? blockHeight + expiresInBlocks : blockHeight + 52560,
-          });
-          if (error) console.error("backfill invoice insert failed:", error.message);
+          }, { onConflict: "id" });
+          if (error) console.error("backfill invoice upsert failed:", error.message);
         } else {
           console.error("backfillFromChain: could not resolve merchant_id for", merchantPrincipal);
         }

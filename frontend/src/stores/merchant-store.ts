@@ -98,6 +98,7 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
           webhook_url: onChain.webhookUrl,
           is_active: onChain.isActive,
           is_verified: onChain.isVerified,
+          registered_at: onChain.registeredAt,
         }, { onConflict: 'id' })
         .then(({ error }) => {
           if (error) console.warn('merchant cache sync failed:', error.message);
