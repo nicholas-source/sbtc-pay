@@ -13,23 +13,19 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /**
- * Create a Supabase client instance that includes the connected wallet address
- * in request headers for RLS policy evaluation.
- * Clients are cached per address to avoid re-creating on every call.
+ * Return the shared Supabase client with a per-request wallet header for RLS.
+ * Uses a single GoTrueClient instance to avoid the "multiple instances" warning.
+ * The x-wallet-address header is set globally (last caller wins) — this is fine
+ * because the frontend only ever has one connected wallet at a time.
  */
-const walletClientCache = new Map<string, ReturnType<typeof createClient<Database>>>();
+let currentWallet = "";
 
 export function supabaseWithWallet(walletAddress: string) {
-  const cached = walletClientCache.get(walletAddress);
-  if (cached) return cached;
-
-  const client = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: {
-      headers: {
-        "x-wallet-address": walletAddress,
-      },
-    },
-  });
-  walletClientCache.set(walletAddress, client);
-  return client;
+  if (walletAddress !== currentWallet) {
+    currentWallet = walletAddress;
+    // Update the global headers on the existing client
+    // @ts-expect-error — accessing internal rest client headers
+    supabase.rest.headers["x-wallet-address"] = walletAddress;
+  }
+  return supabase;
 }
