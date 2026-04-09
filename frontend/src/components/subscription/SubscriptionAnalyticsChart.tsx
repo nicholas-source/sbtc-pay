@@ -12,17 +12,19 @@ import {
 } from "recharts";
 import { format, subDays, subWeeks, subMonths } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { satsToSbtc, formatSbtcCompact } from "@/lib/constants";
 
 type Period = "daily" | "weekly" | "monthly";
 
-import { BTC_USD } from "@/lib/constants";
+import { useBtcPrice } from "@/stores/wallet-store";
 
 function seed(i: number) {
   const x = Math.sin(i * 131.7 + 217.3) * 41283.1927;
   return x - Math.floor(x);
 }
 
-function generateData(period: Period) {
+function generateData(period: Period, btcPriceUsd: number) {
+  const usdRate = btcPriceUsd / 100_000_000;
   const now = new Date();
 
   if (period === "daily") {
@@ -30,7 +32,7 @@ function generateData(period: Period) {
       const date = subDays(now, 29 - i);
       const subscribers = Math.round(8 + (i / 29) * 12 + seed(i) * 4);
       const revenue = Math.round(20000 + (i / 29) * 40000 + seed(i + 200) * 15000);
-      return { date: format(date, "MMM d"), subscribers, revenue, revenueUsd: +(revenue * BTC_USD).toFixed(2) };
+      return { date: format(date, "MMM d"), subscribers, revenue, revenueUsd: +(revenue * usdRate).toFixed(2) };
     });
   }
   if (period === "weekly") {
@@ -38,14 +40,14 @@ function generateData(period: Period) {
       const date = subWeeks(now, 11 - i);
       const subscribers = Math.round(5 + (i / 11) * 18 + seed(i + 50) * 5);
       const revenue = Math.round(80000 + (i / 11) * 200000 + seed(i + 250) * 60000);
-      return { date: format(date, "MMM d"), subscribers, revenue, revenueUsd: +(revenue * BTC_USD).toFixed(2) };
+      return { date: format(date, "MMM d"), subscribers, revenue, revenueUsd: +(revenue * usdRate).toFixed(2) };
     });
   }
   return Array.from({ length: 6 }, (_, i) => {
     const date = subMonths(now, 5 - i);
     const subscribers = Math.round(3 + (i / 5) * 20 + seed(i + 100) * 6);
     const revenue = Math.round(300000 + (i / 5) * 800000 + seed(i + 300) * 200000);
-    return { date: format(date, "MMM yyyy"), subscribers, revenue, revenueUsd: +(revenue * BTC_USD).toFixed(2) };
+    return { date: format(date, "MMM yyyy"), subscribers, revenue, revenueUsd: +(revenue * usdRate).toFixed(2) };
   });
 }
 
@@ -64,7 +66,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
       {rev && (
         <>
           <p className="font-mono-nums text-sm font-semibold text-foreground">
-            {rev.value.toLocaleString()} <span className="text-muted-foreground">sats</span>
+            {satsToSbtc(rev.value).toFixed(8)} <span className="text-muted-foreground">sBTC</span>
           </p>
           <p className="font-mono-nums text-caption text-muted-foreground">
             ≈ ${rev.payload.revenueUsd.toLocaleString()}
@@ -78,7 +80,8 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 export default function SubscriptionAnalyticsChart() {
   const [period, setPeriod] = useState<Period>("daily");
   const isMobile = useIsMobile();
-  const data = useMemo(() => generateData(period), [period]);
+  const btcPrice = useBtcPrice();
+  const data = useMemo(() => generateData(period, btcPrice), [period, btcPrice]);
 
   return (
     <Card>
@@ -145,7 +148,7 @@ export default function SubscriptionAnalyticsChart() {
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`}
+                  tickFormatter={(v) => formatSbtcCompact(v)}
                 />
               )}
               <Tooltip content={<CustomTooltip />} />
