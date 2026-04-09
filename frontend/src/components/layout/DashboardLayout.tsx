@@ -21,6 +21,10 @@ import { useUIStore } from "@/stores/ui-store";
 import DashboardBreadcrumb from "@/components/dashboard/DashboardBreadcrumb";
 import { WalletButton } from "@/components/wallet/WalletButton";
 import { NetworkBadge } from "@/components/wallet/NetworkBadge";
+import { useWalletStore } from "@/stores/wallet-store";
+import { useMerchantStore } from "@/stores/merchant-store";
+import { useInvoiceStore } from "@/stores/invoice-store";
+import { useSubscriptionStore } from "@/stores/subscription-store";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true },
@@ -35,6 +39,19 @@ export function DashboardLayout() {
   const { sidebarOpen, toggleSidebar, setSidebarOpen } = useUIStore();
   const location = useLocation();
   const toggleButtonRef = useRef<HTMLButtonElement>(null);
+  const walletAddress = useWalletStore((s) => s.address);
+  const fetchMerchant = useMerchantStore((s) => s.fetchMerchant);
+  const fetchInvoices = useInvoiceStore((s) => s.fetchInvoices);
+  const fetchSubscriptions = useSubscriptionStore((s) => s.fetchSubscriptions);
+
+  // Bootstrap data when wallet is connected
+  useEffect(() => {
+    if (walletAddress) {
+      fetchMerchant(walletAddress);
+      fetchInvoices(walletAddress);
+      fetchSubscriptions(walletAddress);
+    }
+  }, [walletAddress, fetchMerchant, fetchInvoices, fetchSubscriptions]);
 
   // Auto-close sidebar on route change for mobile
   useEffect(() => {
