@@ -5,7 +5,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import type { Payment } from "@/stores/invoice-store";
 import { formatSbtc } from "@/lib/constants";
-import { NETWORK_MODE } from "@/lib/stacks/config";
+import { getExplorerTxUrl } from "@/lib/stacks/config";
 
 interface Props {
   payment: Payment | null;
@@ -41,7 +41,7 @@ export function PaymentConfirmation({ payment, amount }: Props) {
   }
 
   const explorerUrl = payment.txId && payment.txId !== "pending"
-    ? `https://explorer.hiro.so/txid/${payment.txId}?chain=${NETWORK_MODE}`
+    ? getExplorerTxUrl(payment.txId)
     : null;
 
   return (

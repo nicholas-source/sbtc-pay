@@ -7,6 +7,7 @@ import {
   getLocalStorage,
 } from '@stacks/connect';
 import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
+import { BTC_USD_PRICE } from '@/lib/constants';
 
 export type WalletProvider = 'leather' | 'xverse' | 'asigna' | null;
 export type Network = 'mainnet' | 'testnet';
@@ -84,7 +85,7 @@ export const useWalletStore = create<WalletState>()(
       connectionError: null,
       stxBalance: BigInt(0),
       sbtcBalance: BigInt(0),
-      btcPriceUsd: 97500, // Default BTC price
+      btcPriceUsd: BTC_USD_PRICE, // Default BTC price
 
       connect: async () => {
         set({ isConnecting: true, connectionError: null });
@@ -254,7 +255,7 @@ export const useWalletStore = create<WalletState>()(
             'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
           );
           const data = await response.json();
-          const btcPriceUsd = data.bitcoin?.usd || 97500;
+          const btcPriceUsd = data.bitcoin?.usd || BTC_USD_PRICE;
           set({ btcPriceUsd });
         } catch (error) {
           console.error('Failed to fetch BTC price:', error);

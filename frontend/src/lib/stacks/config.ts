@@ -3,12 +3,17 @@
  * 
  * This file contains all the configuration needed to interact with
  * the payment-v3 smart contract on Stacks testnet/mainnet.
+ * 
+ * Network mode, contract address, and API URLs are driven by
+ * VITE_* environment variables so they can be changed in Vercel
+ * without code edits.
  */
 
 import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
 
-// Current network mode
-export const NETWORK_MODE: 'testnet' | 'mainnet' = 'testnet';
+// Current network mode (defaults to testnet)
+export const NETWORK_MODE: 'testnet' | 'mainnet' =
+  (import.meta.env.VITE_NETWORK_MODE as 'testnet' | 'mainnet') || 'testnet';
 
 // Network configurations
 export const NETWORKS = {
@@ -24,7 +29,7 @@ export const API_ENDPOINTS = {
   mainnet: 'https://api.mainnet.hiro.so',
 } as const;
 
-export const API_URL = API_ENDPOINTS[NETWORK_MODE];
+export const API_URL = import.meta.env.VITE_STACKS_API_URL || API_ENDPOINTS[NETWORK_MODE];
 
 // Explorer URLs
 export const EXPLORER_URLS = {
@@ -32,21 +37,22 @@ export const EXPLORER_URLS = {
   mainnet: 'https://explorer.hiro.so',
 } as const;
 
-export const EXPLORER_URL = EXPLORER_URLS[NETWORK_MODE];
+export const EXPLORER_URL = import.meta.env.VITE_EXPLORER_URL || EXPLORER_URLS[NETWORK_MODE];
 
 // Payment contract configuration
-export const CONTRACT_CONFIG = {
-  testnet: {
-    address: 'STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR',
-    name: 'payment-v3',
-  },
-  mainnet: {
-    address: '', // To be deployed
-    name: 'payment-v3',
-  },
-} as const;
+const PAYMENT_CONTRACT_ADDRESS =
+  import.meta.env.VITE_PAYMENT_CONTRACT_ADDRESS ||
+  (NETWORK_MODE === 'testnet'
+    ? 'STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR'
+    : '');
 
-export const PAYMENT_CONTRACT = CONTRACT_CONFIG[NETWORK_MODE];
+const PAYMENT_CONTRACT_NAME =
+  import.meta.env.VITE_PAYMENT_CONTRACT_NAME || 'payment-v3';
+
+export const PAYMENT_CONTRACT = {
+  address: PAYMENT_CONTRACT_ADDRESS,
+  name: PAYMENT_CONTRACT_NAME,
+} as const;
 export const PAYMENT_CONTRACT_ID = `${PAYMENT_CONTRACT.address}.${PAYMENT_CONTRACT.name}` as const;
 
 // sBTC token configuration
