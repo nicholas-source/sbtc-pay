@@ -16,7 +16,7 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
 import { payInvoice, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
-import { truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
+import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
 import { useBtcPrice } from "@/stores/wallet-store";
@@ -144,6 +144,13 @@ function PaymentPage() {
 
     try {
       if (isBlockchainInvoice && blockchainInvoiceId !== null && address) {
+        // Guard: deployer/fee-recipient cannot pay invoices (Clarity ft-transfer disallows self-transfer for fee)
+        if (address === PAYMENT_CONTRACT.address) {
+          toast.error("The platform fee-recipient wallet cannot pay invoices. Please use a different wallet.");
+          setErrorMessage("The platform fee-recipient wallet cannot pay invoices. Please use a different wallet.");
+          setPaymentState("error");
+          return;
+        }
         // Real blockchain payment
         toast.info("Please confirm the transaction in your wallet");
         
@@ -181,8 +188,13 @@ function PaymentPage() {
             if (errorMatch) {
               const code = parseInt(errorMatch[1], 10);
               failMsg = CONTRACT_ERRORS[code] || `Contract error u${code}`;
-              // Handle low-level token transfer errors
-              if (code <= 10) failMsg = "sBTC transfer failed — check your sBTC balance";
+              // Handle low-level token transfer errors (from ft-transfer?)
+              if (code <= 10) {
+                if (code === 1) failMsg = "Insufficient sBTC balance";
+                else if (code === 2) failMsg = "Cannot pay invoice — your wallet is the fee recipient. Use a different wallet.";
+                else if (code === 3) failMsg = "Invalid payment amount";
+                else failMsg = "sBTC transfer failed — check your sBTC balance";
+              }
             }
             setErrorMessage(failMsg);
             setPaymentState("error");
