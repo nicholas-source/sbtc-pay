@@ -10,7 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 interface FlatRefund {
   invoiceId: string;
@@ -19,6 +20,7 @@ interface FlatRefund {
 }
 
 function RefundsPage() {
+  const satsToUsd = useSatsToUsd();
   const invoices = useInvoiceStore((s) => s.invoices);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
@@ -83,7 +85,7 @@ function RefundsPage() {
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard label="Total Refunds" value={stats.count} displayValue={stats.count.toString()} icon={RotateCcw} change="" accent="destructive" />
-            <StatCard label="Total Refunded" value={stats.totalAmount} displayValue={stats.totalAmount.toLocaleString()} unit="sats" usd={`$${(stats.totalAmount * BTC_USD).toFixed(2)}`} icon={ArrowUpRight} change="" accent="warning" />
+            <StatCard label="Total Refunded" value={stats.totalAmount} displayValue={formatSbtc(stats.totalAmount)} unit="sBTC" usd={`$${satsToUsd(stats.totalAmount)}`} icon={ArrowUpRight} change="" accent="warning" />
             <StatCard label="Invoices Affected" value={stats.uniqueInvoices} displayValue={stats.uniqueInvoices.toString()} icon={Receipt} change="" accent="info" />
           </div>
 
@@ -128,9 +130,9 @@ function RefundsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="font-mono font-tabular text-sm">
-                            {f.refund.amount.toLocaleString()} <span className="text-muted-foreground text-xs">sats</span>
+                            {formatSbtc(f.refund.amount)} <span className="text-muted-foreground text-xs">sBTC</span>
                           </div>
-                          <div className="text-xs text-muted-foreground">${(f.refund.amount * BTC_USD).toFixed(2)}</div>
+                          <div className="text-xs text-muted-foreground">${satsToUsd(f.refund.amount)}</div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm max-w-[200px] truncate">{f.refund.reason}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
