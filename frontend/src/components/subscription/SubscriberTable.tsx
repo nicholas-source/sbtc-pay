@@ -18,6 +18,7 @@ import {
   Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
 import { useSubscriptionStore, type SubscriberStatus } from "@/stores/subscription-store";
+import { formatSbtc } from "@/lib/constants";
 
 const PAGE_SIZE = 10;
 
@@ -107,7 +108,7 @@ export default function SubscriberTable({ planId }: Props) {
   const handleRenewal = (subId: string) => {
     const payment = simulateRenewal(subId);
     if (payment) {
-      toast.success(`Renewal processed: ${payment.amount.toLocaleString()} sats collected`);
+      toast.success(`Renewal processed: ${formatSbtc(payment.amount)} sBTC collected`);
     }
   };
 
@@ -263,7 +264,7 @@ export default function SubscriberTable({ planId }: Props) {
                                 {sortedPayments.map((p) => (
                                   <div key={p.txId} className="grid grid-cols-3 gap-4 text-body-sm px-2 py-1 rounded hover:bg-muted/50">
                                     <span>{format(p.timestamp, "MMM d, yyyy HH:mm")}</span>
-                                    <span>{p.amount.toLocaleString()} sats</span>
+                                    <span>{formatSbtc(p.amount)} sBTC</span>
                                     <span className="font-mono text-muted-foreground" title={p.txId}>
                                       {truncateTx(p.txId)}
                                     </span>
