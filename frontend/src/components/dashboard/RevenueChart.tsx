@@ -39,19 +39,21 @@ function buildRevenueData(invoices: Invoice[], period: Period) {
     }
   }
 
-  // Sum paid invoice amounts into buckets
+  // Sum paid amounts into buckets using payment dates
   const satsMap = new Map<string, number>();
   buckets.forEach((b) => satsMap.set(b.key, 0));
 
   for (const inv of invoices) {
-    if (inv.amountPaid <= 0) continue;
-    const d = new Date(inv.createdAt);
-    let key: string;
-    if (period === "daily") key = format(d, "yyyy-MM-dd");
-    else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
-    else key = format(d, "yyyy-MM");
-    if (satsMap.has(key)) {
-      satsMap.set(key, satsMap.get(key)! + inv.amountPaid);
+    for (const p of inv.payments) {
+      if (p.amount <= 0) continue;
+      const d = new Date(p.timestamp);
+      let key: string;
+      if (period === "daily") key = format(d, "yyyy-MM-dd");
+      else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
+      else key = format(d, "yyyy-MM");
+      if (satsMap.has(key)) {
+        satsMap.set(key, satsMap.get(key)! + p.amount);
+      }
     }
   }
 

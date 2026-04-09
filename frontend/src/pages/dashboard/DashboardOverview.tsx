@@ -21,13 +21,13 @@ function DashboardOverview() {
   const totalRevenue = invoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
   const activeInvoices = invoices.filter((inv) => inv.status === "pending" || inv.status === "partial").length;
   const activeSubs = subscribers.filter((s) => s.status === "active").length;
-  const totalRefunds = invoices.reduce((sum, inv) => sum + inv.refunds.length, 0);
+  const totalRefundedSats = invoices.reduce((sum, inv) => sum + inv.refunds.reduce((s, r) => s + r.amount, 0), 0);
 
   const stats = [
     { label: "Total Revenue", value: totalRevenue, displayValue: (totalRevenue / 1e8).toFixed(8), unit: "sBTC", usd: totalRevenue > 0 ? `$${satsToUsd(totalRevenue)}` : "", icon: TrendingUp, change: "", accent: "success" as const },
     { label: "Active Invoices", value: activeInvoices, displayValue: String(activeInvoices), unit: "", usd: "", icon: FileText, change: "", accent: "primary" as const },
     { label: "Subscriptions", value: activeSubs, displayValue: String(activeSubs), unit: "", usd: "", icon: Repeat, change: "", accent: "secondary" as const },
-    { label: "Refunds", value: totalRefunds, displayValue: String(totalRefunds), unit: "", usd: "", icon: RefreshCcw, change: "", accent: "destructive" as const },
+    { label: "Refunds", value: totalRefundedSats, displayValue: (totalRefundedSats / 1e8).toFixed(8), unit: "sBTC", usd: totalRefundedSats > 0 ? `$${satsToUsd(totalRefundedSats)}` : "", icon: RefreshCcw, change: "", accent: "destructive" as const },
   ];
 
   return (

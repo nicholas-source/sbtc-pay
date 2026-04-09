@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2 } from "lucide-react";
-import { useInvoiceStore, type Payment, type Invoice } from "@/stores/invoice-store";
+import { useInvoiceStore, STATUS_MAP, type Payment, type Invoice } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -62,10 +62,6 @@ function PaymentPage() {
         db.from("payments").select("*").eq("invoice_id", numericId),
         db.from("refunds").select("*").eq("invoice_id", numericId),
       ]);
-
-      const STATUS_MAP: Record<number, "pending" | "partial" | "paid" | "expired" | "cancelled" | "refunded"> = {
-        0: "pending", 1: "partial", 2: "paid", 3: "expired", 4: "cancelled", 5: "refunded",
-      };
 
       setRemoteInvoice({
         id: `INV-${row.id}`,

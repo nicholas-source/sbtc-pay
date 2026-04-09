@@ -103,7 +103,7 @@ interface InvoiceStore {
 }
 
 // DB status (contract u0–u5) → frontend string
-const STATUS_MAP: Record<number, InvoiceStatus> = {
+export const STATUS_MAP: Record<number, InvoiceStatus> = {
   0: "pending",
   1: "partial",
   2: "paid",

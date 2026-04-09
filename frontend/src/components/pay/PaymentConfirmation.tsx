@@ -95,9 +95,13 @@ export function PaymentConfirmation({ payment, amount }: Props) {
         <div className="w-full space-y-3 rounded-lg bg-success/5 border border-success/20 p-4 text-body-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Transaction</span>
-            <code className="truncate max-w-[180px] text-foreground font-mono text-caption">
-              {payment.txId}
-            </code>
+            {payment.txId && payment.txId !== "pending" ? (
+              <code className="truncate max-w-[180px] text-foreground font-mono text-caption">
+                {payment.txId}
+              </code>
+            ) : (
+              <span className="text-muted-foreground text-caption italic">Confirming...</span>
+            )}
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Time</span>
