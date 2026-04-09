@@ -1,0 +1,47 @@
+{
+  "_comment": "Chainhook v2 predicate — indexes payment-v4 contract events",
+  "testnet": {
+    "version": "1",
+    "name": "sbtc-pay-v4-events-testnet",
+    "chain": "stacks",
+    "network": "testnet",
+    "filters": {
+      "events": [
+        {
+          "type": "contract_log",
+          "contract_identifier": "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v4"
+        }
+      ]
+    },
+    "action": {
+      "type": "http_post",
+      "url": "https://oggvlwdptcpwipxahhjn.supabase.co/functions/v1/chainhook-webhook"
+    },
+    "options": {
+      "decode_clarity_values": true,
+      "enable_on_registration": true
+    }
+  },
+  "mainnet": {
+    "version": "1",
+    "name": "sbtc-pay-v4-events-mainnet",
+    "chain": "stacks",
+    "network": "mainnet",
+    "filters": {
+      "events": [
+        {
+          "type": "contract_log",
+          "contract_identifier": "<MAINNET_DEPLOYER>.payment-v4"
+        }
+      ]
+    },
+    "action": {
+      "type": "http_post",
+      "url": "https://oggvlwdptcpwipxahhjn.supabase.co/functions/v1/chainhook-webhook"
+    },
+    "options": {
+      "decode_clarity_values": true,
+      "enable_on_registration": true
+    }
+  }
+}
