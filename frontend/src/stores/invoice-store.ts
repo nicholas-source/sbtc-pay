@@ -136,7 +136,9 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
 
       if (invErr) throw invErr;
       if (!invoiceRows || invoiceRows.length === 0) {
-        set({ invoices: [], isLoading: false });
+        // Keep optimistic invoices (dbId === 0) that haven't been indexed yet
+        const optimistic = get().invoices.filter((inv) => inv.dbId === 0);
+        set({ invoices: optimistic, isLoading: false });
         return;
       }
 
@@ -166,7 +168,17 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
         mapDbInvoice(row, paymentsByInvoice.get(row.id) ?? [], refundsByInvoice.get(row.id) ?? []),
       );
 
-      set({ invoices, isLoading: false });
+      // Preserve optimistic invoices (dbId === 0) that haven't been indexed yet.
+      // Match by amount + merchantAddress to detect when the on-chain version appears.
+      const optimistic = get().invoices.filter((inv) => {
+        if (inv.dbId !== 0) return false;
+        // If a real invoice with same amount + merchant exists, the optimistic one is superseded
+        return !invoices.some(
+          (real) => real.amount === inv.amount && real.merchantAddress === inv.merchantAddress,
+        );
+      });
+
+      set({ invoices: [...optimistic, ...invoices], isLoading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to fetch invoices";
       set({ error: message, isLoading: false });
