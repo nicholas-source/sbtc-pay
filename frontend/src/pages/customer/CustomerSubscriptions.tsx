@@ -16,7 +16,8 @@ import { useSubscriptionStore, type SubscriberStatus } from "@/stores/subscripti
 import { useWalletStore } from "@/stores/wallet-store";
 import ReminderBanner from "@/components/subscription/ReminderBanner";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 const statusStyles: Record<SubscriberStatus, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -25,6 +26,7 @@ const statusStyles: Record<SubscriberStatus, string> = {
 };
 
 function CustomerSubscriptions() {
+  const satsToUsd = useSatsToUsd();
   const { address, isConnected } = useWalletStore();
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
@@ -88,7 +90,7 @@ function CustomerSubscriptions() {
               {activeSubs.map((sub) => {
                 const plan = getPlan(sub.planId);
                 if (!plan) return null;
-                const usd = (plan.amount * BTC_USD).toFixed(2);
+                const usd = satsToUsd(plan.amount);
 
                 return (
                   <Card key={sub.id}>
@@ -101,10 +103,10 @@ function CustomerSubscriptions() {
                     <CardContent className="space-y-3">
                       <div className="flex items-baseline gap-2">
                         <span className="font-mono-nums text-sats text-foreground">
-                          {plan.amount.toLocaleString()}
+                          {formatSbtc(plan.amount)}
                         </span>
                         <span className="text-caption text-muted-foreground">
-                          sats / {plan.interval}
+                          sBTC / {plan.interval}
                         </span>
                         <span className="text-caption text-muted-foreground">≈ ${usd}</span>
                       </div>
@@ -174,7 +176,7 @@ function CustomerSubscriptions() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-body-sm text-muted-foreground">
-                        {plan.amount.toLocaleString()} sats / {plan.interval} — started{" "}
+                        {formatSbtc(plan.amount)} sBTC / {plan.interval} — started{" "}
                         {format(sub.startedAt, "MMM d, yyyy")}
                       </p>
                     </CardContent>
