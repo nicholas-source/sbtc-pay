@@ -441,21 +441,21 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
         if (merchant) {
           merchantId = merchant.id;
         } else {
-          // Merchant missing from Supabase — read on-chain and insert
+          // Merchant missing from Supabase — read on-chain and sync via RPC
           const onChainMerchant = await getMerchantOnChain(merchantPrincipal);
           if (onChainMerchant) {
             merchantId = onChainMerchant.id;
-            await db.from("merchants").upsert({
-              id: onChainMerchant.id,
-              principal: merchantPrincipal,
-              name: onChainMerchant.name,
-              description: onChainMerchant.description,
-              logo_url: onChainMerchant.logoUrl,
-              webhook_url: onChainMerchant.webhookUrl,
-              is_active: onChainMerchant.isActive,
-              is_verified: onChainMerchant.isVerified,
-              registered_at: onChainMerchant.registeredAt,
-            }, { onConflict: "id" });
+            await db.rpc("sync_merchant_cache", {
+              p_id: onChainMerchant.id,
+              p_principal: merchantPrincipal,
+              p_name: onChainMerchant.name,
+              p_description: onChainMerchant.description ?? null,
+              p_logo_url: onChainMerchant.logoUrl ?? null,
+              p_webhook_url: onChainMerchant.webhookUrl ?? null,
+              p_is_active: onChainMerchant.isActive,
+              p_is_verified: onChainMerchant.isVerified,
+              p_registered_at: onChainMerchant.registeredAt,
+            });
           }
         }
 

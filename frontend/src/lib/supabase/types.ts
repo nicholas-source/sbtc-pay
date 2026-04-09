@@ -459,6 +459,20 @@ export type Database = {
         Returns: undefined
       }
       requesting_wallet: { Args: never; Returns: string }
+      sync_merchant_cache: {
+        Args: {
+          p_id: number
+          p_principal: string
+          p_name: string
+          p_description?: string | null
+          p_logo_url?: string | null
+          p_webhook_url?: string | null
+          p_is_active?: boolean
+          p_is_verified?: boolean
+          p_registered_at?: number
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never

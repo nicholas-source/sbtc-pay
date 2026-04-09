@@ -86,20 +86,19 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
       };
       set({ profile, isLoading: false });
 
-      // Sync on-chain data → Supabase so invoice backfill and other queries find the merchant
+      // Sync on-chain data → Supabase via RPC (bypasses RLS with SECURITY DEFINER)
       supabaseWithWallet(principal)
-        .from('merchants')
-        .upsert({
-          id: onChain.id,
-          principal,
-          name: onChain.name,
-          description: onChain.description,
-          logo_url: onChain.logoUrl,
-          webhook_url: onChain.webhookUrl,
-          is_active: onChain.isActive,
-          is_verified: onChain.isVerified,
-          registered_at: onChain.registeredAt,
-        }, { onConflict: 'id' })
+        .rpc('sync_merchant_cache', {
+          p_id: onChain.id,
+          p_principal: principal,
+          p_name: onChain.name,
+          p_description: onChain.description ?? null,
+          p_logo_url: onChain.logoUrl ?? null,
+          p_webhook_url: onChain.webhookUrl ?? null,
+          p_is_active: onChain.isActive,
+          p_is_verified: onChain.isVerified,
+          p_registered_at: onChain.registeredAt,
+        })
         .then(({ error }) => {
           if (error) console.warn('merchant cache sync failed:', error.message);
         });
@@ -160,17 +159,27 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
     set({ profile: updated });
 
     // Also write directly to Supabase cache (contract event lacks field data)
+    // Uses RPC to bypass RLS; needs numeric merchant ID, so look it up first
     supabaseWithWallet(current.id)
       .from('merchants')
-      .update({
-        name: updated.name,
-        description: updated.description || null,
-        logo_url: updated.logoUrl || null,
-        webhook_url: updated.webhookUrl || null,
-      })
+      .select('id')
       .eq('principal', current.id)
-      .then(({ error }) => {
-        if (error) console.warn('Supabase cache update failed:', error.message);
+      .maybeSingle()
+      .then(({ data: merchant }) => {
+        if (merchant) {
+          supabaseWithWallet(current.id)
+            .rpc('sync_merchant_cache', {
+              p_id: merchant.id,
+              p_principal: current.id,
+              p_name: updated.name,
+              p_description: updated.description || null,
+              p_logo_url: updated.logoUrl || null,
+              p_webhook_url: updated.webhookUrl || null,
+            })
+            .then(({ error }) => {
+              if (error) console.warn('Supabase cache update failed:', error.message);
+            });
+        }
       });
 
     // After tx confirms, re-read on-chain to ensure local state is accurate
