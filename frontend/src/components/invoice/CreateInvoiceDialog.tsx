@@ -4,10 +4,12 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { addHours, addDays } from "date-fns";
 import { format } from "date-fns";
-import { CalendarIcon, Plus } from "lucide-react";
+import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInvoiceStore } from "@/stores/invoice-store";
+import { useWalletStore } from "@/stores/wallet-store";
 import { toast } from "sonner";
+import { createInvoice as createInvoiceOnChain, waitForTransaction } from "@/lib/stacks/contract";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -19,10 +21,17 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-import { BTC_USD } from "@/lib/constants";
+import { sbtcToSats, formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
+
+const MIN_SBTC = 0.00001; // 1000 sats — contract minimum
+const MAX_SBTC = 21; // 21 sBTC — reasonable upper bound
 
 const schema = z.object({
-  amount: z.coerce.number().positive("Amount must be greater than 0"),
+  amount: z.coerce.number()
+    .positive("Amount must be greater than 0")
+    .min(MIN_SBTC, `Minimum amount is ${MIN_SBTC} sBTC`)
+    .max(MAX_SBTC, `Maximum amount is ${MAX_SBTC} sBTC`),
   memo: z.string().max(200, "Max 200 characters").optional().default(""),
   referenceId: z.string().max(50, "Max 50 characters").optional().default(""),
   allowPartial: z.boolean().default(false),
@@ -54,11 +63,33 @@ function getExpirationDate(preset: string): Date | null {
   }
 }
 
+/** Convert expiration preset to approximate Stacks blocks (~10 min/block on testnet) */
+function presetToBlocks(preset: string, customDate?: Date): number {
+  const BLOCKS_PER_HOUR = 6; // ~10 min/block
+  switch (preset) {
+    case "1h": return BLOCKS_PER_HOUR;
+    case "24h": return BLOCKS_PER_HOUR * 24;
+    case "7d": return BLOCKS_PER_HOUR * 24 * 7;
+    case "30d": return BLOCKS_PER_HOUR * 24 * 30;
+    case "365d": return BLOCKS_PER_HOUR * 24 * 365;
+    case "never": return 0;
+    case "custom": {
+      if (!customDate) return 0;
+      const hoursUntil = Math.max(1, (customDate.getTime() - Date.now()) / (1000 * 60 * 60));
+      return Math.ceil(hoursUntil * BLOCKS_PER_HOUR);
+    }
+    default: return 0;
+  }
+}
+
 export default function CreateInvoiceDialog() {
+  const satsToUsd = useSatsToUsd();
   const [open, setOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [expirationPreset, setExpirationPreset] = useState("7d");
   const [customDate, setCustomDate] = useState<Date>();
-  const createInvoice = useInvoiceStore((s) => s.createInvoice);
+  const fetchInvoices = useInvoiceStore((s) => s.fetchInvoices);
+  const walletAddress = useWalletStore((s) => s.address);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -66,16 +97,54 @@ export default function CreateInvoiceDialog() {
   });
 
   const watchAmount = form.watch("amount");
-  const usdValue = watchAmount && watchAmount > 0 ? (watchAmount * BTC_USD).toFixed(2) : null;
+  const satsAmount = watchAmount && watchAmount > 0 ? sbtcToSats(watchAmount) : 0;
+  const usdValue = satsAmount > 0 ? satsToUsd(satsAmount) : null;
 
-  function onSubmit(data: FormValues) {
-    const expiresAt = expirationPreset === "custom" ? (customDate ?? null) : getExpirationDate(expirationPreset);
-    const invoice = createInvoice({ amount: data.amount, memo: data.memo, referenceId: data.referenceId, allowPartial: data.allowPartial, allowOverpay: data.allowOverpay, expiresAt });
-    toast.success("Invoice created", { description: `${invoice.id} for ${data.amount.toLocaleString()} sats` });
-    form.reset();
-    setExpirationPreset("7d");
-    setCustomDate(undefined);
-    setOpen(false);
+  async function onSubmit(data: FormValues) {
+    const amountInSats = sbtcToSats(data.amount);
+    const expiresInBlocks = presetToBlocks(expirationPreset, customDate);
+
+    setIsSubmitting(true);
+    try {
+      toast.info("Please confirm the transaction in your wallet");
+
+      const { txId } = await createInvoiceOnChain({
+        amount: BigInt(amountInSats),
+        memo: data.memo || "",
+        referenceId: data.referenceId || undefined,
+        expiresInBlocks,
+        allowPartial: data.allowPartial,
+        allowOverpay: data.allowOverpay,
+      });
+
+      toast.success("Transaction submitted", { description: "Waiting for confirmation..." });
+      setOpen(false);
+      form.reset();
+      setExpirationPreset("7d");
+      setCustomDate(undefined);
+
+      // Wait for on-chain confirmation, then refresh from Supabase
+      const result = await waitForTransaction(txId);
+      if (result.status === "success") {
+        toast.success("Invoice created on-chain!");
+        // Give chainhook a moment to index, then refresh
+        if (walletAddress) {
+          setTimeout(() => fetchInvoices(walletAddress), 5000);
+          setTimeout(() => fetchInvoices(walletAddress), 15000);
+        }
+      } else if (result.status === "failed") {
+        toast.error("Invoice transaction failed on-chain");
+      } else {
+        toast.info("Transaction still pending. Invoices will update once confirmed.");
+        if (walletAddress) {
+          setTimeout(() => fetchInvoices(walletAddress), 30000);
+        }
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to create invoice");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -91,12 +160,12 @@ export default function CreateInvoiceDialog() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField control={form.control} name="amount" render={({ field }) => (
               <FormItem>
-                <FormLabel>Amount (sats)</FormLabel>
+                <FormLabel>Amount (sBTC)</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <Input type="number" placeholder="100000" {...field} className="font-mono" />
+                    <Input type="number" step="0.00000001" placeholder="0.001" {...field} className="font-mono pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                     {usdValue && (
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
                         ≈ ${usdValue}
                       </span>
                     )}
@@ -163,7 +232,13 @@ export default function CreateInvoiceDialog() {
             </div>
 
             <DialogFooter>
-              <Button type="submit" className="w-full">Create Invoice</Button>
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>
+                ) : (
+                  "Create Invoice"
+                )}
+              </Button>
             </DialogFooter>
           </form>
         </Form>
