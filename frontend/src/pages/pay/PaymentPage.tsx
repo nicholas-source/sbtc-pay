@@ -15,7 +15,7 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { payInvoice, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
+import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
 import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
@@ -36,7 +36,7 @@ function PaymentPage() {
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
 
-  // If not in local store, fetch from Supabase (customer visiting pay link)
+  // If not in local store, fetch from on-chain (customer visiting pay link)
   useEffect(() => {
     if (storeInvoice || !invoiceId) return;
     const numericId = parseInt(invoiceId, 10);
@@ -48,34 +48,32 @@ function PaymentPage() {
 
     setInvoiceLoading(true);
     (async () => {
-      // Use wallet-aware client if connected (needed for paid/expired invoices via RLS)
+      // Read invoice from on-chain (source of truth for amount, status, etc.)
+      const senderAddr = address || PAYMENT_CONTRACT.address;
+      const onChain = await getInvoiceOnChain(numericId, senderAddr);
+
+      if (!onChain) { setInvoiceLoading(false); return; }
+
+      // Fetch payments/refunds from Supabase (supplementary data)
       const db = address ? supabaseWithWallet(address) : supabase;
-      const { data: row } = await db
-        .from("invoices")
-        .select("*")
-        .eq("id", numericId)
-        .maybeSingle();
-
-      if (!row) { setInvoiceLoading(false); return; }
-
       const [paymentsRes, refundsRes] = await Promise.all([
         db.from("payments").select("*").eq("invoice_id", numericId),
         db.from("refunds").select("*").eq("invoice_id", numericId),
       ]);
 
       setRemoteInvoice({
-        id: `INV-${row.id}`,
-        dbId: row.id,
-        amount: row.amount,
-        amountPaid: row.amount_paid,
-        memo: row.memo || "",
-        referenceId: row.reference_id || "",
-        status: STATUS_MAP[row.status] ?? "pending",
-        allowPartial: row.allow_partial,
-        allowOverpay: row.allow_overpay,
-        merchantAddress: row.merchant_principal,
-        payerAddress: row.payer || "",
-        createdAt: new Date(row.created_at),
+        id: `INV-${numericId}`,
+        dbId: numericId,
+        amount: Number(onChain.amount),
+        amountPaid: Number(onChain.amountPaid),
+        memo: onChain.memo || "",
+        referenceId: onChain.referenceId || "",
+        status: STATUS_MAP[onChain.status] ?? "pending",
+        allowPartial: onChain.allowPartial,
+        allowOverpay: onChain.allowOverpay,
+        merchantAddress: onChain.merchant,
+        payerAddress: onChain.payer || "",
+        createdAt: new Date(),
         expiresAt: null,
         payments: (paymentsRes.data ?? []).map((p) => ({
           timestamp: new Date(p.created_at),
