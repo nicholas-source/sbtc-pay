@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseWithWallet } from "@/lib/supabase/client";
-import { registerMerchant as registerMerchantOnChain } from "@/lib/stacks/contract";
+import { registerMerchant as registerMerchantOnChain, updateMerchantProfile as updateMerchantOnChain } from "@/lib/stacks/contract";
 import { toast } from "sonner";
 
 export interface NotificationEvents {
@@ -127,8 +127,21 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
   updateProfile: async (data) => {
     const current = get().profile;
     if (!current) return;
-    // Optimistic update
-    set({ profile: { ...current, ...data } });
+
+    const updated = { ...current, ...data };
+
+    toast.info("Please confirm the transaction in your wallet");
+    const { txId } = await updateMerchantOnChain({
+      name: updated.name,
+      description: updated.description || undefined,
+      webhookUrl: updated.webhookUrl || undefined,
+      logoUrl: updated.logoUrl || undefined,
+    });
+
+    toast.success("Profile update submitted!", { description: `TX: ${txId.slice(0, 12)}...` });
+
+    // Optimistic local update while chainhook indexes
+    set({ profile: updated });
   },
 
   updateNotifications: async (settings) => {
