@@ -22,16 +22,25 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useMerchantStore, type NotificationSettings, type NotificationEvents } from "@/stores/merchant-store";
+import { CONTRACT_LIMITS } from "@/lib/stacks/contract";
 import { Loader2, ShieldCheck, Copy, Bell } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import NotificationHistory from "@/components/settings/NotificationHistory";
 
 const schema = z.object({
-  name: z.string().trim().min(2, "Business name must be at least 2 characters").max(80),
-  description: z.string().trim().max(500).optional().default(""),
-  logoUrl: z.string().trim().url("Must be a valid URL").or(z.literal("")).default(""),
-  webhookUrl: z.string().trim().url("Must be a valid URL").or(z.literal("")).default(""),
+  name: z.string().trim()
+    .min(2, "Business name must be at least 2 characters")
+    .max(CONTRACT_LIMITS.MERCHANT_NAME, `Business name must be ${CONTRACT_LIMITS.MERCHANT_NAME} characters or less`),
+  description: z.string().trim()
+    .max(CONTRACT_LIMITS.DESCRIPTION, `Description must be ${CONTRACT_LIMITS.DESCRIPTION} characters or less`)
+    .optional().default(""),
+  logoUrl: z.string().trim()
+    .max(CONTRACT_LIMITS.LOGO_URL, `Logo URL must be ${CONTRACT_LIMITS.LOGO_URL} characters or less`)
+    .url("Must be a valid URL").or(z.literal("")).default(""),
+  webhookUrl: z.string().trim()
+    .max(CONTRACT_LIMITS.WEBHOOK_URL, `Webhook URL must be ${CONTRACT_LIMITS.WEBHOOK_URL} characters or less`)
+    .url("Must be a valid URL").or(z.literal("")).default(""),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -67,9 +76,14 @@ function SettingsPage() {
 
   const onSubmit = async (data: FormValues) => {
     setSaving(true);
-    await updateProfile(data);
-    setSaving(false);
-    toast.success("Profile updated successfully");
+    try {
+      await updateProfile(data);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Update failed";
+      toast.error("Profile update failed", { description: message });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSaveNotifications = async () => {
@@ -144,29 +158,41 @@ function SettingsPage() {
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Business Name</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
+                  <div className="flex justify-between">
+                    <FormLabel>Business Name</FormLabel>
+                    <span className="text-xs text-muted-foreground">{field.value?.length ?? 0}/{CONTRACT_LIMITS.MERCHANT_NAME}</span>
+                  </div>
+                  <FormControl><Input maxLength={CONTRACT_LIMITS.MERCHANT_NAME} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="description" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl><Textarea rows={3} {...field} /></FormControl>
+                  <div className="flex justify-between">
+                    <FormLabel>Description</FormLabel>
+                    <span className="text-xs text-muted-foreground">{field.value?.length ?? 0}/{CONTRACT_LIMITS.DESCRIPTION}</span>
+                  </div>
+                  <FormControl><Textarea rows={3} maxLength={CONTRACT_LIMITS.DESCRIPTION} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="logoUrl" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Logo URL</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
+                  <div className="flex justify-between">
+                    <FormLabel>Logo URL</FormLabel>
+                    <span className="text-xs text-muted-foreground">{field.value?.length ?? 0}/{CONTRACT_LIMITS.LOGO_URL}</span>
+                  </div>
+                  <FormControl><Input maxLength={CONTRACT_LIMITS.LOGO_URL} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
               <FormField control={form.control} name="webhookUrl" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Webhook URL</FormLabel>
-                  <FormControl><Input {...field} /></FormControl>
+                  <div className="flex justify-between">
+                    <FormLabel>Webhook URL</FormLabel>
+                    <span className="text-xs text-muted-foreground">{field.value?.length ?? 0}/{CONTRACT_LIMITS.WEBHOOK_URL}</span>
+                  </div>
+                  <FormControl><Input maxLength={CONTRACT_LIMITS.WEBHOOK_URL} {...field} /></FormControl>
                   <FormMessage />
                 </FormItem>
               )} />
