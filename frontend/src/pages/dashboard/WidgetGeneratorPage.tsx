@@ -94,7 +94,7 @@ export default function WidgetGeneratorPage() {
                   <Input value={merchantAddress} onChange={(e) => setMerchantAddress(e.target.value)} className="font-mono text-caption" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-caption text-muted-foreground">Default Amount (sats)</label>
+                  <label className="text-caption text-muted-foreground">Default Amount (sBTC)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                 </div>
                 <div className="space-y-1">
@@ -130,7 +130,7 @@ export default function WidgetGeneratorPage() {
                   <Input value={planName} onChange={(e) => setPlanName(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-caption text-muted-foreground">Amount (sats)</label>
+                  <label className="text-caption text-muted-foreground">Amount (sBTC)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                 </div>
                 <div className="space-y-1">
