@@ -1,7 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownLeft, FileText, RefreshCcw, Repeat } from "lucide-react";
-import { formatDistanceToNow, subMinutes, subHours, subDays } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { formatSbtc } from "@/lib/constants";
+import { useInvoiceStore } from "@/stores/invoice-store";
+import { useSubscriptionStore } from "@/stores/subscription-store";
+import { useMemo } from "react";
 
 interface ActivityEvent {
   id: string;
@@ -33,28 +36,83 @@ const bgMap = {
   subscription: "bg-info/20",
 };
 
-const now = new Date();
-
-const events: ActivityEvent[] = [
-  { id: "1", type: "payment", title: "Payment Received", amount: 125000, address: "SP2J6Z...9EJ7", timestamp: subMinutes(now, 2) },
-  { id: "2", type: "invoice", title: "Invoice Created", amount: 500000, address: "SP3KBR...4FD2", timestamp: subMinutes(now, 18) },
-  { id: "3", type: "subscription", title: "Subscription Renewed", amount: 50000, address: "SP1QR5...8HK3", timestamp: subHours(now, 1) },
-  { id: "4", type: "payment", title: "Payment Received", amount: 250000, address: "SP4VN8...2LM9", timestamp: subHours(now, 3) },
-  { id: "5", type: "refund", title: "Refund Issued", amount: 75000, address: "SP2J6Z...9EJ7", timestamp: subHours(now, 5) },
-  { id: "6", type: "payment", title: "Payment Received", amount: 180000, address: "SP8WX3...7YZ1", timestamp: subDays(now, 1) },
-  { id: "7", type: "invoice", title: "Invoice Created", amount: 1000000, address: "SP6TM2...5NP4", timestamp: subDays(now, 1) },
-  { id: "8", type: "subscription", title: "Subscription Renewed", amount: 50000, address: "SP9AB4...3CD6", timestamp: subDays(now, 2) },
-  { id: "9", type: "payment", title: "Payment Received", amount: 320000, address: "SP7EF1...6GH8", timestamp: subDays(now, 3) },
-  { id: "10", type: "refund", title: "Refund Issued", amount: 45000, address: "SP5IJ9...1KL0", timestamp: subDays(now, 4) },
-];
+function truncateAddr(addr: string): string {
+  if (!addr || addr.length < 12) return addr;
+  return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+}
 
 export default function ActivityFeed() {
+  const invoices = useInvoiceStore((s) => s.invoices);
+  const subscribers = useSubscriptionStore((s) => s.subscribers);
+
+  const events = useMemo(() => {
+    const items: ActivityEvent[] = [];
+
+    for (const inv of invoices) {
+      // Invoice creation
+      items.push({
+        id: `inv-${inv.id}`,
+        type: "invoice",
+        title: "Invoice Created",
+        amount: inv.amount,
+        address: truncateAddr(inv.payerAddress || inv.merchantAddress),
+        timestamp: new Date(inv.createdAt),
+      });
+
+      // Payments on this invoice
+      for (const p of inv.payments) {
+        items.push({
+          id: `pay-${inv.id}-${p.txId}`,
+          type: "payment",
+          title: "Payment Received",
+          amount: p.amount,
+          address: truncateAddr(inv.payerAddress || ""),
+          timestamp: new Date(p.timestamp),
+        });
+      }
+
+      // Refunds on this invoice
+      for (const r of inv.refunds) {
+        items.push({
+          id: `ref-${inv.id}-${r.txId}`,
+          type: "refund",
+          title: "Refund Issued",
+          amount: r.amount,
+          address: truncateAddr(inv.payerAddress || ""),
+          timestamp: new Date(r.timestamp),
+        });
+      }
+    }
+
+    // Subscription payments
+    for (const sub of subscribers) {
+      for (const p of sub.payments || []) {
+        items.push({
+          id: `sub-${sub.id}-${p.txId}`,
+          type: "subscription",
+          title: "Subscription Payment",
+          amount: p.amount,
+          address: truncateAddr(sub.payerAddress || ""),
+          timestamp: new Date(p.timestamp),
+        });
+      }
+    }
+
+    // Sort by most recent first, limit to 15
+    items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    return items.slice(0, 15);
+  }, [invoices, subscribers]);
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-heading-sm">Recent Activity</CardTitle>
       </CardHeader>
       <CardContent>
+        {events.length === 0 ? (
+          <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
+            No activity yet. Create your first invoice to get started.
+          </div>
+        ) : (
         <div className="relative" aria-live="polite">
           {/* Timeline line */}
           <div className="absolute left-[15px] top-0 bottom-0 w-px bg-border" />
@@ -93,6 +151,7 @@ export default function ActivityFeed() {
             })}
           </div>
         </div>
+        )}
       </CardContent>
     </Card>
   );
