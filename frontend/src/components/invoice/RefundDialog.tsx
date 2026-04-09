@@ -81,16 +81,21 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
     setConfirmOpen(true);
   }
 
-  function handleConfirm() {
+  async function handleConfirm() {
     const values = form.getValues();
     const refundSats = sbtcToSats(values.amount);
-    const success = refundInvoice(invoice.id, refundSats, values.reason);
-    if (success) {
-      toast.success("Refund processed", { description: `${formatSbtc(refundSats)} sBTC refunded` });
-      setConfirmOpen(false);
-      onOpenChange(false);
-    } else {
-      toast.error("Refund failed", { description: "Invalid refund amount" });
+    try {
+      const success = await refundInvoice(invoice.id, refundSats, values.reason);
+      if (success) {
+        toast.success("Refund processed", { description: `${formatSbtc(refundSats)} sBTC refunded` });
+        setConfirmOpen(false);
+        onOpenChange(false);
+      } else {
+        toast.error("Refund failed", { description: "Invalid refund amount" });
+        setConfirmOpen(false);
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Refund failed");
       setConfirmOpen(false);
     }
   }
