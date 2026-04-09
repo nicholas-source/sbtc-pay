@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseWithWallet } from "@/lib/supabase/client";
-import { registerMerchant as registerMerchantOnChain, updateMerchantProfile as updateMerchantOnChain } from "@/lib/stacks/contract";
+import { registerMerchant as registerMerchantOnChain, updateMerchantProfile as updateMerchantOnChain, getMerchant as getMerchantOnChain } from "@/lib/stacks/contract";
 import { toast } from "sonner";
 
 export interface NotificationEvents {
@@ -64,29 +64,33 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
   fetchMerchant: async (principal) => {
     set({ isLoading: true });
     try {
-      const { data, error } = await supabaseWithWallet(principal)
+      // Check on-chain contract FIRST (source of truth for v4)
+      const onChain = await getMerchantOnChain(principal);
+
+      if (!onChain) {
+        // Not registered on the current contract — show registration form
+        set({ profile: null, isLoading: false });
+        return;
+      }
+
+      // Merchant exists on-chain; use Supabase for cached data if available
+      const { data } = await supabaseWithWallet(principal)
         .from('merchants')
         .select('*')
         .eq('principal', principal)
         .maybeSingle();
 
-      if (error) throw error;
-
-      if (data) {
-        const profile: MerchantProfile = {
-          id: data.principal,
-          name: data.name,
-          description: data.description || '',
-          logoUrl: data.logo_url || '',
-          webhookUrl: data.webhook_url || '',
-          isVerified: data.is_verified,
-          isRegistered: true,
-          notifications: { ...defaultNotificationSettings },
-        };
-        set({ profile, isLoading: false });
-      } else {
-        set({ profile: null, isLoading: false });
-      }
+      const profile: MerchantProfile = {
+        id: data?.principal ?? principal,
+        name: data?.name ?? onChain.name,
+        description: data?.description ?? '',
+        logoUrl: data?.logo_url ?? '',
+        webhookUrl: data?.webhook_url ?? '',
+        isVerified: onChain.isVerified,
+        isRegistered: true,
+        notifications: { ...defaultNotificationSettings },
+      };
+      set({ profile, isLoading: false });
     } catch {
       set({ isLoading: false });
     }
