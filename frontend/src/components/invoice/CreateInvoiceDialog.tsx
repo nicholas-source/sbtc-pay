@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
 import { toast } from "sonner";
-import { createInvoice as createInvoiceOnChain } from "@/lib/stacks/contract";
+import { createInvoice as createInvoiceOnChain, waitForTransaction, CONTRACT_LIMITS } from "@/lib/stacks/contract";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -31,8 +31,8 @@ const schema = z.object({
     .positive("Amount must be greater than 0")
     .min(MIN_SBTC, `Minimum amount is ${MIN_SBTC} sBTC`)
     .max(MAX_SBTC, `Maximum amount is ${MAX_SBTC} sBTC`),
-  memo: z.string().max(200, "Max 200 characters").optional().default(""),
-  referenceId: z.string().max(50, "Max 50 characters").optional().default(""),
+  memo: z.string().max(CONTRACT_LIMITS.MEMO, `Max ${CONTRACT_LIMITS.MEMO} characters`).optional().default(""),
+  referenceId: z.string().max(CONTRACT_LIMITS.REFERENCE_ID, `Max ${CONTRACT_LIMITS.REFERENCE_ID} characters`).optional().default(""),
   allowPartial: z.boolean().default(false),
   allowOverpay: z.boolean().default(false),
 });
@@ -75,6 +75,7 @@ export default function CreateInvoiceDialog() {
   const [expirationPreset, setExpirationPreset] = useState("7d");
   const [customDate, setCustomDate] = useState<Date>();
   const fetchInvoices = useInvoiceStore((s) => s.fetchInvoices);
+  const createInvoiceLocal = useInvoiceStore((s) => s.createInvoice);
   const walletAddress = useWalletStore((s) => s.address);
 
   const form = useForm<FormValues>({
@@ -87,6 +88,11 @@ export default function CreateInvoiceDialog() {
   const usdValue = satsAmount > 0 ? satsToUsd(satsAmount) : null;
 
   async function onSubmit(data: FormValues) {
+    if (!walletAddress) {
+      toast.error("Wallet not connected");
+      return;
+    }
+
     const amountInSats = sbtcToSats(data.amount);
     const expiresInBlocks = presetToBlocks(expirationPreset, customDate);
 
@@ -103,20 +109,40 @@ export default function CreateInvoiceDialog() {
         allowOverpay: data.allowOverpay,
       });
 
-      toast.success("Transaction submitted!", { description: "Invoice will appear once confirmed on-chain." });
+      // Immediately add optimistic invoice to the store so it's visible
+      createInvoiceLocal({
+        amount: amountInSats,
+        memo: data.memo || "",
+        referenceId: data.referenceId || "",
+        allowPartial: data.allowPartial,
+        allowOverpay: data.allowOverpay,
+        merchantAddress: walletAddress,
+        txId,
+      });
+
+      toast.success("Invoice created!", {
+        description: "Waiting for on-chain confirmation...",
+      });
       setOpen(false);
       form.reset();
       setExpirationPreset("7d");
       setCustomDate(undefined);
 
-      // Poll for chainhook indexing instead of blocking on waitForTransaction
-      if (walletAddress) {
-        setTimeout(() => fetchInvoices(walletAddress), 10000);
-        setTimeout(() => fetchInvoices(walletAddress), 30000);
-        setTimeout(() => fetchInvoices(walletAddress), 60000);
-      }
+      // Monitor the transaction in background, then refresh real data from Supabase
+      waitForTransaction(txId, 90, 10000).then((result) => {
+        if (result.status === 'success') {
+          toast.success("Invoice confirmed on-chain!");
+        } else if (result.status === 'failed') {
+          toast.error("Invoice transaction failed on-chain", {
+            description: "The optimistic invoice will be replaced on next refresh.",
+          });
+        }
+        // Refresh from Supabase regardless — replaces optimistic with real data
+        if (walletAddress) fetchInvoices(walletAddress);
+      });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to create invoice");
+      const message = error instanceof Error ? error.message : "Failed to create invoice";
+      toast.error("Invoice creation failed", { description: message });
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +179,7 @@ export default function CreateInvoiceDialog() {
             <FormField control={form.control} name="memo" render={({ field }) => (
               <FormItem>
                 <FormLabel>Memo <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
-                <FormControl><Textarea placeholder="Payment for..." maxLength={200} {...field} /></FormControl>
+                <FormControl><Textarea placeholder="Payment for..." maxLength={CONTRACT_LIMITS.MEMO} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
@@ -161,7 +187,7 @@ export default function CreateInvoiceDialog() {
             <FormField control={form.control} name="referenceId" render={({ field }) => (
               <FormItem>
                 <FormLabel>Reference ID <span className="text-muted-foreground font-normal">(optional)</span></FormLabel>
-                <FormControl><Input placeholder="ORDER-1234" maxLength={50} {...field} /></FormControl>
+                <FormControl><Input placeholder="ORDER-1234" maxLength={CONTRACT_LIMITS.REFERENCE_ID} {...field} /></FormControl>
                 <FormMessage />
               </FormItem>
             )} />
