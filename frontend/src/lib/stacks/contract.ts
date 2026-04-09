@@ -328,6 +328,27 @@ export async function getContractConfig(senderAddress: string): Promise<Contract
 }
 
 // ============================================
+// CONTRACT STRING LENGTH LIMITS
+// ============================================
+export const CONTRACT_LIMITS = {
+  MERCHANT_NAME: 64,
+  DESCRIPTION: 256,
+  WEBHOOK_URL: 256,
+  LOGO_URL: 256,
+  MEMO: 256,
+  REFERENCE_ID: 64,
+  SUBSCRIPTION_NAME: 64,
+  REASON: 256,
+} as const;
+
+/** Validate string length against contract limits. Throws descriptive error. */
+function validateStringLength(value: string, fieldName: string, maxLen: number): void {
+  if (value.length > maxLen) {
+    throw new Error(`${fieldName} is too long (${value.length}/${maxLen} characters)`);
+  }
+}
+
+// ============================================
 // WRITE FUNCTIONS (require wallet signature)
 // ============================================
 
@@ -340,6 +361,45 @@ export async function registerMerchant(params: {
   webhookUrl?: string;
   logoUrl?: string;
 }): Promise<{ txId: string }> {
+  // Validate input lengths against contract limits
+  validateStringLength(params.name, 'Business name', CONTRACT_LIMITS.MERCHANT_NAME);
+  if (params.description) validateStringLength(params.description, 'Description', CONTRACT_LIMITS.DESCRIPTION);
+  if (params.webhookUrl) validateStringLength(params.webhookUrl, 'Webhook URL', CONTRACT_LIMITS.WEBHOOK_URL);
+  if (params.logoUrl) validateStringLength(params.logoUrl, 'Logo URL', CONTRACT_LIMITS.LOGO_URL);
+
+  const functionArgs = [
+    Cl.stringUtf8(params.name),
+    params.description ? Cl.some(Cl.stringUtf8(params.description)) : Cl.none(),
+    params.webhookUrl ? Cl.some(Cl.stringUtf8(params.webhookUrl)) : Cl.none(),
+    params.logoUrl ? Cl.some(Cl.stringUtf8(params.logoUrl)) : Cl.none(),
+  ];
+
+  console.log('[registerMerchant] Calling stx_callContract...');
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'register-merchant',
+    functionArgs,
+    network: NETWORK_MODE,
+  });
+
+  return { txId: response.txid ?? '' };
+}
+
+/**
+ * Update merchant profile on-chain
+ */
+export async function updateMerchantProfile(params: {
+  name: string;
+  description?: string;
+  webhookUrl?: string;
+  logoUrl?: string;
+}): Promise<{ txId: string }> {
+  // Validate input lengths against contract limits
+  validateStringLength(params.name, 'Business name', CONTRACT_LIMITS.MERCHANT_NAME);
+  if (params.description) validateStringLength(params.description, 'Description', CONTRACT_LIMITS.DESCRIPTION);
+  if (params.webhookUrl) validateStringLength(params.webhookUrl, 'Webhook URL', CONTRACT_LIMITS.WEBHOOK_URL);
+  if (params.logoUrl) validateStringLength(params.logoUrl, 'Logo URL', CONTRACT_LIMITS.LOGO_URL);
+
   const functionArgs = [
     Cl.stringUtf8(params.name),
     params.description ? Cl.some(Cl.stringUtf8(params.description)) : Cl.none(),
@@ -349,12 +409,12 @@ export async function registerMerchant(params: {
 
   const response = await request('stx_callContract', {
     contract: PAYMENT_CONTRACT_TYPED,
-    functionName: 'register-merchant',
+    functionName: 'update-merchant-profile',
     functionArgs,
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: response.txid ?? '' };
 }
 
 /**
@@ -368,6 +428,10 @@ export async function createInvoice(params: {
   allowPartial: boolean;
   allowOverpay: boolean;
 }): Promise<{ txId: string }> {
+  // Validate input lengths
+  validateStringLength(params.memo, 'Memo', CONTRACT_LIMITS.MEMO);
+  if (params.referenceId) validateStringLength(params.referenceId, 'Reference ID', CONTRACT_LIMITS.REFERENCE_ID);
+
   const functionArgs = [
     Cl.uint(params.amount),
     Cl.stringUtf8(params.memo),
@@ -426,6 +490,8 @@ export async function refundInvoice(params: {
   reason: string;
   merchantAddress: string;
 }): Promise<{ txId: string }> {
+  validateStringLength(params.reason, 'Refund reason', CONTRACT_LIMITS.REASON);
+
   const functionArgs = [
     Cl.uint(params.invoiceId),
     Cl.uint(params.refundAmount),
@@ -473,6 +539,8 @@ export async function createSubscription(params: {
   intervalBlocks: number;
   subscriberAddress: string;
 }): Promise<{ txId: string }> {
+  validateStringLength(params.name, 'Subscription name', CONTRACT_LIMITS.SUBSCRIPTION_NAME);
+
   const functionArgs = [
     Cl.principal(params.merchantAddress),
     Cl.stringUtf8(params.name),
