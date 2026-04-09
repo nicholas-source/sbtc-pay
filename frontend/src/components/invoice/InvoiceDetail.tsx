@@ -41,10 +41,14 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
     }
   }
 
-  function handleCancel() {
-    cancelInvoice(invoice!.id);
-    toast.success("Invoice cancelled");
-    onOpenChange(false);
+  async function handleCancel() {
+    try {
+      await cancelInvoice(invoice!.id);
+      toast.success("Invoice cancelled");
+      onOpenChange(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to cancel invoice");
+    }
   }
 
   return (
