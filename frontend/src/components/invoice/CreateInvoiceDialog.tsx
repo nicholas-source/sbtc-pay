@@ -76,6 +76,7 @@ export default function CreateInvoiceDialog() {
   const [customDate, setCustomDate] = useState<Date>();
   const fetchInvoices = useInvoiceStore((s) => s.fetchInvoices);
   const createInvoiceLocal = useInvoiceStore((s) => s.createInvoice);
+  const backfillFromChain = useInvoiceStore((s) => s.backfillFromChain);
   const walletAddress = useWalletStore((s) => s.address);
 
   const form = useForm<FormValues>({
@@ -110,7 +111,7 @@ export default function CreateInvoiceDialog() {
       });
 
       // Immediately add optimistic invoice to the store so it's visible
-      createInvoiceLocal({
+      const optimistic = createInvoiceLocal({
         amount: amountInSats,
         memo: data.memo || "",
         referenceId: data.referenceId || "",
@@ -119,6 +120,7 @@ export default function CreateInvoiceDialog() {
         merchantAddress: walletAddress,
         txId,
       });
+      const optimisticId = optimistic.id;
 
       toast.success("Invoice created!", {
         description: "Waiting for on-chain confirmation...",
@@ -132,15 +134,18 @@ export default function CreateInvoiceDialog() {
       waitForTransaction(txId, 90, 10000).then(async (result) => {
         if (result.status === 'success') {
           toast.success("Invoice confirmed on-chain!");
+          // Backfill: parse tx to get on-chain ID, insert into Supabase if chainhook missed it
+          if (walletAddress) {
+            await backfillFromChain(txId, optimisticId, walletAddress);
+          }
         } else if (result.status === 'failed') {
           toast.error("Invoice transaction failed on-chain", {
             description: "The optimistic invoice will be replaced on next refresh.",
           });
         }
-        // Chainhook takes time after tx confirms to index into Supabase.
-        // Retry fetch with increasing delays to catch it.
+        // Also try to refresh from Supabase with delays for chainhook indexing
         if (walletAddress) {
-          for (const delay of [5_000, 15_000, 30_000, 60_000]) {
+          for (const delay of [5_000, 15_000, 30_000]) {
             await new Promise((r) => setTimeout(r, delay));
             await fetchInvoices(walletAddress);
           }

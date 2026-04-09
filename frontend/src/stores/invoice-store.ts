@@ -1,6 +1,7 @@
 import { create } from "zustand";
-import { supabaseWithWallet } from "@/lib/supabase/client";
+import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain } from "@/lib/stacks/contract";
+import { API_URL } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -97,6 +98,8 @@ interface InvoiceStore {
   refundInvoice: (id: string, amount: number, reason: string) => Promise<boolean>;
   getInvoice: (id: string) => Invoice | undefined;
   simulatePayment: (id: string, amount: number) => Payment | null;
+  /** Backfill an optimistic invoice from on-chain tx data into Supabase */
+  backfillFromChain: (txId: string, optimisticId: string, merchantPrincipal: string) => Promise<void>;
 }
 
 // DB status (contract u0–u5) → frontend string
@@ -363,5 +366,86 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
     }));
 
     return payment;
+  },
+
+  backfillFromChain: async (txId, optimisticId, merchantPrincipal) => {
+    try {
+      const cleanTxId = txId.startsWith("0x") ? txId : `0x${txId}`;
+      const res = await fetch(`${API_URL}/extended/v1/tx/${cleanTxId}`);
+      if (!res.ok) return;
+      const tx = await res.json();
+      if (tx.tx_status !== "success") return;
+
+      // Parse (ok uN) to get on-chain invoice ID
+      const resultRepr: string = tx.tx_result?.repr || "";
+      const match = resultRepr.match(/\(ok u(\d+)\)/);
+      if (!match) return;
+      const onchainId = parseInt(match[1], 10);
+
+      // Parse event data for block height
+      const event = (tx.events || []).find(
+        (e: { event_type: string }) => e.event_type === "smart_contract_log",
+      );
+      const blockHeight = tx.block_height || 0;
+
+      // Parse contract call args
+      const args: Record<string, string> = {};
+      for (const a of tx.contract_call?.function_args || []) {
+        args[a.name] = a.repr;
+      }
+
+      const amount = parseInt((args["amount"] || "u0").replace("u", ""), 10);
+      const memo = (args["memo"] || "").replace(/^u"/, "").replace(/"$/, "");
+      const expiresInBlocks = parseInt((args["expires-in-blocks"] || "u0").replace("u", ""), 10);
+      const allowPartial = args["allow-partial"] === "true";
+      const allowOverpay = args["allow-overpay"] === "true";
+
+      // Check if already in Supabase
+      const { data: existing } = await supabase
+        .from("invoices")
+        .select("id")
+        .eq("id", onchainId)
+        .maybeSingle();
+
+      if (!existing) {
+        // Get merchant_id
+        const { data: merchant } = await supabase
+          .from("merchants")
+          .select("id")
+          .eq("principal", merchantPrincipal)
+          .maybeSingle();
+
+        if (merchant) {
+          await supabaseWithWallet(merchantPrincipal)
+            .from("invoices")
+            .insert({
+              id: onchainId,
+              merchant_id: merchant.id,
+              merchant_principal: merchantPrincipal,
+              amount,
+              amount_paid: 0,
+              amount_refunded: 0,
+              memo,
+              status: 0,
+              allow_partial: allowPartial,
+              allow_overpay: allowOverpay,
+              created_at_block: blockHeight,
+              expires_at_block: expiresInBlocks > 0 ? blockHeight + expiresInBlocks : blockHeight + 52560,
+            });
+        }
+      }
+
+      // Update the optimistic invoice in the local store with the real dbId
+      set((state) => {
+        const updated = state.invoices.map((inv) => {
+          if (inv.id !== optimisticId) return inv;
+          return { ...inv, id: `INV-${onchainId}`, dbId: onchainId };
+        });
+        saveOptimisticToStorage(updated);
+        return { invoices: updated };
+      });
+    } catch (err) {
+      console.error("backfillFromChain failed:", err);
+    }
   },
 }));
