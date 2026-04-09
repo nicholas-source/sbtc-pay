@@ -7,9 +7,11 @@ import InvoiceDetail from "@/components/invoice/InvoiceDetail";
 import StatCard from "@/components/dashboard/StatCard";
 import EmptyState from "@/components/dashboard/EmptyState";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 function InvoicesPage() {
+  const satsToUsd = useSatsToUsd();
   const invoices = useInvoiceStore((s) => s.invoices);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -56,8 +58,8 @@ function InvoicesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Invoices" value={stats.total} displayValue={String(stats.total)} icon={FileText} change="" accent="primary" />
-        <StatCard label="Pending Amount" value={stats.pendingAmount} displayValue={stats.pendingAmount.toLocaleString()} unit="sats" usd={`$${(stats.pendingAmount * BTC_USD).toFixed(2)}`} icon={Clock} change="" accent="warning" />
-        <StatCard label="Paid Amount" value={stats.paidAmount} displayValue={stats.paidAmount.toLocaleString()} unit="sats" usd={`$${(stats.paidAmount * BTC_USD).toFixed(2)}`} icon={CheckCircle} change="" accent="success" />
+        <StatCard label="Pending Amount" value={stats.pendingAmount} displayValue={formatSbtc(stats.pendingAmount)} unit="sBTC" usd={`$${satsToUsd(stats.pendingAmount)}`} icon={Clock} change="" accent="warning" />
+        <StatCard label="Paid Amount" value={stats.paidAmount} displayValue={formatSbtc(stats.paidAmount)} unit="sBTC" usd={`$${satsToUsd(stats.paidAmount)}`} icon={CheckCircle} change="" accent="success" />
       </div>
 
       <InvoiceTable onSelect={handleSelect} />
