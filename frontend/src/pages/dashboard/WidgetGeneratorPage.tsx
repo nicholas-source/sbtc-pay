@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { useWalletStore } from "@/stores/wallet-store";
 
 type WidgetType = "direct" | "invoice" | "subscription";
 
 export default function WidgetGeneratorPage() {
+  const walletAddress = useWalletStore((s) => s.address) || "";
   const [widgetType, setWidgetType] = useState<WidgetType>("direct");
-  const [merchantAddress, setMerchantAddress] = useState("SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7");
+  const [merchantAddress, setMerchantAddress] = useState(walletAddress);
   const [amount, setAmount] = useState("100000");
   const [memo, setMemo] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
@@ -26,6 +28,13 @@ export default function WidgetGeneratorPage() {
   useEffect(() => {
     return () => clearTimeout(copyTimerRef.current);
   }, []);
+
+  // Sync merchant address when wallet connects
+  useEffect(() => {
+    if (walletAddress && !merchantAddress) {
+      setMerchantAddress(walletAddress);
+    }
+  }, [walletAddress]);
 
   const previewUrl = useMemo(() => {
     const base = window.location.origin;
@@ -94,7 +103,7 @@ export default function WidgetGeneratorPage() {
                   <Input value={merchantAddress} onChange={(e) => setMerchantAddress(e.target.value)} className="font-mono text-caption" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-caption text-muted-foreground">Default Amount (sBTC)</label>
+                  <label className="text-caption text-muted-foreground">Default Amount (sats)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                 </div>
                 <div className="space-y-1">
@@ -130,7 +139,7 @@ export default function WidgetGeneratorPage() {
                   <Input value={planName} onChange={(e) => setPlanName(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-caption text-muted-foreground">Amount (sBTC)</label>
+                  <label className="text-caption text-muted-foreground">Amount (sats)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                 </div>
                 <div className="space-y-1">
