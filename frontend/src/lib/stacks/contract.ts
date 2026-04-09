@@ -136,9 +136,30 @@ export const CONTRACT_ERRORS: Record<number, string> = {
   5004: 'Payment not due yet',
 };
 
-// Helper to parse Clarity values
+// Helper to deeply extract plain values from cvToValue's {type, value} wrappers (stacks v7+)
+function deepUnwrapCv(val: unknown): unknown {
+  if (val === null || val === undefined) return val;
+  if (typeof val !== 'object') return val;
+  const obj = val as Record<string, unknown>;
+  if ('type' in obj && 'value' in obj && typeof obj.type === 'string') {
+    const inner = obj.value;
+    if (inner === null || inner === undefined) return null;
+    if (typeof inner !== 'object') return inner;
+    // Tuple: recurse into each field
+    const result: Record<string, unknown> = {};
+    for (const [key, field] of Object.entries(inner as Record<string, unknown>)) {
+      result[key] = deepUnwrapCv(field);
+    }
+    return result;
+  }
+  return val;
+}
+
+// Parse a ClarityValue returned from a read-only call into a plain JS value
 function parseClarityValue(cv: ClarityValue): unknown {
-  return cvToValue(cv, true);
+  const raw = cvToValue(cv, true);
+  if (raw === null || raw === undefined) return null;
+  return deepUnwrapCv(raw);
 }
 
 // ============================================
@@ -164,7 +185,7 @@ export async function getMerchant(merchantAddress: string): Promise<MerchantInfo
 
     const data = parsed as Record<string, unknown>;
     return {
-      id: Number(data['merchant-id']),
+      id: Number(data['id'] ?? data['merchant-id']),
       name: String(data['name']),
       description: data['description'] ? String(data['description']) : null,
       webhookUrl: data['webhook-url'] ? String(data['webhook-url']) : null,
