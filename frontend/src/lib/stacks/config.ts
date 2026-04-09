@@ -2,7 +2,7 @@
  * Stacks Blockchain Configuration
  * 
  * This file contains all the configuration needed to interact with
- * the payment-v3 smart contract on Stacks testnet/mainnet.
+ * the payment-v4 smart contract on Stacks testnet/mainnet.
  * 
  * Network mode, contract address, and API URLs are driven by
  * VITE_* environment variables so they can be changed in Vercel
@@ -47,7 +47,7 @@ const PAYMENT_CONTRACT_ADDRESS =
     : '');
 
 const PAYMENT_CONTRACT_NAME =
-  import.meta.env.VITE_PAYMENT_CONTRACT_NAME || 'payment-v3';
+  import.meta.env.VITE_PAYMENT_CONTRACT_NAME || 'payment-v4';
 
 export const PAYMENT_CONTRACT = {
   address: PAYMENT_CONTRACT_ADDRESS,
