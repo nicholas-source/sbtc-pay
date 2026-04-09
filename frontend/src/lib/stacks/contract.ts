@@ -122,7 +122,7 @@ export const CONTRACT_ERRORS: Record<number, string> = {
   3004: 'Invoice cancelled',
   3005: 'Invoice not payable',
   3006: 'Invalid amount',
-  3007: 'Amount too low (min 1000 sats)',
+  3007: 'Amount too low (min 0.00001000 sBTC)',
   3008: 'Amount too high',
   4001: 'Transfer failed',
   4002: 'Insufficient payment',
