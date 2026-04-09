@@ -182,7 +182,8 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
         subscribers,
         isLoading: false,
       });
-    } catch {
+    } catch (err) {
+      console.error("Failed to fetch subscriptions:", err);
       set({ isLoading: false });
     }
   },
