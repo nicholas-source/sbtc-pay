@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { format, subDays, subWeeks, subMonths } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { satsToSbtc, formatSbtcCompact } from "@/lib/constants";
+import { satsToSbtc, formatSbtcCompact, BTC_USD } from "@/lib/constants";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -27,20 +27,20 @@ function generateData(period: Period) {
     return Array.from({ length: 30 }, (_, i) => {
       const date = subDays(now, 29 - i);
       const sats = Math.round(50000 + seed(i) * 150000);
-      return { date: format(date, "MMM d"), sats, usd: +(sats * 0.000975).toFixed(2) };
+      return { date: format(date, "MMM d"), sats, usd: +(sats * BTC_USD).toFixed(2) };
     });
   }
   if (period === "weekly") {
     return Array.from({ length: 12 }, (_, i) => {
       const date = subWeeks(now, 11 - i);
       const sats = Math.round(300000 + seed(i + 50) * 700000);
-      return { date: format(date, "MMM d"), sats, usd: +(sats * 0.000975).toFixed(2) };
+      return { date: format(date, "MMM d"), sats, usd: +(sats * BTC_USD).toFixed(2) };
     });
   }
   return Array.from({ length: 6 }, (_, i) => {
     const date = subMonths(now, 5 - i);
     const sats = Math.round(1200000 + seed(i + 100) * 3000000);
-    return { date: format(date, "MMM yyyy"), sats, usd: +(sats * 0.000975).toFixed(2) };
+    return { date: format(date, "MMM yyyy"), sats, usd: +(sats * BTC_USD).toFixed(2) };
   });
 }
 
