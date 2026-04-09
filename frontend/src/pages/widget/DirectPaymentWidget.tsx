@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
+import { formatSbtc } from "@/lib/constants";
 
 export default function DirectPaymentWidget() {
   const { merchantAddress } = useParams();
@@ -62,11 +63,14 @@ export default function DirectPaymentWidget() {
               <Input
                 type="number"
                 min={1}
-                placeholder="Enter amount"
+                placeholder="Enter amount in sats"
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
                 className="font-tabular"
               />
+              {payAmount && Number(payAmount) > 0 && (
+                <p className="text-caption text-muted-foreground">{formatSbtc(Number(payAmount))} sBTC</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -79,7 +83,7 @@ export default function DirectPaymentWidget() {
             </div>
 
             <Button className="w-full h-11 gap-2 font-semibold" onClick={() => toast.info("Connect wallet to pay (blockchain integration pending)")}>
-              <Wallet className="h-4 w-4" /> Pay {payAmount ? `${payAmount} sBTC` : ""}
+              <Wallet className="h-4 w-4" /> Pay {payAmount ? `${formatSbtc(Number(payAmount))} sBTC` : ""}
             </Button>
 
             <p className="text-[10px] text-muted-foreground text-center">
