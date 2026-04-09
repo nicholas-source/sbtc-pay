@@ -11,7 +11,7 @@ const CHAINHOOK_AUTH_TOKEN = Deno.env.get("CHAINHOOK_AUTH_TOKEN") ?? "";
 
 // Expected contract identifier (testnet)
 const CONTRACT_ID =
-  "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v3";
+  "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v4";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
