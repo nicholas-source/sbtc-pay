@@ -44,13 +44,15 @@ export interface Invoice {
 const OPTIMISTIC_STORAGE_KEY = "sbtc-pay-optimistic-invoices";
 
 function saveOptimisticToStorage(invoices: Invoice[]) {
-  const optimistic = invoices.filter((inv) => inv.dbId === 0);
-  if (optimistic.length === 0) {
+  // Persist any invoice that originated locally (has a txId) and isn't yet
+  // confirmed in Supabase. This includes pure optimistic (dbId=0) and
+  // backfilled (dbId>0 but Supabase insert may have failed).
+  const pending = invoices.filter((inv) => inv.txId);
+  if (pending.length === 0) {
     localStorage.removeItem(OPTIMISTIC_STORAGE_KEY);
     return;
   }
-  // Serialize dates so they survive JSON round-trip
-  localStorage.setItem(OPTIMISTIC_STORAGE_KEY, JSON.stringify(optimistic));
+  localStorage.setItem(OPTIMISTIC_STORAGE_KEY, JSON.stringify(pending));
 }
 
 function loadOptimisticFromStorage(): Invoice[] {
@@ -177,10 +179,10 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
 
       if (invErr) throw invErr;
       if (!invoiceRows || invoiceRows.length === 0) {
-        // Keep optimistic invoices (dbId === 0) that haven't been indexed yet
-        const optimistic = get().invoices.filter((inv) => inv.dbId === 0);
-        saveOptimisticToStorage(optimistic);
-        set({ invoices: optimistic, isLoading: false });
+        // Keep all pending invoices (optimistic or backfilled-but-not-indexed)
+        const pending = get().invoices.filter((inv) => inv.txId);
+        saveOptimisticToStorage(pending);
+        set({ invoices: pending, isLoading: false });
         return;
       }
 
@@ -210,20 +212,28 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
         mapDbInvoice(row, paymentsByInvoice.get(row.id) ?? [], refundsByInvoice.get(row.id) ?? []),
       );
 
-      // Preserve optimistic invoices (dbId === 0) that haven't been indexed yet.
-      // Match by memo + amount + merchantAddress to detect when the on-chain version appears.
-      const optimistic = get().invoices.filter((inv) => {
-        if (inv.dbId !== 0) return false;
-        // If a real invoice with same memo + amount + merchant exists, the optimistic one is superseded
-        return !invoices.some(
-          (real) => real.amount === inv.amount
-            && real.merchantAddress === inv.merchantAddress
-            && real.memo === inv.memo,
-        );
+      // Preserve pending invoices that aren't yet in Supabase.
+      // This covers both pure optimistic (dbId === 0) AND backfilled (dbId > 0 but
+      // Supabase insert failed or chainhook hasn't indexed yet).
+      const supabaseIds = new Set(invoices.map((inv) => inv.dbId));
+      const pending = get().invoices.filter((inv) => {
+        // Already in Supabase results — drop the local copy
+        if (inv.dbId > 0 && supabaseIds.has(inv.dbId)) return false;
+        // Backfilled invoice not yet in Supabase — keep it
+        if (inv.dbId > 0 && !supabaseIds.has(inv.dbId)) return true;
+        // Pure optimistic (dbId === 0) — keep unless a matching real one appeared
+        if (inv.dbId === 0) {
+          return !invoices.some(
+            (real) => real.amount === inv.amount
+              && real.merchantAddress === inv.merchantAddress
+              && real.memo === inv.memo,
+          );
+        }
+        return false;
       });
 
-      saveOptimisticToStorage(optimistic);
-      set({ invoices: [...optimistic, ...invoices], isLoading: false });
+      saveOptimisticToStorage(pending);
+      set({ invoices: [...pending, ...invoices], isLoading: false });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to fetch invoices";
       set({ error: message, isLoading: false });
