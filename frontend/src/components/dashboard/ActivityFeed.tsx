@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownLeft, FileText, RefreshCcw, Repeat } from "lucide-react";
 import { formatDistanceToNow, subMinutes, subHours, subDays } from "date-fns";
+import { formatSbtc } from "@/lib/constants";
 
 interface ActivityEvent {
   id: string;
@@ -79,8 +80,8 @@ export default function ActivityFeed() {
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <p className="font-mono-nums text-sm text-foreground">
-                        {event.type === "refund" ? "-" : "+"}{event.amount.toLocaleString()}
-                        <span className="text-muted-foreground ml-1 text-caption">sats</span>
+                        {event.type === "refund" ? "-" : "+"}{formatSbtc(event.amount)}
+                        <span className="text-muted-foreground ml-1 text-caption">sBTC</span>
                       </p>
                       <p className="text-caption text-muted-foreground">
                         {formatDistanceToNow(event.timestamp, { addSuffix: true })}
