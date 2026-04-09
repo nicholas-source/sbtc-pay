@@ -274,18 +274,51 @@ export const useWalletStore = create<WalletState>()(
   )
 );
 
-// Utility hooks for formatted values
+// ── Price polling ───────────────────────────────────────────────────
+let _priceInterval: ReturnType<typeof setInterval> | null = null;
+
+/** Start polling CoinGecko every 60 s. Safe to call multiple times. */
+export function startPricePolling() {
+  if (_priceInterval) return;
+  // Fetch immediately on init
+  useWalletStore.getState().fetchBtcPrice();
+  _priceInterval = setInterval(() => {
+    useWalletStore.getState().fetchBtcPrice();
+  }, 60_000);
+}
+
+export function stopPricePolling() {
+  if (_priceInterval) {
+    clearInterval(_priceInterval);
+    _priceInterval = null;
+  }
+}
+
+// ── Utility hooks ──────────────────────────────────────────────────
+
+/** Live BTC price in USD (updates every 60 s). */
+export function useBtcPrice(): number {
+  return useWalletStore((s) => s.btcPriceUsd);
+}
+
+/**
+ * Returns a function that converts sats → USD string using the live price.
+ * Usage: `const satsToUsd = useSatsToUsd(); satsToUsd(50000)` → "48.75"
+ */
+export function useSatsToUsd(): (sats: number) => string {
+  const btcPriceUsd = useWalletStore((s) => s.btcPriceUsd);
+  return (sats: number) => ((sats / 100_000_000) * btcPriceUsd).toFixed(2);
+}
+
 export function useFormattedStxBalance(): string {
   const stxBalance = useWalletStore((s) => s.stxBalance);
-  // Convert microSTX to STX (1 STX = 1,000,000 microSTX)
   const stx = Number(stxBalance) / 1_000_000;
   return stx.toLocaleString(undefined, { maximumFractionDigits: 6 });
 }
 
 export function useFormattedSbtcBalance(): string {
   const sbtcBalance = useWalletStore((s) => s.sbtcBalance);
-  // sbtcBalance is in sats
-  return Number(sbtcBalance).toLocaleString();
+  return (Number(sbtcBalance) / 100_000_000).toFixed(8);
 }
 
 export function useSbtcBalanceInBtc(): string {
