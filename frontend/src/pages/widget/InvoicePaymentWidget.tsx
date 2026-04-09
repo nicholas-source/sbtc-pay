@@ -9,10 +9,7 @@ import { useInvoiceStore } from "@/stores/invoice-store";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
-
-function formatSats(sats: number) {
-  return sats.toLocaleString();
-}
+import { formatSbtc } from "@/lib/constants";
 
 export default function InvoicePaymentWidget() {
   const { invoiceId } = useParams();
@@ -34,7 +31,7 @@ export default function InvoicePaymentWidget() {
     return (
       <WidgetShell>
         <p className="text-center text-heading-sm text-success">✓ Paid</p>
-        <p className="text-center text-sats text-primary font-tabular">{formatSats(invoice.amountPaid)} sats</p>
+        <p className="text-center text-sats text-primary font-tabular">{formatSbtc(invoice.amountPaid)} sBTC</p>
       </WidgetShell>
     );
   }
@@ -62,7 +59,7 @@ export default function InvoicePaymentWidget() {
       </div>
 
       <div className="text-center">
-        <span className="text-2xl sm:text-sats text-primary font-tabular">{formatSats(remaining)} sats</span>
+        <span className="text-2xl sm:text-sats text-primary font-tabular">{formatSbtc(remaining)} sBTC</span>
       </div>
 
       {invoice.amountPaid > 0 && <Progress value={paidPct} className="h-2" />}
