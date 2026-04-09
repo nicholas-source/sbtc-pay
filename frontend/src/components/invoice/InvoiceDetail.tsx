@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 interface Props {
   invoice: Invoice | null;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange }: Props) {
+  const satsToUsd = useSatsToUsd();
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const liveInvoice = useInvoiceStore((s) => invoiceProp ? s.invoices.find((i) => i.id === invoiceProp.id) : undefined);
   const [refundOpen, setRefundOpen] = useState(false);
@@ -30,8 +32,9 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
   const pct = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
 
   async function copyLink() {
+    const linkId = invoice!.dbId > 0 ? invoice!.dbId.toString() : invoice!.id;
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}/pay/${invoice!.id}`);
+      await navigator.clipboard.writeText(`${window.location.origin}/pay/${linkId}`);
       toast.success("Payment link copied");
     } catch {
       toast.error("Couldn't copy the link. Check your browser permissions.");
@@ -63,8 +66,8 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           {/* Amount */}
           <div className="rounded-lg border p-4">
             <p className="text-xs text-muted-foreground mb-1">Total Amount</p>
-            <p className="text-2xl font-mono font-bold font-tabular">{invoice.amount.toLocaleString()} <span className="text-sm text-muted-foreground">sats</span></p>
-            <p className="text-sm text-muted-foreground">${(invoice.amount * BTC_USD).toFixed(2)} USD</p>
+            <p className="text-2xl font-mono font-bold font-tabular">{formatSbtc(invoice.amount)} <span className="text-sm text-muted-foreground">sBTC</span></p>
+            <p className="text-sm text-muted-foreground">${satsToUsd(invoice.amount)} USD</p>
           </div>
 
           {/* Partial progress */}
@@ -76,8 +79,8 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               </div>
               <Progress value={pct} className="h-2" />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{invoice.amountPaid.toLocaleString()} paid</span>
-                <span>{(invoice.amount - invoice.amountPaid).toLocaleString()} remaining</span>
+                <span>{formatSbtc(invoice.amountPaid)} paid</span>
+                <span>{formatSbtc(invoice.amount - invoice.amountPaid)} remaining</span>
               </div>
             </div>
           )}
@@ -115,7 +118,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-tabular">+{p.amount.toLocaleString()} sats</span>
+                        <span className="font-mono font-tabular">+{formatSbtc(p.amount)} sBTC</span>
                         <span className="text-xs text-muted-foreground">{format(p.timestamp, "MMM d, HH:mm")}</span>
                       </div>
                       <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{p.txId}</p>
@@ -140,7 +143,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="font-mono font-tabular">-{r.amount.toLocaleString()} sats</span>
+                          <span className="font-mono font-tabular">-{formatSbtc(r.amount)} sBTC</span>
                           <span className="text-xs text-muted-foreground">{format(r.timestamp, "MMM d, HH:mm")}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{r.reason}</p>
