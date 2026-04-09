@@ -12,10 +12,12 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@hirosystems/chainhooks-client": "^2.1.1",
     "@stacks/clarinet-sdk": "^3.9.0",
     "@stacks/transactions": "^7.2.0",
     "@types/node": "^24.4.0",
     "chokidar-cli": "^3.0.0",
+    "undici": "^8.0.2",
     "vitest": "^4.0.7",
     "vitest-environment-clarinet": "^3.0.0"
   },

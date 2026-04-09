@@ -13,6 +13,7 @@ import RefundsSkeleton from "@/components/dashboard/RefundsSkeleton";
 import SubscriptionsSkeleton from "@/components/dashboard/SubscriptionsSkeleton";
 import SettingsSkeleton from "@/components/dashboard/SettingsSkeleton";
 import { useWalletStore } from "@/stores/wallet-store";
+import { startPricePolling, stopPricePolling } from "@/stores/wallet-store";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
 
 // Lazy-loaded pages
@@ -40,6 +41,9 @@ function WalletInitializer() {
 
   useEffect(() => {
     checkConnection();
+    // Start live BTC price polling (CoinGecko, every 60 s)
+    startPricePolling();
+    return () => stopPricePolling();
   }, [checkConnection]);
 
   return null;
