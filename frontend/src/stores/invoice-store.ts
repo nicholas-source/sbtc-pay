@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
-import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain } from "@/lib/stacks/contract";
+import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, getMerchant as getMerchantOnChain } from "@/lib/stacks/contract";
 import { API_URL } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
@@ -382,10 +382,6 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       if (!match) return;
       const onchainId = parseInt(match[1], 10);
 
-      // Parse event data for block height
-      const event = (tx.events || []).find(
-        (e: { event_type: string }) => e.event_type === "smart_contract_log",
-      );
       const blockHeight = tx.block_height || 0;
 
       // Parse contract call args
@@ -396,42 +392,68 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
 
       const amount = parseInt((args["amount"] || "u0").replace("u", ""), 10);
       const memo = (args["memo"] || "").replace(/^u"/, "").replace(/"$/, "");
+      const referenceId = (args["reference-id"] || "").replace(/^\(some u"/, "").replace(/"\)$/, "").replace(/^none$/, "");
       const expiresInBlocks = parseInt((args["expires-in-blocks"] || "u0").replace("u", ""), 10);
       const allowPartial = args["allow-partial"] === "true";
       const allowOverpay = args["allow-overpay"] === "true";
 
+      const db = supabaseWithWallet(merchantPrincipal);
+
       // Check if already in Supabase
-      const { data: existing } = await supabase
+      const { data: existing } = await db
         .from("invoices")
         .select("id")
         .eq("id", onchainId)
         .maybeSingle();
 
       if (!existing) {
-        // Get merchant_id
-        const { data: merchant } = await supabase
+        // Ensure the merchant row exists in Supabase (may not if chainhook is delayed)
+        let merchantId: number | null = null;
+        const { data: merchant } = await db
           .from("merchants")
           .select("id")
           .eq("principal", merchantPrincipal)
           .maybeSingle();
 
         if (merchant) {
-          await supabaseWithWallet(merchantPrincipal)
-            .from("invoices")
-            .insert({
-              id: onchainId,
-              merchant_id: merchant.id,
-              merchant_principal: merchantPrincipal,
-              amount,
-              amount_paid: 0,
-              amount_refunded: 0,
-              memo,
-              status: 0,
-              allow_partial: allowPartial,
-              allow_overpay: allowOverpay,
-              created_at_block: blockHeight,
-              expires_at_block: expiresInBlocks > 0 ? blockHeight + expiresInBlocks : blockHeight + 52560,
-            });
+          merchantId = merchant.id;
+        } else {
+          // Merchant missing from Supabase — read on-chain and insert
+          const onChainMerchant = await getMerchantOnChain(merchantPrincipal);
+          if (onChainMerchant) {
+            merchantId = onChainMerchant.id;
+            await db.from("merchants").upsert({
+              id: onChainMerchant.id,
+              principal: merchantPrincipal,
+              name: onChainMerchant.name,
+              description: onChainMerchant.description,
+              logo_url: onChainMerchant.logoUrl,
+              webhook_url: onChainMerchant.webhookUrl,
+              is_active: onChainMerchant.isActive,
+              is_verified: onChainMerchant.isVerified,
+            }, { onConflict: "id" });
+          }
+        }
+
+        if (merchantId !== null) {
+          const { error } = await db.from("invoices").insert({
+            id: onchainId,
+            merchant_id: merchantId,
+            merchant_principal: merchantPrincipal,
+            amount,
+            amount_paid: 0,
+            amount_refunded: 0,
+            memo,
+            reference_id: referenceId || null,
+            status: 0,
+            allow_partial: allowPartial,
+            allow_overpay: allowOverpay,
+            created_at_block: blockHeight,
+            expires_at_block: expiresInBlocks > 0 ? blockHeight + expiresInBlocks : blockHeight + 52560,
+          });
+          if (error) console.error("backfill invoice insert failed:", error.message);
+        } else {
+          console.error("backfillFromChain: could not resolve merchant_id for", merchantPrincipal);
         }
       }
 

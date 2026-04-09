@@ -24,7 +24,7 @@ import {
 import { useMerchantStore, type NotificationSettings, type NotificationEvents } from "@/stores/merchant-store";
 import { CONTRACT_LIMITS } from "@/lib/stacks/contract";
 import { Loader2, ShieldCheck, Copy, Bell } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import NotificationHistory from "@/components/settings/NotificationHistory";
 
@@ -64,6 +64,18 @@ function SettingsPage() {
       webhookUrl: profile?.webhookUrl ?? "",
     },
   });
+
+  // Keep form in sync when profile data is (re)loaded from on-chain
+  useEffect(() => {
+    if (profile) {
+      form.reset({
+        name: profile.name,
+        description: profile.description ?? "",
+        logoUrl: profile.logoUrl ?? "",
+        webhookUrl: profile.webhookUrl ?? "",
+      });
+    }
+  }, [profile?.name, profile?.description, profile?.logoUrl, profile?.webhookUrl]);
 
   if (!profile) {
     return (

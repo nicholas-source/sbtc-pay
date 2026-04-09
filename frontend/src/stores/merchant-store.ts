@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { supabaseWithWallet } from "@/lib/supabase/client";
-import { registerMerchant as registerMerchantOnChain, updateMerchantProfile as updateMerchantOnChain, getMerchant as getMerchantOnChain } from "@/lib/stacks/contract";
+import { registerMerchant as registerMerchantOnChain, updateMerchantProfile as updateMerchantOnChain, getMerchant as getMerchantOnChain, waitForTransaction } from "@/lib/stacks/contract";
 import { toast } from "sonner";
 
 export interface NotificationEvents {
@@ -64,33 +64,44 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
   fetchMerchant: async (principal) => {
     set({ isLoading: true });
     try {
-      // Check on-chain contract FIRST (source of truth for v4)
+      // On-chain contract is the SOLE source of truth for core merchant fields.
+      // The contract's merchant-updated event does not include updated field values,
+      // so chainhook cannot keep Supabase in sync — we always read on-chain.
       const onChain = await getMerchantOnChain(principal);
 
       if (!onChain) {
-        // Not registered on the current contract — show registration form
         set({ profile: null, isLoading: false });
         return;
       }
 
-      // Merchant exists on-chain; use Supabase for cached data if available
-      const { data } = await supabaseWithWallet(principal)
-        .from('merchants')
-        .select('*')
-        .eq('principal', principal)
-        .maybeSingle();
-
       const profile: MerchantProfile = {
-        id: data?.principal ?? principal,
-        name: data?.name ?? onChain.name,
-        description: data?.description ?? '',
-        logoUrl: data?.logo_url ?? '',
-        webhookUrl: data?.webhook_url ?? '',
+        id: principal,
+        name: onChain.name,
+        description: onChain.description ?? '',
+        logoUrl: onChain.logoUrl ?? '',
+        webhookUrl: onChain.webhookUrl ?? '',
         isVerified: onChain.isVerified,
         isRegistered: true,
         notifications: { ...defaultNotificationSettings },
       };
       set({ profile, isLoading: false });
+
+      // Sync on-chain data → Supabase so invoice backfill and other queries find the merchant
+      supabaseWithWallet(principal)
+        .from('merchants')
+        .upsert({
+          id: onChain.id,
+          principal,
+          name: onChain.name,
+          description: onChain.description,
+          logo_url: onChain.logoUrl,
+          webhook_url: onChain.webhookUrl,
+          is_active: onChain.isActive,
+          is_verified: onChain.isVerified,
+        }, { onConflict: 'id' })
+        .then(({ error }) => {
+          if (error) console.warn('merchant cache sync failed:', error.message);
+        });
     } catch {
       set({ isLoading: false });
     }
@@ -144,8 +155,57 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
 
     toast.success("Profile update submitted!", { description: `TX: ${txId.slice(0, 12)}...` });
 
-    // Optimistic local update while chainhook indexes
+    // Optimistic local update
     set({ profile: updated });
+
+    // Also write directly to Supabase cache (contract event lacks field data)
+    supabaseWithWallet(current.id)
+      .from('merchants')
+      .update({
+        name: updated.name,
+        description: updated.description || null,
+        logo_url: updated.logoUrl || null,
+        webhook_url: updated.webhookUrl || null,
+      })
+      .eq('principal', current.id)
+      .then(({ error }) => {
+        if (error) console.warn('Supabase cache update failed:', error.message);
+      });
+
+    // After tx confirms, re-read on-chain to ensure local state is accurate
+    waitForTransaction(txId, 60, 10000).then(async (result) => {
+      if (result.status === 'success' && current.id) {
+        const fresh = await getMerchantOnChain(current.id);
+        if (fresh) {
+          set({
+            profile: {
+              ...get().profile!,
+              name: fresh.name,
+              description: fresh.description ?? '',
+              logoUrl: fresh.logoUrl ?? '',
+              webhookUrl: fresh.webhookUrl ?? '',
+              isVerified: fresh.isVerified,
+            },
+          });
+          toast.success("Profile update confirmed on-chain!");
+        }
+      } else if (result.status === 'failed') {
+        toast.error("Profile update failed on-chain");
+        // Revert to on-chain state
+        const reverted = await getMerchantOnChain(current.id);
+        if (reverted) {
+          set({
+            profile: {
+              ...get().profile!,
+              name: reverted.name,
+              description: reverted.description ?? '',
+              logoUrl: reverted.logoUrl ?? '',
+              webhookUrl: reverted.webhookUrl ?? '',
+            },
+          });
+        }
+      }
+    });
   },
 
   updateNotifications: async (settings) => {

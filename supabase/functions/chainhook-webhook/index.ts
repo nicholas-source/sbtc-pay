@@ -3,7 +3,7 @@
 // This function runs with service_role privileges (bypasses RLS)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { deserializeCV, cvToJSON } from "https://esm.sh/@stacks/transactions@7";
+import { deserializeCV, cvToJSON, Cl, fetchCallReadOnlyFunction } from "https://esm.sh/@stacks/transactions@7";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -12,6 +12,8 @@ const CHAINHOOK_AUTH_TOKEN = Deno.env.get("CHAINHOOK_AUTH_TOKEN") ?? "";
 // Expected contract identifier (testnet)
 const CONTRACT_ID =
   "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v4";
+
+const [CONTRACT_ADDRESS, CONTRACT_NAME] = CONTRACT_ID.split(".");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
@@ -273,18 +275,48 @@ async function handleMerchantUpdated(
   data: Record<string, unknown>,
   _txId: string,
 ) {
+  const merchantPrincipal = data.merchant as string;
+  if (!merchantPrincipal) return;
+
+  // The contract's merchant-updated event only emits { event, merchant } without
+  // updated field values. Read the current on-chain state to get the fresh data.
   const updates: Record<string, unknown> = {};
+
+  // Try fields from event data first (in case a future contract version includes them)
   if (data.name) updates.name = data.name;
   if (data.description !== undefined) updates.description = data.description;
-  if (data["webhook-url"] !== undefined)
-    updates.webhook_url = data["webhook-url"];
+  if (data["webhook-url"] !== undefined) updates.webhook_url = data["webhook-url"];
   if (data["logo-url"] !== undefined) updates.logo_url = data["logo-url"];
+
+  // If event lacked field data, read on-chain
+  if (Object.keys(updates).length === 0) {
+    try {
+      const result = await fetchCallReadOnlyFunction({
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: CONTRACT_NAME,
+        functionName: "get-merchant",
+        functionArgs: [Cl.principal(merchantPrincipal)],
+        network: "testnet",
+        senderAddress: merchantPrincipal,
+      });
+      const json = cvToJSON(result);
+      const flat = flattenCvJson(json) as Record<string, unknown> | null;
+      if (flat) {
+        if (flat.name) updates.name = flat.name;
+        if (flat.description !== undefined) updates.description = flat.description;
+        if (flat["webhook-url"] !== undefined) updates.webhook_url = flat["webhook-url"];
+        if (flat["logo-url"] !== undefined) updates.logo_url = flat["logo-url"];
+      }
+    } catch (e) {
+      console.warn("Failed to read on-chain merchant for update:", e);
+    }
+  }
 
   if (Object.keys(updates).length > 0) {
     await supabase
       .from("merchants")
       .update(updates)
-      .eq("principal", data.merchant);
+      .eq("principal", merchantPrincipal);
   }
 }
 
@@ -669,16 +701,24 @@ Deno.serve(async (req: Request) => {
   try {
     const raw = await req.json();
 
+    // Log incoming payload shape for debugging
+    const topKeys = Object.keys(raw);
+    console.log("Webhook received. Top-level keys:", topKeys.join(", "));
+
     // v2 payload: { event: { apply, rollback, chain, network }, chainhook: { name, uuid } }
     // v1 payload: { apply, rollback, chainhook: { uuid, predicate } }
+    // Hiro Platform also sends: { apply: [...], rollback: [...], chainhook: { ... } }
     // Detect and normalize
     const isV2 = "event" in raw && raw.event?.apply;
+    const isV1Direct = !isV2 && Array.isArray(raw.apply);
     const applyBlocks: ChainhookBlock[] = isV2
       ? (raw.event?.apply ?? [])
       : (raw.apply ?? []);
     const rollbackBlocks: ChainhookBlock[] = isV2
       ? (raw.event?.rollback ?? [])
       : (raw.rollback ?? []);
+
+    console.log(`Format: ${isV2 ? "v2" : isV1Direct ? "v1-direct" : "unknown"}, apply blocks: ${applyBlocks.length}, rollback blocks: ${rollbackBlocks.length}`);
 
     // Process applied blocks
     for (const block of applyBlocks) {
@@ -691,21 +731,28 @@ Deno.serve(async (req: Request) => {
           ? tx.metadata.status === "success"
           : (tx.metadata as unknown as { success: boolean }).success;
 
-        if (!isSuccess) continue;
+        if (!isSuccess) {
+          console.log(`Skipping failed tx ${tx.transaction_identifier.hash}`);
+          continue;
+        }
 
         const txId = tx.transaction_identifier.hash;
 
         // v2: operations array, v1: metadata.receipt.events
+        // Hiro Platform v1-direct: metadata.receipt.events
         const operations: ChainhookOperation[] = isV2
           ? (tx.operations ?? [])
           : ((tx.metadata as unknown as { receipt: { events: ChainhookOperation[] } })
               .receipt?.events ?? []);
+
+        console.log(`Processing tx ${txId.slice(0, 12)}... ops: ${operations.length}`);
 
         for (const operation of operations) {
           const data = extractEventData(operation);
           if (!data || !data.event) continue;
 
           const eventType = data.event as string;
+          console.log(`Event: ${eventType} | tx: ${txId.slice(0, 12)}...`);
           const handler = EVENT_HANDLERS[eventType];
 
           // Log every event
