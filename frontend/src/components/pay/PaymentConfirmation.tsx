@@ -10,19 +10,21 @@ import { getExplorerTxUrl } from "@/lib/stacks/config";
 interface Props {
   payment: Payment | null;
   amount: number;
+  /** When false, shows "Transaction Submitted" spinner instead of green checkmark */
+  confirmed?: boolean;
 }
 
-export function PaymentConfirmation({ payment, amount }: Props) {
-  const [showSuccess, setShowSuccess] = useState(false);
+export function PaymentConfirmation({ payment, amount, confirmed = true }: Props) {
+  const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
     if (payment) {
-      const timer = setTimeout(() => setShowSuccess(true), 800);
+      const timer = setTimeout(() => setShowContent(true), 800);
       return () => clearTimeout(timer);
     }
   }, [payment]);
 
-  if (!payment || !showSuccess) {
+  if (!payment || !showContent) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
@@ -51,44 +53,35 @@ export function PaymentConfirmation({ payment, amount }: Props) {
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="flex flex-col items-center gap-6 py-6"
     >
-      <motion.div
-        initial={{ scale: 0, rotate: -180 }}
-        animate={{ scale: 1, rotate: 0 }}
-        transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
-        className="relative"
-      >
-        {/* Success glow ring */}
-        <div className="absolute inset-0 rounded-full" style={{ animation: "successPulse 2s ease-out 0.8s" }} />
-        {/* Animated checkmark with draw effect */}
-        <svg width="64" height="64" viewBox="0 0 64 64" className="text-success relative">
-          <motion.circle
-            cx="32" cy="32" r="28"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          />
-          <motion.path
-            d="M20 32 L28 40 L44 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 0.4, delay: 0.6 }}
-          />
-        </svg>
-      </motion.div>
+      {confirmed ? (
+        <motion.div
+          initial={{ scale: 0, rotate: -180 }}
+          animate={{ scale: 1, rotate: 0 }}
+          transition={{ delay: 0.1, type: "spring", stiffness: 200 }}
+          className="relative"
+        >
+          <div className="absolute inset-0 rounded-full" style={{ animation: "successPulse 2s ease-out 0.8s" }} />
+          <svg width="64" height="64" viewBox="0 0 64 64" className="text-success relative">
+            <motion.circle cx="32" cy="32" r="28" fill="none" stroke="currentColor" strokeWidth="3" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.6, delay: 0.2 }} />
+            <motion.path d="M20 32 L28 40 L44 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.4, delay: 0.6 }} />
+          </svg>
+        </motion.div>
+      ) : (
+        <Loader2 className="h-14 w-14 animate-spin text-primary" />
+      )}
 
       <div className="text-center">
-        <p className="text-heading-sm text-success">Payment Confirmed</p>
+        <p className={`text-heading-sm ${confirmed ? "text-success" : "text-primary"}`}>
+          {confirmed ? "Payment Confirmed" : "Transaction Submitted"}
+        </p>
         <p className="text-sats text-primary mt-2 font-tabular">
           {formatSbtc(amount)} sBTC
         </p>
+        {!confirmed && (
+          <p className="text-body-sm text-muted-foreground mt-1">
+            Waiting for blockchain confirmation...
+          </p>
+        )}
       </div>
 
       {payment && (

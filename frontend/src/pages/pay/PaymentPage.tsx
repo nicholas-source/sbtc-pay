@@ -15,7 +15,7 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { payInvoice, CONTRACT_ERRORS } from "@/lib/stacks/contract";
+import { payInvoice, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
 import { truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
@@ -157,16 +157,42 @@ function PaymentPage() {
 
         if (result.txId) {
           setTxId(result.txId);
-          // Show confirmed immediately with txId — don't block on chain confirmation
+          toast.success("Transaction submitted! Waiting for confirmation...");
+          // Show "confirming" state with spinner while we poll
           setCompletedPayment({
             timestamp: new Date(),
             amount: effectivePayAmount,
             txId: result.txId,
           });
-          setPaymentState("confirmed");
-          toast.success("Transaction submitted!");
-          // Refresh wallet balance after payment
-          fetchBalances();
+          // Don't set "confirmed" yet — poll for on-chain result
+          // Poll faster initially (every 8s, up to 40 attempts = ~5 min)
+          const txResult = await waitForTransaction(result.txId, 40, 8000);
+          if (!mountedRef.current) return;
+
+          if (txResult.status === 'success') {
+            setPaymentState("confirmed");
+            toast.success("Payment confirmed on-chain!");
+            fetchBalances();
+          } else if (txResult.status === 'failed') {
+            // Parse error from tx result
+            let failMsg = "Payment was rejected on-chain";
+            const resultRepr = (txResult.result as { repr?: string })?.repr || "";
+            const errorMatch = resultRepr.match(/\(err u(\d+)\)/);
+            if (errorMatch) {
+              const code = parseInt(errorMatch[1], 10);
+              failMsg = CONTRACT_ERRORS[code] || `Contract error u${code}`;
+              // Handle low-level token transfer errors
+              if (code <= 10) failMsg = "sBTC transfer failed — check your sBTC balance";
+            }
+            setErrorMessage(failMsg);
+            setPaymentState("error");
+            setCompletedPayment(null);
+            toast.error(failMsg);
+          } else {
+            // Still pending after max attempts
+            setPaymentState("confirmed");
+            toast.info("Transaction submitted but not yet confirmed. Check back shortly.");
+          }
         } else {
           setCompletedPayment({
             timestamp: new Date(),
@@ -278,7 +304,11 @@ function PaymentPage() {
     return (
       <PageShell>
         <InvoiceHeader invoice={invoice} />
-        <PaymentConfirmation payment={completedPayment} amount={confirmedAmount.current} />
+        <PaymentConfirmation
+          payment={completedPayment}
+          amount={confirmedAmount.current}
+          confirmed={paymentState === "confirmed"}
+        />
       </PageShell>
     );
   }
