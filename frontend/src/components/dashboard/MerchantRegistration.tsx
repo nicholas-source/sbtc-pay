@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { useMerchantStore } from "@/stores/merchant-store";
 import { Loader2, Store } from "lucide-react";
+import { toast } from "sonner";
 
 const schema = z.object({
   name: z.string().trim().min(2, "Business name must be at least 2 characters").max(80),
@@ -27,12 +28,17 @@ export default function MerchantRegistration() {
   });
 
   const onSubmit = async (data: FormValues) => {
-    await registerMerchant({
-      name: data.name,
-      description: data.description ?? "",
-      logoUrl: data.logoUrl ?? "",
-      webhookUrl: data.webhookUrl ?? "",
-    });
+    try {
+      await registerMerchant({
+        name: data.name,
+        description: data.description ?? "",
+        logoUrl: data.logoUrl ?? "",
+        webhookUrl: data.webhookUrl ?? "",
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Registration failed";
+      toast.error("Registration failed", { description: message });
+    }
   };
 
   return (
