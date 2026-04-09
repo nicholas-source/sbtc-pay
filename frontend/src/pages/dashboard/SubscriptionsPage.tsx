@@ -10,9 +10,11 @@ import { useSubscriptionStore } from "@/stores/subscription-store";
 import { exportToCSV } from "@/lib/export-csv";
 import EmptyState from "@/components/dashboard/EmptyState";
 
-import { BTC_USD } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
+import { useSatsToUsd } from "@/stores/wallet-store";
 
 function SubscriptionsPage() {
+  const satsToUsd = useSatsToUsd();
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
 
@@ -43,20 +45,20 @@ function SubscriptionsPage() {
       const plan = plans.find((p) => p.id === sub.planId);
       const base = {
         "Plan Name": plan?.name ?? "",
-        "Plan Amount (sats)": plan?.amount ?? "",
+        "Plan Amount (sBTC)": plan?.amount ?? "",
         Interval: plan?.interval ?? "",
         "Subscriber Address": sub.payerAddress,
         Status: sub.status,
         "Started At": format(sub.startedAt, "yyyy-MM-dd"),
       };
       if (sub.payments.length === 0) {
-        rows.push({ ...base, "Payment Date": "", "Payment Amount (sats)": "", "TX ID": "" });
+        rows.push({ ...base, "Payment Date": "", "Payment Amount (sBTC)": "", "TX ID": "" });
       } else {
         for (const p of sub.payments) {
           rows.push({
             ...base,
             "Payment Date": format(p.timestamp, "yyyy-MM-dd"),
-            "Payment Amount (sats)": p.amount,
+            "Payment Amount (sBTC)": p.amount,
             "TX ID": p.txId,
           });
         }
@@ -97,7 +99,7 @@ function SubscriptionsPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change="+1 this month" accent="secondary" />
             <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change="+2 this month" accent="info" />
-            <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} displayValue={stats.monthlyRevenue.toLocaleString()} unit="sats" usd={`≈ $${(stats.monthlyRevenue * BTC_USD).toFixed(2)}`} icon={TrendingUp} change="+12%" accent="success" />
+            <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} displayValue={formatSbtc(stats.monthlyRevenue)} unit="sBTC" usd={`≈ $${satsToUsd(stats.monthlyRevenue)}`} icon={TrendingUp} change="+12%" accent="success" />
           </div>
 
           {/* Analytics Chart */}
