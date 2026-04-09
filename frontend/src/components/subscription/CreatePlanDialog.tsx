@@ -18,10 +18,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useSubscriptionStore } from "@/stores/subscription-store";
+import { CONTRACT_LIMITS } from "@/lib/stacks/contract";
 
 const schema = z.object({
-  name: z.string().min(1, "Plan name is required").max(100),
-  description: z.string().max(300).optional().default(""),
+  name: z.string().min(1, "Plan name is required").max(CONTRACT_LIMITS.SUBSCRIPTION_NAME, `Max ${CONTRACT_LIMITS.SUBSCRIPTION_NAME} characters`),
+  description: z.string().max(CONTRACT_LIMITS.DESCRIPTION, `Max ${CONTRACT_LIMITS.DESCRIPTION} characters`).optional().default(""),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
   interval: z.enum(["weekly", "monthly", "yearly"]),
 });
@@ -44,15 +45,19 @@ export default function CreatePlanDialog() {
   const usdEstimate = amount ? satsToUsd(amount) : "0.00";
 
   function onSubmit(data: FormValues) {
-    createPlan({
-      name: data.name,
-      description: data.description || "",
-      amount: data.amount,
-      interval: data.interval,
-    });
-    toast.success("Subscription plan created");
-    form.reset();
-    setOpen(false);
+    try {
+      createPlan({
+        name: data.name,
+        description: data.description || "",
+        amount: data.amount,
+        interval: data.interval,
+      });
+      toast.success("Subscription plan created");
+      form.reset();
+      setOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to create plan");
+    }
   }
 
   return (
@@ -75,7 +80,8 @@ export default function CreatePlanDialog() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Plan Name</FormLabel>
-                  <FormControl><Input placeholder="e.g. Pro Hosting" {...field} /></FormControl>
+                  <FormControl><Input placeholder="e.g. Pro Hosting" maxLength={CONTRACT_LIMITS.SUBSCRIPTION_NAME} {...field} /></FormControl>
+                  <p className="text-xs text-muted-foreground text-right">{field.value?.length || 0}/{CONTRACT_LIMITS.SUBSCRIPTION_NAME}</p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -86,7 +92,8 @@ export default function CreatePlanDialog() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Description</FormLabel>
-                  <FormControl><Textarea placeholder="What's included…" className="resize-none" {...field} /></FormControl>
+                  <FormControl><Textarea placeholder="What's included…" className="resize-none" maxLength={CONTRACT_LIMITS.DESCRIPTION} {...field} /></FormControl>
+                  <p className="text-xs text-muted-foreground text-right">{field.value?.length || 0}/{CONTRACT_LIMITS.DESCRIPTION}</p>
                   <FormMessage />
                 </FormItem>
               )}
@@ -96,7 +103,7 @@ export default function CreatePlanDialog() {
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount (sBTC)</FormLabel>
+                  <FormLabel>Amount (sats)</FormLabel>
                   <FormControl><Input type="number" placeholder="50000" {...field} /></FormControl>
                   {amount > 0 && (
                     <p className="text-caption text-muted-foreground">≈ ${usdEstimate} USD</p>
