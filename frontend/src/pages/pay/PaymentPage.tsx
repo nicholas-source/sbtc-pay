@@ -2,8 +2,9 @@ import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2 } from "lucide-react";
-import { useInvoiceStore, type Payment } from "@/stores/invoice-store";
+import { useInvoiceStore, type Payment, type Invoice } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
+import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,20 +15,85 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { payInvoice, waitForTransaction } from "@/lib/stacks/contract";
+import { payInvoice, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { truncateAddress, NETWORK_MODE } from "@/lib/stacks/config";
 
-import { SATS_PER_BTC, BTC_USD_PRICE } from "@/lib/constants";
+import { SATS_PER_BTC, formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
+import { useBtcPrice } from "@/stores/wallet-store";
 
-function formatSats(sats: number) {
-  return sats.toLocaleString();
+function formatAmount(sats: number) {
+  return formatSbtc(sats);
 }
 
 function PaymentPage() {
   const { invoiceId } = useParams();
-  const invoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId));
+  const btcPriceUsd = useBtcPrice();
+  // Try local store first (merchant viewing their own invoice)
+  const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
   const simulatePayment = useInvoiceStore((s) => s.simulatePayment);
-  const { isConnected, isConnecting, address, sbtcBalance, connect, connectionError, clearError } = useWalletStore();
+  const { isConnected, isConnecting, address, sbtcBalance, connect, connectionError, clearError, fetchBalances } = useWalletStore();
+
+  const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+
+  // If not in local store, fetch from Supabase (customer visiting pay link)
+  useEffect(() => {
+    if (storeInvoice || !invoiceId) return;
+    const numericId = parseInt(invoiceId, 10);
+    if (isNaN(numericId)) return;
+
+    setInvoiceLoading(true);
+    (async () => {
+      // Use wallet-aware client if connected (needed for paid/expired invoices via RLS)
+      const db = address ? supabaseWithWallet(address) : supabase;
+      const { data: row } = await db
+        .from("invoices")
+        .select("*")
+        .eq("id", numericId)
+        .maybeSingle();
+
+      if (!row) { setInvoiceLoading(false); return; }
+
+      const [paymentsRes, refundsRes] = await Promise.all([
+        db.from("payments").select("*").eq("invoice_id", numericId),
+        db.from("refunds").select("*").eq("invoice_id", numericId),
+      ]);
+
+      const STATUS_MAP: Record<number, "pending" | "partial" | "paid" | "expired" | "cancelled" | "refunded"> = {
+        0: "pending", 1: "partial", 2: "paid", 3: "expired", 4: "cancelled", 5: "refunded",
+      };
+
+      setRemoteInvoice({
+        id: `INV-${row.id}`,
+        dbId: row.id,
+        amount: row.amount,
+        amountPaid: row.amount_paid,
+        memo: row.memo || "",
+        referenceId: row.reference_id || "",
+        status: STATUS_MAP[row.status] ?? "pending",
+        allowPartial: row.allow_partial,
+        allowOverpay: row.allow_overpay,
+        merchantAddress: row.merchant_principal,
+        payerAddress: row.payer || "",
+        createdAt: new Date(row.created_at),
+        expiresAt: null,
+        payments: (paymentsRes.data ?? []).map((p) => ({
+          timestamp: new Date(p.created_at),
+          amount: p.amount,
+          txId: p.tx_id || "",
+        })),
+        refunds: (refundsRes.data ?? []).map((r) => ({
+          timestamp: new Date(r.created_at),
+          amount: r.amount,
+          reason: r.reason || "",
+          txId: r.tx_id || "",
+        })),
+      });
+      setInvoiceLoading(false);
+    })();
+  }, [invoiceId, storeInvoice, address]);
+
+  const invoice = storeInvoice || remoteInvoice;
 
   const [paymentState, setPaymentState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [completedPayment, setCompletedPayment] = useState<Payment | null>(null);
@@ -46,9 +112,9 @@ function PaymentPage() {
     };
   }, []);
 
-  // Check if this is a blockchain invoice (numeric ID)
-  const isBlockchainInvoice = invoiceId && /^\d+$/.test(invoiceId);
-  const blockchainInvoiceId = isBlockchainInvoice ? parseInt(invoiceId, 10) : null;
+  // Check if this is a blockchain invoice (has a DB/on-chain id)
+  const isBlockchainInvoice = invoice && invoice.dbId > 0;
+  const blockchainInvoiceId = isBlockchainInvoice ? invoice.dbId : null;
 
   const remaining = useMemo(() => {
     if (!invoice) return 0;
@@ -59,14 +125,19 @@ function PaymentPage() {
   const effectivePayAmount = useMemo(() => {
     if (!invoice) return 0;
     if (invoice.allowPartial && payAmount !== "") {
-      const val = parseInt(payAmount, 10);
-      if (!isNaN(val) && val > 0) return Math.min(val, remaining);
+      const val = parseFloat(payAmount);
+      if (!isNaN(val) && val > 0) return Math.min(sbtcToSats(val), remaining);
     }
     return remaining;
   }, [invoice, payAmount, remaining]);
 
   const handlePay = useCallback(async () => {
     if (!invoice || effectivePayAmount <= 0 || paymentState !== "idle") return;
+    // Guard: don't allow paying already-paid/expired/cancelled invoices
+    if (invoice.status === "paid" || invoice.status === "expired" || invoice.status === "cancelled" || invoice.status === "refunded") {
+      toast.error(`This invoice is ${invoice.status} and cannot be paid.`);
+      return;
+    }
     confirmedAmount.current = effectivePayAmount;
     setPaymentState("confirming");
     setErrorMessage(null);
@@ -76,37 +147,34 @@ function PaymentPage() {
         // Real blockchain payment
         toast.info("Please confirm the transaction in your wallet");
         
-        const result = await payInvoice(
-          blockchainInvoiceId,
-          BigInt(effectivePayAmount),
-          address
-        );
+        const result = await payInvoice({
+          invoiceId: blockchainInvoiceId,
+          amount: BigInt(effectivePayAmount),
+          payerAddress: address,
+        });
 
         if (!mountedRef.current) return;
 
         if (result.txId) {
           setTxId(result.txId);
-          toast.success("Transaction submitted, waiting for confirmation");
-          
-          // Wait for transaction confirmation
-          try {
-            await waitForTransaction(result.txId);
-            if (!mountedRef.current) return;
-            toast.success("Payment confirmed");
-          } catch {
-            if (!mountedRef.current) return;
-            // Transaction may still be pending, that's ok
-            toast.info("Transaction submitted. Check back soon for confirmation");
-          }
+          // Show confirmed immediately with txId — don't block on chain confirmation
+          setCompletedPayment({
+            timestamp: new Date(),
+            amount: effectivePayAmount,
+            txId: result.txId,
+          });
+          setPaymentState("confirmed");
+          toast.success("Transaction submitted!");
+          // Refresh wallet balance after payment
+          fetchBalances();
+        } else {
+          setCompletedPayment({
+            timestamp: new Date(),
+            amount: effectivePayAmount,
+            txId: 'pending',
+          });
+          setPaymentState("confirmed");
         }
-
-        if (!mountedRef.current) return;
-        setCompletedPayment({
-          timestamp: new Date(),
-          amount: effectivePayAmount,
-          txId: result.txId || 'pending',
-        });
-        setPaymentState("confirmed");
       } else {
         // Mock payment for demo invoices
         await new Promise((r) => setTimeout(r, 2000));
@@ -117,11 +185,34 @@ function PaymentPage() {
       }
     } catch (error) {
       if (!mountedRef.current) return;
-      setErrorMessage(error instanceof Error ? error.message : "Payment failed");
+      // Map contract error codes to friendly messages
+      let message = "Payment failed";
+      if (error instanceof Error) {
+        const codeMatch = error.message.match(/u(\d{4})/);
+        if (codeMatch) {
+          const code = parseInt(codeMatch[1], 10);
+          message = CONTRACT_ERRORS[code] || error.message;
+        } else {
+          message = error.message;
+        }
+      }
+      setErrorMessage(message);
       setPaymentState("error");
-      toast.error(error instanceof Error ? error.message : "Something went wrong with your payment. Please try again.");
+      toast.error(message);
     }
-  }, [invoice, effectivePayAmount, paymentState, isBlockchainInvoice, blockchainInvoiceId, address, simulatePayment]);
+  }, [invoice, effectivePayAmount, paymentState, isBlockchainInvoice, blockchainInvoiceId, address, simulatePayment, fetchBalances]);
+
+  // --- Loading ---
+  if (invoiceLoading) {
+    return (
+      <PageShell>
+        <div className="flex flex-col items-center gap-4 py-12 text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="text-body-sm text-muted-foreground">Loading invoice...</p>
+        </div>
+      </PageShell>
+    );
+  }
 
   // --- Not Found ---
   if (!invoice) {
@@ -206,29 +297,31 @@ function PaymentPage() {
 
   // --- Awaiting Payment ---
   const paidPercent = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
-  const usdAmount = (remaining / SATS_PER_BTC) * BTC_USD_PRICE;
+  const usdAmount = (remaining / SATS_PER_BTC) * btcPriceUsd;
   const feeSats = Math.round(remaining * 0.005); // 0.5% fee
   const merchantReceives = remaining - feeSats;
   // sbtcBalance is in sats (bigint), convert to number for comparison
   const walletBalanceSats = Number(sbtcBalance);
-  const hasSufficient = isConnected && walletBalanceSats >= remaining;
+  const hasSufficient = isConnected && walletBalanceSats >= effectivePayAmount;
 
   return (
     <PageShell>
       <InvoiceHeader invoice={invoice} />
 
-      <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-8">
-        <PaymentQRCode address={invoice.merchantAddress} />
+      {/* Amount Due */}
+      <div className="flex flex-col items-center gap-1 text-center">
+        <span className="text-caption text-muted-foreground uppercase tracking-wider">Amount Due</span>
+        <span className="text-3xl text-primary font-tabular font-bold">
+          {formatAmount(remaining)} <span className="text-lg font-medium">sBTC</span>
+        </span>
+        <span className="text-body-sm text-muted-foreground">
+          ~${usdAmount.toFixed(2)} USD
+        </span>
+      </div>
 
-        <div className="flex flex-col gap-1 text-center sm:text-left">
-          <span className="text-caption text-muted-foreground uppercase tracking-wider">Amount Due</span>
-          <span className="text-2xl sm:text-sats text-primary font-tabular">
-            {formatSats(remaining)} sats
-          </span>
-          <span className="text-body-sm text-muted-foreground">
-            ~${usdAmount.toFixed(2)} USD
-          </span>
-        </div>
+      {/* QR Code */}
+      <div className="flex justify-center">
+        <PaymentQRCode address={invoice.merchantAddress} />
       </div>
 
       <Separator className="bg-border" />
@@ -238,16 +331,16 @@ function PaymentPage() {
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Fee Breakdown</p>
         <div className="flex justify-between text-body-sm">
           <span className="text-muted-foreground">Amount</span>
-          <span className="text-foreground font-tabular">{formatSats(remaining)} sats</span>
+          <span className="text-foreground font-tabular">{formatAmount(remaining)} sBTC</span>
         </div>
         <div className="flex justify-between text-body-sm">
           <span className="text-muted-foreground">Fee (0.5%)</span>
-          <span className="text-foreground font-tabular">{formatSats(feeSats)} sats</span>
+          <span className="text-foreground font-tabular">{formatAmount(feeSats)} sBTC</span>
         </div>
         <Separator className="bg-border" />
         <div className="flex justify-between text-body-sm font-medium">
           <span className="text-muted-foreground">Merchant receives</span>
-          <span className="text-foreground font-tabular">{formatSats(merchantReceives)} sats</span>
+          <span className="text-foreground font-tabular">{formatAmount(merchantReceives)} sBTC</span>
         </div>
       </div>
 
@@ -256,7 +349,7 @@ function PaymentPage() {
         <div className={`flex items-center justify-between rounded-lg p-3 text-body-sm ${hasSufficient ? "bg-success/10 border border-success/30" : "bg-destructive/10 border border-destructive/30"}`}>
           <span className="text-muted-foreground">Your sBTC:</span>
           <span className={`font-tabular ${hasSufficient ? "text-success" : "text-destructive"}`}>
-            {formatSats(walletBalanceSats)} sats — {hasSufficient ? "Sufficient" : "Insufficient"}
+            {formatAmount(walletBalanceSats)} sBTC — {hasSufficient ? "Sufficient" : "Insufficient"}
           </span>
         </div>
       )}
@@ -294,15 +387,16 @@ function PaymentPage() {
       <div className="space-y-4">
         {invoice.allowPartial && (
           <div className="space-y-2">
-            <label className="text-caption text-muted-foreground">Payment amount (sats)</label>
+            <label className="text-caption text-muted-foreground">Payment amount (sBTC)</label>
             <Input
               type="number"
-              min={1}
-              max={remaining}
-              placeholder={formatSats(remaining)}
+              step="0.00000001"
+              min={0.00000001}
+              max={satsToSbtc(remaining)}
+              placeholder={formatAmount(remaining)}
               value={payAmount}
               onChange={(e) => setPayAmount(e.target.value)}
-              className="font-tabular"
+              className="font-tabular [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
         )}
@@ -360,7 +454,7 @@ function PaymentPage() {
             {paymentState === "confirming" ? (
               <><Loader2 className="h-5 w-5 animate-spin" />Processing...</>
             ) : (
-              <><Bitcoin className="h-5 w-5" />Pay {formatSats(effectivePayAmount)} sats</>
+              <><Bitcoin className="h-5 w-5" />Pay {formatAmount(effectivePayAmount)} sBTC</>
             )}
           </Button>
         )}
