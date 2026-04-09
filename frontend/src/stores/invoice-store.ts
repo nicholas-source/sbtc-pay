@@ -44,6 +44,8 @@ interface CreateInvoiceData {
   expiresAt?: Date | null;
   allowPartial?: boolean;
   allowOverpay?: boolean;
+  merchantAddress?: string;
+  txId?: string;
 }
 
 interface InvoiceStore {
@@ -173,7 +175,8 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
 
   createInvoice: (data) => {
     // Optimistic local add — real invoice is created on-chain,
-    // then indexed by chainhook webhook into Supabase
+    // then indexed by chainhook webhook into Supabase.
+    // This gives immediate UI feedback while waiting for confirmation.
     const invoice: Invoice = {
       id: generateId(),
       dbId: 0,
@@ -184,7 +187,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       status: "pending",
       allowPartial: data.allowPartial ?? false,
       allowOverpay: data.allowOverpay ?? false,
-      merchantAddress: "",
+      merchantAddress: data.merchantAddress || "",
       payerAddress: "",
       createdAt: new Date(),
       expiresAt: data.expiresAt ?? null,
@@ -207,23 +210,22 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
 
     if (invoice.dbId > 0) {
       // On-chain invoice — call contract
-      toast.info("Please confirm the cancellation in your wallet");
-      const { txId } = await cancelInvoiceOnChain(invoice.dbId);
-      toast.success("Cancellation submitted!", { description: "Will update once confirmed." });
-      // Optimistic local update
-      set((state) => ({
-        invoices: state.invoices.map((inv) =>
-          inv.id === id ? { ...inv, status: "cancelled" as InvoiceStatus } : inv
-        ),
-      }));
-    } else {
-      // Local-only invoice
-      set((state) => ({
-        invoices: state.invoices.map((inv) =>
-          inv.id === id ? { ...inv, status: "cancelled" as InvoiceStatus } : inv
-        ),
-      }));
+      try {
+        toast.info("Please confirm the cancellation in your wallet");
+        await cancelInvoiceOnChain(invoice.dbId);
+        toast.success("Cancellation submitted!", { description: "Will update once confirmed." });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Cancellation failed";
+        toast.error("Cancellation failed", { description: message });
+        return; // Don't update local state if tx failed
+      }
     }
+    // Optimistic local update
+    set((state) => ({
+      invoices: state.invoices.map((inv) =>
+        inv.id === id ? { ...inv, status: "cancelled" as InvoiceStatus } : inv
+      ),
+    }));
   },
 
   refundInvoice: async (id, amount, reason) => {
@@ -232,14 +234,20 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
 
     if (invoice.dbId > 0) {
       // On-chain invoice — call contract
-      toast.info("Please confirm the refund in your wallet");
-      const { txId } = await refundInvoiceOnChain({
-        invoiceId: invoice.dbId,
-        refundAmount: BigInt(amount),
-        reason,
-        merchantAddress: invoice.merchantAddress,
-      });
-      toast.success("Refund submitted!", { description: "Will update once confirmed." });
+      try {
+        toast.info("Please confirm the refund in your wallet");
+        await refundInvoiceOnChain({
+          invoiceId: invoice.dbId,
+          refundAmount: BigInt(amount),
+          reason,
+          merchantAddress: invoice.merchantAddress,
+        });
+        toast.success("Refund submitted!", { description: "Will update once confirmed." });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Refund failed";
+        toast.error("Refund failed", { description: message });
+        return false; // Don't update local state if tx failed
+      }
     }
 
     // Optimistic local update
