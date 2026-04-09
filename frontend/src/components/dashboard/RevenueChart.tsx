@@ -10,37 +10,54 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { format, subDays, subWeeks, subMonths } from "date-fns";
+import { format, subDays, subWeeks, subMonths, startOfDay, startOfWeek, startOfMonth } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { satsToSbtc, formatSbtcCompact, BTC_USD } from "@/lib/constants";
+import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
 
 type Period = "daily" | "weekly" | "monthly";
 
-function generateData(period: Period) {
+function buildRevenueData(invoices: Invoice[], period: Period) {
   const now = new Date();
-  const seed = (i: number) => {
-    const x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
-    return x - Math.floor(x);
-  };
 
+  // Build time buckets
+  const buckets: { key: string; label: string; start: Date }[] = [];
   if (period === "daily") {
-    return Array.from({ length: 30 }, (_, i) => {
-      const date = subDays(now, 29 - i);
-      const sats = Math.round(50000 + seed(i) * 150000);
-      return { date: format(date, "MMM d"), sats, usd: +(sats * BTC_USD).toFixed(2) };
-    });
+    for (let i = 29; i >= 0; i--) {
+      const d = subDays(now, i);
+      buckets.push({ key: format(d, "yyyy-MM-dd"), label: format(d, "MMM d"), start: startOfDay(d) });
+    }
+  } else if (period === "weekly") {
+    for (let i = 11; i >= 0; i--) {
+      const d = subWeeks(now, i);
+      buckets.push({ key: format(startOfWeek(d), "yyyy-MM-dd"), label: format(d, "MMM d"), start: startOfWeek(d) });
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      const d = subMonths(now, i);
+      buckets.push({ key: format(d, "yyyy-MM"), label: format(d, "MMM yyyy"), start: startOfMonth(d) });
+    }
   }
-  if (period === "weekly") {
-    return Array.from({ length: 12 }, (_, i) => {
-      const date = subWeeks(now, 11 - i);
-      const sats = Math.round(300000 + seed(i + 50) * 700000);
-      return { date: format(date, "MMM d"), sats, usd: +(sats * BTC_USD).toFixed(2) };
-    });
+
+  // Sum paid invoice amounts into buckets
+  const satsMap = new Map<string, number>();
+  buckets.forEach((b) => satsMap.set(b.key, 0));
+
+  for (const inv of invoices) {
+    if (inv.amountPaid <= 0) continue;
+    const d = new Date(inv.createdAt);
+    let key: string;
+    if (period === "daily") key = format(d, "yyyy-MM-dd");
+    else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
+    else key = format(d, "yyyy-MM");
+    if (satsMap.has(key)) {
+      satsMap.set(key, satsMap.get(key)! + inv.amountPaid);
+    }
   }
-  return Array.from({ length: 6 }, (_, i) => {
-    const date = subMonths(now, 5 - i);
-    const sats = Math.round(1200000 + seed(i + 100) * 3000000);
-    return { date: format(date, "MMM yyyy"), sats, usd: +(sats * BTC_USD).toFixed(2) };
+
+  return buckets.map((b) => {
+    const sats = satsMap.get(b.key) || 0;
+    return { date: b.label, sats, usd: +(sats * BTC_USD).toFixed(2) };
   });
 }
 
@@ -62,7 +79,9 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 export default function RevenueChart() {
   const [period, setPeriod] = useState<Period>("daily");
   const isMobile = useIsMobile();
-  const data = useMemo(() => generateData(period), [period]);
+  const invoices = useInvoiceStore((s) => s.invoices);
+  const data = useMemo(() => buildRevenueData(invoices, period), [invoices, period]);
+  const hasRevenue = data.some((d) => d.sats > 0);
 
   return (
     <Card>
@@ -82,6 +101,11 @@ export default function RevenueChart() {
       </CardHeader>
       <CardContent>
         <div className="h-[280px] sm:h-[320px]">
+          {!hasRevenue ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+              No revenue yet. Create invoices and receive payments to see your chart.
+            </div>
+          ) : (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 4, right: 4, left: isMobile ? -20 : 0, bottom: 0 }}>
               <defs>
@@ -118,6 +142,7 @@ export default function RevenueChart() {
               />
             </AreaChart>
           </ResponsiveContainer>
+          )}
         </div>
       </CardContent>
     </Card>
