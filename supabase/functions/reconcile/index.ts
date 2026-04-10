@@ -77,9 +77,10 @@ function flattenCvJson(cv: any): unknown {
   if (t === "principal") return v;
   if (t?.startsWith("(string-ascii") || t?.startsWith("(string-utf8")) return v;
   if (t?.startsWith("buff") || t?.startsWith("(buff")) return v;
-  if (t === "none" || t?.includes("none")) return null;
+  if (t === "none") return null;
   if (t?.startsWith("(optional") || t?.startsWith("(some")) {
-    return v === null || v === undefined ? null : flattenCvJson(v);
+    if (v === null || v === undefined) return null;
+    return flattenCvJson(v);
   }
   if (t?.startsWith("(response") || t?.startsWith("(ok") || t?.startsWith("(err")) {
     return flattenCvJson(v);
@@ -417,6 +418,37 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
+  // Debug mode: ?debug=invoice&id=10 returns raw chain data
+  const url = new URL(req.url);
+  if (url.searchParams.get("debug") === "invoice") {
+    const id = Number(url.searchParams.get("id") ?? 10);
+    try {
+      const rawResult = await fetchCallReadOnlyFunction({
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: CONTRACT_NAME,
+        functionName: "get-invoice",
+        functionArgs: [Cl.uint(id)],
+        network: NETWORK,
+        senderAddress: SENDER_ADDRESS,
+      });
+      const json = cvToJSON(rawResult);
+      const flat = flattenCvJson(json);
+      const chain = await callReadOnly("get-invoice", [Cl.uint(id)]);
+      const { data: row } = await supabase
+        .from("invoices")
+        .select("id, status, amount, amount_paid, expires_at_block, payer")
+        .eq("id", id)
+        .single();
+      const burnHeight = await fetchBurnBlockHeight().catch(() => 0);
+      return new Response(JSON.stringify({ rawJsonType: json?.type, flat, flatType: typeof flat, chain, supabase: row, burnHeight }, null, 2), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: String(e) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }
+
   const start = Date.now();
 
   try {
@@ -461,14 +493,16 @@ Deno.serve(async (req: Request) => {
     );
 
     // Log reconciliation run
-    await supabase.from("events").insert({
-      event_type: "reconciliation",
-      tx_id: `reconcile-${Date.now()}`,
-      block_height: burnHeight,
-      block_hash: "",
-      contract_identifier: CONTRACT_ID,
-      payload: result,
-    }).catch(() => {}); // non-critical
+    try {
+      await supabase.from("events").insert({
+        event_type: "reconciliation",
+        tx_id: `reconcile-${Date.now()}`,
+        block_height: burnHeight,
+        block_hash: "",
+        contract_identifier: CONTRACT_ID,
+        payload: result,
+      });
+    } catch { /* non-critical */ }
 
     return new Response(JSON.stringify(result), {
       status: 200,
