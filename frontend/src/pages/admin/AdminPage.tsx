@@ -147,10 +147,10 @@ export default function AdminPage() {
                 <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-info" />{stats.invoiceBreakdown.partial} Partial</span>
               )}
               {stats.invoiceBreakdown.expired > 0 && (
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />{stats.invoiceBreakdown.expired} Expired</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-destructive" />{stats.invoiceBreakdown.expired} Expired</span>
               )}
               {stats.invoiceBreakdown.cancelled > 0 && (
-                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-destructive" />{stats.invoiceBreakdown.cancelled} Cancelled</span>
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />{stats.invoiceBreakdown.cancelled} Cancelled</span>
               )}
               {stats.invoiceBreakdown.refunded > 0 && (
                 <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-secondary" />{stats.invoiceBreakdown.refunded} Refunded</span>
@@ -458,7 +458,14 @@ export default function AdminPage() {
                           </AlertDialog>
                         )}
                         {m.isSuspended && (
-                          <span className="text-caption text-muted-foreground italic px-2">Suspended</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="text-caption text-destructive/60 italic px-2 cursor-help">Suspended</span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-[200px] text-center">
+                              Merchant must self-reactivate via their own wallet
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                       </div>
                     </TableCell>
