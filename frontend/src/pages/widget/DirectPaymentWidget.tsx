@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { formatSbtc } from "@/lib/constants";
-import { useWalletStore } from "@/stores/wallet-store";
+import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
 import { payMerchantDirect, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl } from "@/lib/stacks/config";
 
@@ -28,6 +28,7 @@ export default function DirectPaymentWidget() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { isConnected, address, connect } = useWalletStore();
+  const satsToUsd = useSatsToUsd();
   const addr = merchantAddress || "";
 
   const handlePay = useCallback(async () => {
@@ -101,7 +102,7 @@ export default function DirectPaymentWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Payment Submitted</p>
               <p className="text-body-sm text-muted-foreground">
-                {formatSbtc(Number(payAmount))} sBTC sent to merchant
+                {formatSbtc(Number(payAmount))} sBTC <span className="text-muted-foreground/70">(≈ ${satsToUsd(Number(payAmount))} USD)</span> sent to merchant
               </p>
               <a
                 href={getExplorerTxUrl(txId)}
@@ -147,7 +148,7 @@ export default function DirectPaymentWidget() {
                 disabled={payState === "confirming"}
               />
               {payAmount && Number(payAmount) > 0 && (
-                <p className="text-caption text-muted-foreground">{formatSbtc(Number(payAmount))} sBTC</p>
+                <p className="text-caption text-muted-foreground">{formatSbtc(Number(payAmount))} sBTC <span className="text-muted-foreground/70">≈ ${satsToUsd(Number(payAmount))} USD</span></p>
               )}
             </div>
 

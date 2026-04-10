@@ -8,12 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { useWalletStore } from "@/stores/wallet-store";
+import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
+import { formatSbtc } from "@/lib/constants";
 
 type WidgetType = "direct" | "invoice" | "subscription";
 
 export default function WidgetGeneratorPage() {
   const walletAddress = useWalletStore((s) => s.address) || "";
+  const satsToUsd = useSatsToUsd();
   const [widgetType, setWidgetType] = useState<WidgetType>("direct");
   const [merchantAddress, setMerchantAddress] = useState(walletAddress);
   const [amount, setAmount] = useState("100000");
@@ -105,6 +107,9 @@ export default function WidgetGeneratorPage() {
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Default Amount (sats)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
+                  {amount && Number(amount) > 0 && (
+                    <p className="text-caption text-muted-foreground">{formatSbtc(Number(amount))} sBTC ≈ ${satsToUsd(Number(amount))} USD</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Memo</label>
@@ -141,6 +146,9 @@ export default function WidgetGeneratorPage() {
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Amount (sats)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
+                  {amount && Number(amount) > 0 && (
+                    <p className="text-caption text-muted-foreground">{formatSbtc(Number(amount))} sBTC ≈ ${satsToUsd(Number(amount))} USD</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Interval</label>

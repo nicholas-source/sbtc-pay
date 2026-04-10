@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatSbtc } from "@/lib/constants";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { useWalletStore } from "@/stores/wallet-store";
+import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl } from "@/lib/stacks/config";
 
@@ -33,6 +33,7 @@ export default function SubscriptionWidget() {
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
 
   const { isConnected, address, connect } = useWalletStore();
+  const satsToUsd = useSatsToUsd();
   const [subState, setSubState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -88,7 +89,7 @@ export default function SubscriptionWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Subscribed!</p>
               <p className="text-body-sm text-muted-foreground">
-                {formatSbtc(satsAmount)} sBTC / {interval}
+                {formatSbtc(satsAmount)} sBTC (≈ ${satsToUsd(satsAmount)} USD) / {interval}
               </p>
               <a href={getExplorerTxUrl(txId)} target="_blank" rel="noopener noreferrer"
                 className="text-primary text-body-sm underline">
@@ -116,7 +117,7 @@ export default function SubscriptionWidget() {
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
               <p className="text-2xl sm:text-sats text-primary font-tabular">{formatSbtc(satsAmount)} sBTC</p>
-              <p className="text-caption text-muted-foreground">per {interval}</p>
+              <p className="text-caption text-muted-foreground">≈ ${satsToUsd(satsAmount)} USD per {interval}</p>
             </div>
 
             {errorMsg && (
