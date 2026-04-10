@@ -15,7 +15,7 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
+import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
 import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
@@ -35,6 +35,15 @@ function PaymentPage() {
 
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [feeBps, setFeeBps] = useState<number>(50); // default 0.5%, updated from chain
+
+  // Fetch actual fee BPS from contract config
+  useEffect(() => {
+    const senderAddr = address || PAYMENT_CONTRACT.address;
+    getContractConfig(senderAddr).then((cfg) => {
+      if (cfg) setFeeBps(cfg.platformFeeBps);
+    }).catch(() => { /* keep default */ });
+  }, [address]);
 
   // If not in local store, fetch from on-chain (customer visiting pay link)
   useEffect(() => {
@@ -351,8 +360,12 @@ function PaymentPage() {
   // --- Awaiting Payment ---
   const paidPercent = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
   const usdAmount = (remaining / SATS_PER_BTC) * btcPriceUsd;
-  const feeSats = Math.round(remaining * 0.005); // 0.5% fee
+  // Match contract's calculate-fee: floor division, min 1 sat when amount > 0
+  const feeSats = remaining > 0
+    ? Math.max(Math.floor(remaining * feeBps / 10000), feeBps > 0 ? 1 : 0)
+    : 0;
   const merchantReceives = remaining - feeSats;
+  const feePercent = (feeBps / 100).toFixed(1);
   // sbtcBalance is in sats (bigint), convert to number for comparison
   const walletBalanceSats = Number(sbtcBalance);
   const hasSufficient = isConnected && walletBalanceSats >= effectivePayAmount;
@@ -387,7 +400,7 @@ function PaymentPage() {
           <span className="text-foreground font-tabular">{formatAmount(remaining)} sBTC</span>
         </div>
         <div className="flex justify-between text-body-sm">
-          <span className="text-muted-foreground">Fee (0.5%)</span>
+          <span className="text-muted-foreground">Fee ({feePercent}%)</span>
           <span className="text-foreground font-tabular">{formatAmount(feeSats)} sBTC</span>
         </div>
         <Separator className="bg-border" />
