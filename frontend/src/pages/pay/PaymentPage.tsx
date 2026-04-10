@@ -16,7 +16,7 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
 import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
-import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT } from "@/lib/stacks/config";
+import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight } from "@/lib/stacks/config";
 
 import { SATS_PER_BTC, formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
 import { useBtcPrice } from "@/stores/wallet-store";
@@ -62,6 +62,18 @@ function PaymentPage() {
 
       if (!onChain) { setInvoiceLoading(false); return; }
 
+      // Determine actual status: contract keeps status=pending even after expiry block
+      let invoiceStatus = STATUS_MAP[onChain.status] ?? "pending";
+      if (
+        (invoiceStatus === "pending" || invoiceStatus === "partial") &&
+        onChain.expiresAt > 0
+      ) {
+        const burnHeight = await fetchBurnBlockHeight().catch(() => 0);
+        if (burnHeight > 0 && burnHeight > onChain.expiresAt) {
+          invoiceStatus = "expired";
+        }
+      }
+
       // Fetch payments/refunds from Supabase (supplementary data)
       const db = address ? supabaseWithWallet(address) : supabase;
       const [paymentsRes, refundsRes] = await Promise.all([
@@ -76,7 +88,7 @@ function PaymentPage() {
         amountPaid: Number(onChain.amountPaid),
         memo: onChain.memo || "",
         referenceId: onChain.referenceId || "",
-        status: STATUS_MAP[onChain.status] ?? "pending",
+        status: invoiceStatus,
         allowPartial: onChain.allowPartial,
         allowOverpay: onChain.allowOverpay,
         merchantAddress: onChain.merchant,

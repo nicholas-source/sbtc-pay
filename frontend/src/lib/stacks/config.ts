@@ -88,6 +88,21 @@ export const EXPIRATION_PRESETS = [
   { label: '1 Year', blocks: 52560 },
 ] as const;
 
+/** Fetch the current burn (Bitcoin) block height from the Stacks API. */
+let _cachedBurnHeight: { value: number; ts: number } | null = null;
+export async function fetchBurnBlockHeight(): Promise<number> {
+  // Cache for 60s to avoid hammering the API
+  if (_cachedBurnHeight && Date.now() - _cachedBurnHeight.ts < 60_000) {
+    return _cachedBurnHeight.value;
+  }
+  const res = await fetch(`${API_URL}/v2/info`);
+  if (!res.ok) throw new Error('Failed to fetch block height');
+  const data = await res.json();
+  const h = data.burn_block_height as number;
+  _cachedBurnHeight = { value: h, ts: Date.now() };
+  return h;
+}
+
 // Utility functions
 export function getExplorerTxUrl(txId: string): string {
   const cleanTxId = txId.startsWith('0x') ? txId : `0x${txId}`;

@@ -13,7 +13,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { formatSbtc } from "@/lib/constants";
 import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
 import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS } from "@/lib/stacks/contract";
-import { PAYMENT_CONTRACT, getExplorerTxUrl } from "@/lib/stacks/config";
+import { PAYMENT_CONTRACT, getExplorerTxUrl, fetchBurnBlockHeight } from "@/lib/stacks/config";
 
 export default function InvoicePaymentWidget() {
   const { invoiceId } = useParams();
@@ -35,8 +35,20 @@ export default function InvoicePaymentWidget() {
 
     setLoading(true);
     const senderAddr = address || PAYMENT_CONTRACT.address;
-    getInvoiceOnChain(numericId, senderAddr).then((onChain) => {
+    Promise.all([
+      getInvoiceOnChain(numericId, senderAddr),
+      fetchBurnBlockHeight().catch(() => 0),
+    ]).then(([onChain, burnHeight]) => {
       if (!onChain) { setLoading(false); return; }
+      let invoiceStatus = STATUS_MAP[onChain.status] ?? "pending";
+      if (
+        burnHeight > 0 &&
+        onChain.expiresAt > 0 &&
+        burnHeight > onChain.expiresAt &&
+        (invoiceStatus === "pending" || invoiceStatus === "partial")
+      ) {
+        invoiceStatus = "expired";
+      }
       setRemoteInvoice({
         id: `INV-${numericId}`,
         dbId: numericId,
@@ -44,7 +56,7 @@ export default function InvoicePaymentWidget() {
         amountPaid: Number(onChain.amountPaid),
         memo: onChain.memo || "",
         referenceId: onChain.referenceId || "",
-        status: STATUS_MAP[onChain.status] ?? "pending",
+        status: invoiceStatus,
         allowPartial: onChain.allowPartial,
         allowOverpay: onChain.allowOverpay,
         merchantAddress: onChain.merchant,

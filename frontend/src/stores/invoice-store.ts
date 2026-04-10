@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain } from "@/lib/stacks/contract";
-import { API_URL } from "@/lib/stacks/config";
+import { API_URL, fetchBurnBlockHeight } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -163,6 +163,7 @@ function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtB
 /**
  * Reconcile Supabase invoice data against on-chain contract state.
  * Filters out v3 ghost invoices and corrects stale amounts/status.
+ * Detects client-side expiration (contract stores status=pending even after expiry block).
  * Falls back to Supabase data if chain reads fail entirely.
  */
 async function reconcileWithChain(
@@ -173,9 +174,12 @@ async function reconcileWithChain(
   const chainable = invoices.filter((inv) => inv.dbId > 0);
   if (chainable.length === 0) return invoices;
 
-  const chainResults = await Promise.allSettled(
-    chainable.map((inv) => getInvoiceOnChain(inv.dbId, merchantPrincipal)),
-  );
+  const [chainResults, burnHeight] = await Promise.all([
+    Promise.allSettled(
+      chainable.map((inv) => getInvoiceOnChain(inv.dbId, merchantPrincipal)),
+    ),
+    fetchBurnBlockHeight().catch(() => 0),
+  ]);
 
   // If ALL chain reads failed (API down), fall back to Supabase data
   if (chainResults.every((r) => r.status === "rejected")) {
@@ -203,7 +207,17 @@ async function reconcileWithChain(
 
     const chainAmount = Number(chain.amount);
     const chainAmountPaid = Number(chain.amountPaid);
-    const chainStatus = STATUS_MAP[chain.status] ?? "pending";
+    let chainStatus = STATUS_MAP[chain.status] ?? "pending";
+
+    // Client-side expiration: contract keeps status=pending even after expiry block
+    if (
+      burnHeight > 0 &&
+      chain.expiresAt > 0 &&
+      burnHeight > chain.expiresAt &&
+      (chainStatus === "pending" || chainStatus === "partial")
+    ) {
+      chainStatus = "expired";
+    }
 
     if (
       inv.amount !== chainAmount ||
