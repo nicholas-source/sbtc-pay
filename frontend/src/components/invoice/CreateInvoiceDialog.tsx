@@ -10,7 +10,7 @@ import { useWalletStore } from "@/stores/wallet-store";
 import { toast } from "sonner";
 import { createInvoice as createInvoiceOnChain, waitForTransaction, CONTRACT_LIMITS } from "@/lib/stacks/contract";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -167,6 +167,7 @@ export default function CreateInvoiceDialog() {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Create Invoice</DialogTitle>
+          <DialogDescription>Fill in the details to generate a new payment invoice.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">

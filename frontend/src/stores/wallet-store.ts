@@ -257,8 +257,8 @@ export const useWalletStore = create<WalletState>()(
           const data = await response.json();
           const btcPriceUsd = data.bitcoin?.usd || BTC_USD_PRICE;
           set({ btcPriceUsd });
-        } catch (error) {
-          console.error('Failed to fetch BTC price:', error);
+        } catch {
+          // CoinGecko may block CORS from browser — silently use fallback
         }
       },
 

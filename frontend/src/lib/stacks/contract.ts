@@ -144,10 +144,13 @@ function deepUnwrapCv(val: unknown): unknown {
   if ('type' in obj && 'value' in obj && typeof obj.type === 'string') {
     const inner = obj.value;
     if (inner === null || inner === undefined) return null;
-    if (typeof inner !== 'object') return inner;
+    // Recurse: inner may itself be a {type, value} wrapper (e.g. some(principal))
+    const unwrapped = deepUnwrapCv(inner);
+    if (unwrapped === null || unwrapped === undefined) return null;
+    if (typeof unwrapped !== 'object') return unwrapped;
     // Tuple: recurse into each field
     const result: Record<string, unknown> = {};
-    for (const [key, field] of Object.entries(inner as Record<string, unknown>)) {
+    for (const [key, field] of Object.entries(unwrapped as Record<string, unknown>)) {
       result[key] = deepUnwrapCv(field);
     }
     return result;
