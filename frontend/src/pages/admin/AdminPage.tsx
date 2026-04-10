@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
   Shield, Pause, Play, Settings, Users, FileText, Repeat,
-  TrendingUp, AlertTriangle, CheckCircle2, XCircle, ArrowRightLeft,
-  Bitcoin, ChevronDown, ChevronUp, BadgeCheck, Ban,
+  TrendingUp, AlertTriangle, ArrowRightLeft,
+  Bitcoin, ChevronDown, ChevronUp, BadgeCheck, Ban, Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,8 +17,8 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
 import { useAdminStore } from "@/stores/admin-store";
+import { useWalletStore } from "@/stores/wallet-store";
 
 import { cn } from "@/lib/utils";
 import { formatSbtcCompact, formatSbtc } from "@/lib/constants";
@@ -61,24 +61,31 @@ function StatCard({ label, value, icon: Icon, accent = "primary" }: { label: str
 
 export default function AdminPage() {
 
-  function formatVolume(sats: number): string {
-    if (sats >= 1e9) return `${(sats / 1e9).toFixed(1)}B`;
-    if (sats >= 1e6) return `${(sats / 1e6).toFixed(1)}M`;
-    if (sats >= 1e3) return `${(sats / 1e3).toFixed(1)}K`;
-    return sats.toLocaleString();
-  }
-
+  const { address } = useWalletStore();
   const {
     contractPaused, toggleContractPause, feeBps, updateFeeBps,
     feeRecipient, updateFeeRecipient, pendingOwner, currentOwner,
     initiateOwnershipTransfer, cancelOwnershipTransfer,
-    merchants, stats, verifyMerchant, suspendMerchant, unsuspendMerchant,
+    merchants, stats, verifyMerchant, suspendMerchant,
+    isLoading, pendingAction, fetchAdminData, isContractOwner,
   } = useAdminStore();
+
+  useEffect(() => {
+    if (address) fetchAdminData(address);
+  }, [address, fetchAdminData]);
 
   const [newFeeBps, setNewFeeBps] = useState(feeBps.toString());
   const [newFeeRecipient, setNewFeeRecipient] = useState(feeRecipient);
   const [transferAddress, setTransferAddress] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+
+  // Sync local input state when chain data loads
+  useEffect(() => {
+    setNewFeeBps(feeBps.toString());
+  }, [feeBps]);
+  useEffect(() => {
+    setNewFeeRecipient(feeRecipient);
+  }, [feeRecipient]);
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -92,10 +99,24 @@ export default function AdminPage() {
             Contract owner controls &amp; platform management
           </p>
         </div>
-        <Badge variant="outline" className={contractPaused ? "border-destructive text-destructive" : "border-success text-success"}>
-          {contractPaused ? "Contract Paused" : "Contract Active"}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {isLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          <Badge variant="outline" className={contractPaused ? "border-destructive text-destructive" : "border-success text-success"}>
+            {contractPaused ? "Contract Paused" : "Contract Active"}
+          </Badge>
+        </div>
       </div>
+
+      {!isContractOwner && !isLoading && (
+        <Card className="border-warning/30 bg-warning/5">
+          <CardContent className="flex items-center gap-3 py-4">
+            <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
+            <p className="text-body-sm text-foreground">
+              Your connected wallet is not the contract owner. Admin actions will require the owner wallet.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Platform Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -126,8 +147,8 @@ export default function AdminPage() {
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant={contractPaused ? "default" : "destructive"} size="sm">
-                  {contractPaused ? <Play className="h-4 w-4 mr-1" /> : <Pause className="h-4 w-4 mr-1" />}
+                <Button variant={contractPaused ? "default" : "destructive"} size="sm" disabled={!!pendingAction}>
+                  {pendingAction === "pause" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : contractPaused ? <Play className="h-4 w-4 mr-1" /> : <Pause className="h-4 w-4 mr-1" />}
                   {contractPaused ? "Unpause" : "Pause"}
                 </Button>
               </AlertDialogTrigger>
@@ -142,7 +163,7 @@ export default function AdminPage() {
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => { toggleContractPause(); toast.success(contractPaused ? "Contract unpaused" : "Contract paused"); }}>
+                  <AlertDialogAction onClick={() => toggleContractPause()}>
                     Confirm
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -167,8 +188,8 @@ export default function AdminPage() {
                     className="w-24 font-mono"
                   />
                   <span className="text-caption text-muted-foreground">BPS ({(parseInt(newFeeBps) / 100 || 0).toFixed(2)}%)</span>
-                  <Button size="sm" variant="outline" onClick={() => { updateFeeBps(parseInt(newFeeBps)); toast.success("Fee updated"); }}>
-                    Update
+                  <Button size="sm" variant="outline" disabled={!!pendingAction} onClick={() => updateFeeBps(parseInt(newFeeBps))}>
+                    {pendingAction === "fee" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
                   </Button>
                 </div>
               </div>
@@ -178,8 +199,8 @@ export default function AdminPage() {
                 <p className="text-body font-medium text-foreground">Fee Recipient</p>
                 <div className="flex items-center gap-2">
                   <Input value={newFeeRecipient} onChange={(e) => setNewFeeRecipient(e.target.value)} className="font-mono text-caption" />
-                  <Button size="sm" variant="outline" onClick={() => { updateFeeRecipient(newFeeRecipient); toast.success("Recipient updated"); }}>
-                    Update
+                  <Button size="sm" variant="outline" disabled={!!pendingAction} onClick={() => updateFeeRecipient(newFeeRecipient)}>
+                    {pendingAction === "recipient" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
                   </Button>
                 </div>
               </div>
@@ -197,13 +218,15 @@ export default function AdminPage() {
                       <p className="text-caption text-foreground">Pending transfer to:</p>
                       <code className="text-caption font-mono text-muted-foreground">{pendingOwner}</code>
                     </div>
-                    <Button size="sm" variant="destructive" onClick={() => { cancelOwnershipTransfer(); toast.success("Transfer cancelled"); }}>Cancel</Button>
+                    <Button size="sm" variant="destructive" disabled={!!pendingAction} onClick={() => cancelOwnershipTransfer()}>
+                      {pendingAction === "cancelTransfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel"}
+                    </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <Input placeholder="New owner address" value={transferAddress} onChange={(e) => setTransferAddress(e.target.value)} className="font-mono text-caption" />
-                    <Button size="sm" variant="outline" onClick={() => { if (transferAddress) { initiateOwnershipTransfer(transferAddress); toast.success("Transfer initiated"); setTransferAddress(""); } }}>
-                      <ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer
+                    <Button size="sm" variant="outline" disabled={!!pendingAction || !transferAddress} onClick={() => { initiateOwnershipTransfer(transferAddress); setTransferAddress(""); }}>
+                      {pendingAction === "transfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer</>}
                     </Button>
                   </div>
                 )}
@@ -271,17 +294,13 @@ export default function AdminPage() {
                     <TableCell>
                       <div className="flex gap-1">
                         {!m.isVerified && (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Verify ${m.name}`} onClick={() => { verifyMerchant(m.id); toast.success(`${m.name} verified`); }}>
-                            <BadgeCheck className="h-4 w-4 text-success" />
+                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Verify ${m.name}`} disabled={!!pendingAction} onClick={() => verifyMerchant(m.id)}>
+                            {pendingAction === `verify-${m.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4 text-success" />}
                           </Button>
                         )}
-                        {m.isSuspended ? (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Unsuspend ${m.name}`} onClick={() => { unsuspendMerchant(m.id); toast.success(`${m.name} unsuspended`); }}>
-                            <CheckCircle2 className="h-4 w-4 text-success" />
-                          </Button>
-                        ) : (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Suspend ${m.name}`} onClick={() => { suspendMerchant(m.id); toast.success(`${m.name} suspended`); }}>
-                            <Ban className="h-4 w-4 text-destructive" />
+                        {!m.isSuspended && (
+                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Suspend ${m.name}`} disabled={!!pendingAction} onClick={() => suspendMerchant(m.id)}>
+                            {pendingAction === `suspend-${m.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4 text-destructive" />}
                           </Button>
                         )}
                       </div>

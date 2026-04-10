@@ -749,6 +749,76 @@ export async function transferOwnership(newOwner: string): Promise<{ txId: strin
   return { txId: response.txid };
 }
 
+/**
+ * Accept ownership (new owner must call)
+ */
+export async function acceptOwnership(): Promise<{ txId: string }> {
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'accept-ownership',
+    functionArgs: [],
+    network: NETWORK_MODE,
+  });
+
+  return { txId: response.txid };
+}
+
+/**
+ * Cancel a pending ownership transfer (owner only)
+ */
+export async function cancelOwnershipTransfer(): Promise<{ txId: string }> {
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'cancel-ownership-transfer',
+    functionArgs: [],
+    network: NETWORK_MODE,
+  });
+
+  return { txId: response.txid };
+}
+
+/**
+ * Set fee recipient (owner only)
+ */
+export async function setFeeRecipient(newRecipient: string): Promise<{ txId: string }> {
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'set-fee-recipient',
+    functionArgs: [Cl.principal(newRecipient)],
+    network: NETWORK_MODE,
+  });
+
+  return { txId: response.txid };
+}
+
+/**
+ * Verify a merchant (owner only)
+ */
+export async function verifyMerchant(merchantAddress: string): Promise<{ txId: string }> {
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'verify-merchant',
+    functionArgs: [Cl.principal(merchantAddress)],
+    network: NETWORK_MODE,
+  });
+
+  return { txId: response.txid };
+}
+
+/**
+ * Suspend a merchant (owner only)
+ */
+export async function suspendMerchant(merchantAddress: string): Promise<{ txId: string }> {
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'suspend-merchant',
+    functionArgs: [Cl.principal(merchantAddress)],
+    network: NETWORK_MODE,
+  });
+
+  return { txId: response.txid };
+}
+
 // ============================================
 // TRANSACTION MONITORING
 // ============================================

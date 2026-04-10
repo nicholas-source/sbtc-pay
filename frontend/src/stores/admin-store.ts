@@ -1,4 +1,20 @@
 import { create } from "zustand";
+import { toast } from "sonner";
+import {
+  getPlatformStats as getStatsOnChain,
+  getContractConfig as getConfigOnChain,
+  pauseContract as pauseContractOnChain,
+  unpauseContract as unpauseContractOnChain,
+  setPlatformFee as setFeeOnChain,
+  setFeeRecipient as setRecipientOnChain,
+  transferOwnership as transferOnChain,
+  cancelOwnershipTransfer as cancelTransferOnChain,
+  acceptOwnership as acceptOwnershipOnChain,
+  verifyMerchant as verifyOnChain,
+  suspendMerchant as suspendOnChain,
+  CONTRACT_ERRORS,
+} from "@/lib/stacks/contract";
+import { supabaseWithWallet } from "@/lib/supabase/client";
 
 export interface PlatformStats {
   totalMerchants: number;
@@ -28,55 +44,222 @@ interface AdminState {
   currentOwner: string;
   merchants: MerchantEntry[];
   stats: PlatformStats;
+  isLoading: boolean;
+  pendingAction: string | null; // tracks which action is in-flight
 
-  toggleContractPause: () => void;
-  updateFeeBps: (bps: number) => void;
-  updateFeeRecipient: (addr: string) => void;
-  initiateOwnershipTransfer: (newOwner: string) => void;
-  cancelOwnershipTransfer: () => void;
-  acceptOwnership: () => void;
-  verifyMerchant: (id: string) => void;
-  suspendMerchant: (id: string) => void;
-  unsuspendMerchant: (id: string) => void;
+  fetchAdminData: (walletAddress: string) => Promise<void>;
+  toggleContractPause: () => Promise<void>;
+  updateFeeBps: (bps: number) => Promise<void>;
+  updateFeeRecipient: (addr: string) => Promise<void>;
+  initiateOwnershipTransfer: (newOwner: string) => Promise<void>;
+  cancelOwnershipTransfer: () => Promise<void>;
+  acceptOwnership: () => Promise<void>;
+  verifyMerchant: (id: string) => Promise<void>;
+  suspendMerchant: (id: string) => Promise<void>;
 }
 
-const seedMerchants: MerchantEntry[] = [
-  { id: "M-001", name: "sBTC Commerce", address: "SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7", isVerified: true, isSuspended: false, registeredAt: new Date("2025-11-01"), invoiceCount: 47, totalVolume: 15200000 },
-  { id: "M-002", name: "Bitcoin Bazaar", address: "SP1HTBVD3JG9C05J7HBJTHGR0GGW7KXW28M5JS8QE", isVerified: true, isSuspended: false, registeredAt: new Date("2025-11-15"), invoiceCount: 23, totalVolume: 8400000 },
-  { id: "M-003", name: "Stacks Shop", address: "SP3FBR2AGK5H9QBDH3EEN6DF8EK8JY7RX8QJ5SVTE", isVerified: false, isSuspended: false, registeredAt: new Date("2025-12-01"), invoiceCount: 8, totalVolume: 2100000 },
-  { id: "M-004", name: "CryptoGoods", address: "SP2C2YFP12AJZB1MAEP5RQHWER4NKFF4J5XFGYW7P", isVerified: false, isSuspended: true, registeredAt: new Date("2025-12-10"), invoiceCount: 3, totalVolume: 450000 },
-  { id: "M-005", name: "DeFi Merch", address: "SP1K1A1PMGW2ZJCNF46NWZWHG8TS1D23EGH1KNQ60", isVerified: true, isSuspended: false, registeredAt: new Date("2026-01-05"), invoiceCount: 31, totalVolume: 11800000 },
-];
+/** Map contract error codes to user-friendly messages */
+function contractErrorMsg(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  for (const [code, label] of Object.entries(CONTRACT_ERRORS)) {
+    if (msg.includes(code)) return label;
+  }
+  return msg;
+}
 
 export const useAdminStore = create<AdminState>((set, get) => ({
-  isContractOwner: true,
+  isContractOwner: false,
   contractPaused: false,
-  feeBps: 50, // 0.5%
-  feeRecipient: "SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7",
+  feeBps: 50,
+  feeRecipient: "",
   pendingOwner: null,
-  currentOwner: "SP2J6ZY48GV1EZ5V2V5RB9MP66SW86PYKKNRV9EJ7",
-  merchants: seedMerchants,
+  currentOwner: "",
+  merchants: [],
   stats: {
-    totalMerchants: 5,
-    totalInvoices: 112,
-    totalSubscriptions: 34,
-    totalVolume: 37950000,
-    feesCollected: 189750,
+    totalMerchants: 0,
+    totalInvoices: 0,
+    totalSubscriptions: 0,
+    totalVolume: 0,
+    feesCollected: 0,
+  },
+  isLoading: false,
+  pendingAction: null,
+
+  fetchAdminData: async (walletAddress) => {
+    set({ isLoading: true });
+    try {
+      const [statsResult, configResult] = await Promise.allSettled([
+        getStatsOnChain(walletAddress),
+        getConfigOnChain(walletAddress),
+      ]);
+
+      const stats = statsResult.status === "fulfilled" && statsResult.value
+        ? {
+            totalMerchants: statsResult.value.totalMerchants,
+            totalInvoices: statsResult.value.totalInvoices,
+            totalSubscriptions: statsResult.value.totalSubscriptions,
+            totalVolume: Number(statsResult.value.totalVolume),
+            feesCollected: Number(statsResult.value.totalFeesCollected),
+          }
+        : get().stats;
+
+      const config = configResult.status === "fulfilled" ? configResult.value : null;
+
+      // Fetch registered merchants from Supabase
+      const db = supabaseWithWallet(walletAddress);
+      const { data: merchantRows } = await db
+        .from("merchants")
+        .select("*")
+        .order("id", { ascending: false });
+
+      const merchants: MerchantEntry[] = (merchantRows ?? []).map((m) => ({
+        id: `M-${m.id}`,
+        name: m.name || "Unknown",
+        address: m.principal,
+        isVerified: m.is_verified ?? false,
+        isSuspended: !(m.is_active ?? true),
+        registeredAt: new Date(m.created_at),
+        invoiceCount: 0,
+        totalVolume: 0,
+      }));
+
+      set({
+        stats,
+        contractPaused: config?.isPaused ?? false,
+        feeBps: config?.platformFeeBps ?? 50,
+        feeRecipient: config?.feeRecipient ?? "",
+        currentOwner: config?.owner ?? "",
+        isContractOwner: config?.owner === walletAddress,
+        merchants,
+        isLoading: false,
+      });
+    } catch {
+      set({ isLoading: false });
+    }
   },
 
-  toggleContractPause: () => set((s) => ({ contractPaused: !s.contractPaused })),
-  updateFeeBps: (feeBps) => set({ feeBps }),
-  updateFeeRecipient: (feeRecipient) => set({ feeRecipient }),
-  initiateOwnershipTransfer: (newOwner) => set({ pendingOwner: newOwner }),
-  cancelOwnershipTransfer: () => set({ pendingOwner: null }),
-  acceptOwnership: () => {
-    const pending = get().pendingOwner;
-    if (pending) set({ currentOwner: pending, pendingOwner: null });
+  toggleContractPause: async () => {
+    const wasPaused = get().contractPaused;
+    set({ pendingAction: "pause" });
+    try {
+      toast.info("Please confirm in your wallet");
+      if (wasPaused) {
+        await unpauseContractOnChain();
+      } else {
+        await pauseContractOnChain();
+      }
+      set({ contractPaused: !wasPaused });
+      toast.success(wasPaused ? "Contract unpaused" : "Contract paused");
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
   },
-  verifyMerchant: (id) =>
-    set((s) => ({ merchants: s.merchants.map((m) => (m.id === id ? { ...m, isVerified: true } : m)) })),
-  suspendMerchant: (id) =>
-    set((s) => ({ merchants: s.merchants.map((m) => (m.id === id ? { ...m, isSuspended: true } : m)) })),
-  unsuspendMerchant: (id) =>
-    set((s) => ({ merchants: s.merchants.map((m) => (m.id === id ? { ...m, isSuspended: false } : m)) })),
+
+  updateFeeBps: async (bps) => {
+    set({ pendingAction: "fee" });
+    try {
+      toast.info("Please confirm in your wallet");
+      await setFeeOnChain(bps);
+      set({ feeBps: bps });
+      toast.success(`Fee updated to ${(bps / 100).toFixed(2)}%`);
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
+
+  updateFeeRecipient: async (addr) => {
+    set({ pendingAction: "recipient" });
+    try {
+      toast.info("Please confirm in your wallet");
+      await setRecipientOnChain(addr);
+      set({ feeRecipient: addr });
+      toast.success("Fee recipient updated");
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
+
+  initiateOwnershipTransfer: async (newOwner) => {
+    set({ pendingAction: "transfer" });
+    try {
+      toast.info("Please confirm in your wallet");
+      await transferOnChain(newOwner);
+      set({ pendingOwner: newOwner });
+      toast.success("Ownership transfer initiated");
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
+
+  cancelOwnershipTransfer: async () => {
+    set({ pendingAction: "cancelTransfer" });
+    try {
+      toast.info("Please confirm in your wallet");
+      await cancelTransferOnChain();
+      set({ pendingOwner: null });
+      toast.success("Ownership transfer cancelled");
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
+
+  acceptOwnership: async () => {
+    set({ pendingAction: "accept" });
+    try {
+      toast.info("Please confirm in your wallet");
+      await acceptOwnershipOnChain();
+      set((s) => ({ currentOwner: s.pendingOwner ?? s.currentOwner, pendingOwner: null }));
+      toast.success("Ownership transferred");
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
+
+  verifyMerchant: async (id) => {
+    const merchant = get().merchants.find((m) => m.id === id);
+    if (!merchant) return;
+    set({ pendingAction: `verify-${id}` });
+    try {
+      toast.info("Please confirm in your wallet");
+      await verifyOnChain(merchant.address);
+      set((s) => ({
+        merchants: s.merchants.map((m) => (m.id === id ? { ...m, isVerified: true } : m)),
+      }));
+      toast.success(`${merchant.name} verified`);
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
+
+  suspendMerchant: async (id) => {
+    const merchant = get().merchants.find((m) => m.id === id);
+    if (!merchant) return;
+    set({ pendingAction: `suspend-${id}` });
+    try {
+      toast.info("Please confirm in your wallet");
+      await suspendOnChain(merchant.address);
+      set((s) => ({
+        merchants: s.merchants.map((m) => (m.id === id ? { ...m, isSuspended: true } : m)),
+      }));
+      toast.success(`${merchant.name} suspended`);
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
 }));
