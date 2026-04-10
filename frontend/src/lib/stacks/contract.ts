@@ -331,7 +331,7 @@ export async function getContractConfig(senderAddress: string): Promise<Contract
     const result = await fetchCallReadOnlyFunction({
       contractAddress: PAYMENT_CONTRACT.address,
       contractName: PAYMENT_CONTRACT.name,
-      functionName: 'get-config',
+      functionName: 'get-contract-config',
       functionArgs: [],
       network: NETWORK_MODE,
       senderAddress,
