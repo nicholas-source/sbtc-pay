@@ -155,7 +155,12 @@ function deepUnwrapCv(val: unknown): unknown {
     }
     return result;
   }
-  return val;
+  // Top-level tuple (no {type, value} wrapper) — still recurse into each field
+  const result: Record<string, unknown> = {};
+  for (const [key, field] of Object.entries(obj)) {
+    result[key] = deepUnwrapCv(field);
+  }
+  return result;
 }
 
 // Parse a ClarityValue returned from a read-only call into a plain JS value
