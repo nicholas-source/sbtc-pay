@@ -34,7 +34,7 @@ export default function FeaturesSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="text-display text-foreground">
+          <h2 className="text-heading-lg sm:text-display text-foreground">
             Everything you need to{" "}
             <span className="text-secondary">accept sBTC</span>
           </h2>

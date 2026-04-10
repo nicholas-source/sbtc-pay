@@ -70,7 +70,7 @@ function SubscriptionsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-heading-lg text-foreground">Subscriptions</h1>
           <p className="text-body-sm text-muted-foreground mt-1">

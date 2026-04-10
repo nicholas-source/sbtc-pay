@@ -119,7 +119,7 @@ export default function AdminPage() {
       )}
 
       {/* Platform Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Merchants" value={stats.totalMerchants.toString()} icon={Users} accent="info" />
         <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
         <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />

@@ -23,7 +23,7 @@ export default function PricingSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-display text-foreground">
+          <h2 className="text-heading-lg sm:text-display text-foreground">
             Simple, transparent{" "}
             <span className="text-primary">pricing</span>
           </h2>
