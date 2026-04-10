@@ -139,7 +139,7 @@ export default function AdminPage() {
       </div>
 
       {/* Contract Controls */}
-      <Card>
+      <Card className={cn(!isContractOwner && !isLoading && "opacity-60")}>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-heading-sm">Contract Controls</CardTitle>
           <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)}>
@@ -158,7 +158,7 @@ export default function AdminPage() {
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant={contractPaused ? "default" : "destructive"} size="sm" disabled={!!pendingAction}>
+                <Button variant={contractPaused ? "default" : "destructive"} size="sm" disabled={!isContractOwner || !!pendingAction}>
                   {pendingAction === "pause" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : contractPaused ? <Play className="h-4 w-4 mr-1" /> : <Pause className="h-4 w-4 mr-1" />}
                   {contractPaused ? "Unpause" : "Pause"}
                 </Button>
@@ -197,9 +197,10 @@ export default function AdminPage() {
                     value={newFeeBps}
                     onChange={(e) => setNewFeeBps(e.target.value)}
                     className="w-24 font-mono"
+                    disabled={!isContractOwner}
                   />
                   <span className="text-caption text-muted-foreground">BPS ({(parseInt(newFeeBps) / 100 || 0).toFixed(2)}%)</span>
-                  <Button size="sm" variant="outline" disabled={!!pendingAction} onClick={() => updateFeeBps(parseInt(newFeeBps))}>
+                  <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction} onClick={() => updateFeeBps(parseInt(newFeeBps))}>
                     {pendingAction === "fee" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
                   </Button>
                 </div>
@@ -209,8 +210,8 @@ export default function AdminPage() {
               <div className="space-y-2">
                 <p className="text-body font-medium text-foreground">Fee Recipient</p>
                 <div className="flex items-center gap-2">
-                  <Input value={newFeeRecipient} onChange={(e) => setNewFeeRecipient(e.target.value)} className="font-mono text-caption" />
-                  <Button size="sm" variant="outline" disabled={!!pendingAction} onClick={() => updateFeeRecipient(newFeeRecipient)}>
+                  <Input value={newFeeRecipient} onChange={(e) => setNewFeeRecipient(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner} />
+                  <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction} onClick={() => updateFeeRecipient(newFeeRecipient)}>
                     {pendingAction === "recipient" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
                   </Button>
                 </div>
@@ -229,14 +230,14 @@ export default function AdminPage() {
                       <p className="text-caption text-foreground">Pending transfer to:</p>
                       <code className="text-caption font-mono text-muted-foreground">{pendingOwner}</code>
                     </div>
-                    <Button size="sm" variant="destructive" disabled={!!pendingAction} onClick={() => cancelOwnershipTransfer()}>
+                    <Button size="sm" variant="destructive" disabled={!isContractOwner || !!pendingAction} onClick={() => cancelOwnershipTransfer()}>
                       {pendingAction === "cancelTransfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel"}
                     </Button>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <Input placeholder="New owner address" value={transferAddress} onChange={(e) => setTransferAddress(e.target.value)} className="font-mono text-caption" />
-                    <Button size="sm" variant="outline" disabled={!!pendingAction || !transferAddress} onClick={() => { initiateOwnershipTransfer(transferAddress); setTransferAddress(""); }}>
+                    <Input placeholder="New owner address" value={transferAddress} onChange={(e) => setTransferAddress(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner} />
+                    <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction || !transferAddress} onClick={() => { initiateOwnershipTransfer(transferAddress); setTransferAddress(""); }}>
                       {pendingAction === "transfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer</>}
                     </Button>
                   </div>
