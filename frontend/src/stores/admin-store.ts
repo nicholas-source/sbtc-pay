@@ -13,6 +13,7 @@ import {
   verifyMerchant as verifyOnChain,
   suspendMerchant as suspendOnChain,
   getMerchant as getMerchantOnChain,
+  getInvoice as getInvoiceOnChain,
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
 import { supabase } from "@/lib/supabase/client";
@@ -159,20 +160,49 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       const breakdown = { paid: 0, pending: 0, expired: 0, cancelled: 0, refunded: 0, partial: 0 };
       try {
         const [{ data: invoiceRows }, burnHeight] = await Promise.all([
-          supabase.from("invoices").select("status, expires_at_block"),
+          supabase.from("invoices").select("id, status, expires_at_block"),
           fetchBurnBlockHeight().catch(() => 0),
         ]);
         const STATUS_LABELS = ["pending", "partial", "paid", "expired", "cancelled", "refunded"] as const;
+
+        // First pass: apply expiration from Supabase data
+        const needsChainCheck: number[] = [];
+        const rowLabels = new Map<number, string>();
         for (const row of invoiceRows ?? []) {
           let label = STATUS_LABELS[row.status] ?? "pending";
+          const expiresAt = Number(row.expires_at_block) || 0;
           if (
             burnHeight > 0 &&
-            row.expires_at_block > 0 &&
-            burnHeight > row.expires_at_block &&
+            expiresAt > 0 &&
+            burnHeight > expiresAt &&
             (label === "pending" || label === "partial")
           ) {
             label = "expired";
           }
+          rowLabels.set(row.id, label);
+          // If still pending/partial and expires_at_block is missing, verify on-chain
+          if ((label === "pending" || label === "partial") && expiresAt === 0 && burnHeight > 0) {
+            needsChainCheck.push(row.id);
+          }
+        }
+
+        // Second pass: on-chain verification for invoices with missing expiry data
+        if (needsChainCheck.length > 0) {
+          const senderAddr = walletAddress;
+          const chainResults = await Promise.allSettled(
+            needsChainCheck.map((id) => getInvoiceOnChain(id, senderAddr)),
+          );
+          chainResults.forEach((result, idx) => {
+            if (result.status === "fulfilled" && result.value) {
+              const onChain = result.value;
+              if (onChain.expiresAt > 0 && burnHeight > onChain.expiresAt) {
+                rowLabels.set(needsChainCheck[idx], "expired");
+              }
+            }
+          });
+        }
+
+        for (const label of rowLabels.values()) {
           if (label in breakdown) breakdown[label as keyof typeof breakdown]++;
         }
       } catch { /* non-critical */ }
