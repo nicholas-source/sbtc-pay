@@ -5,6 +5,7 @@ import {
   Shield, Pause, Play, Settings, Users, FileText, Repeat,
   TrendingUp, AlertTriangle, ArrowRightLeft,
   Bitcoin, ChevronDown, ChevronUp, BadgeCheck, Ban, Loader2,
+  Copy, ExternalLink, Search,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -19,9 +21,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useAdminStore } from "@/stores/admin-store";
 import { useWalletStore } from "@/stores/wallet-store";
+import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { formatSbtc } from "@/lib/constants";
+import { getExplorerAddressUrl } from "@/lib/stacks/config";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -78,6 +82,13 @@ export default function AdminPage() {
   const [newFeeRecipient, setNewFeeRecipient] = useState(feeRecipient);
   const [transferAddress, setTransferAddress] = useState("");
   const [showSettings, setShowSettings] = useState(false);
+  const [merchantSearch, setMerchantSearch] = useState("");
+
+  const filteredMerchants = merchants.filter((m) => {
+    if (!merchantSearch) return true;
+    const q = merchantSearch.toLowerCase();
+    return m.name.toLowerCase().includes(q) || m.address.toLowerCase().includes(q);
+  });
 
   // Sync local input state when chain data loads
   useEffect(() => {
@@ -238,10 +249,25 @@ export default function AdminPage() {
 
       {/* Merchant Management */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-heading-sm">Merchant Management</CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <CardTitle className="text-heading-sm">Merchant Management</CardTitle>
+            <p className="text-body-sm text-muted-foreground mt-1">{merchants.length} registered merchant{merchants.length !== 1 ? "s" : ""}</p>
+          </div>
+          {merchants.length > 0 && (
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search merchants…"
+                value={merchantSearch}
+                onChange={(e) => setMerchantSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          )}
         </CardHeader>
         <CardContent>
+          <TooltipProvider delayDuration={200}>
           <div className="rounded-lg border overflow-hidden">
             <div className="overflow-x-auto">
             <Table>
@@ -252,36 +278,77 @@ export default function AdminPage() {
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden lg:table-cell">Registered</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">Volume</TableHead>
-                  <TableHead className="w-[120px]">Actions</TableHead>
+                  <TableHead className="w-[140px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {merchants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No merchants registered yet
+                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                      <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                      <p>No merchants registered yet</p>
                     </TableCell>
                   </TableRow>
-                ) : merchants.map((m) => (
+                ) : filteredMerchants.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No merchants match "{merchantSearch}"
+                    </TableCell>
+                  </TableRow>
+                ) : filteredMerchants.map((m) => (
                   <TableRow key={m.id}>
                     <TableCell>
                       <div>
                         <p className="font-medium text-foreground max-w-[180px] truncate">{m.name}</p>
-                        <p className="text-caption text-muted-foreground">{m.invoiceCount} invoices</p>
+                        <p className="text-caption text-muted-foreground">
+                          {m.invoiceCount} invoice{m.invoiceCount !== 1 ? "s" : ""}
+                        </p>
                       </div>
                     </TableCell>
-                    <TableCell className="hidden md:table-cell font-mono text-caption text-muted-foreground">
-                      {m.address.slice(0, 8)}…{m.address.slice(-4)}
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex items-center gap-1.5">
+                        <code className="font-mono text-caption text-muted-foreground">
+                          {m.address.slice(0, 6)}…{m.address.slice(-6)}
+                        </code>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => {
+                                navigator.clipboard.writeText(m.address);
+                                toast.success("Address copied");
+                              }}
+                            >
+                              <Copy className="h-3 w-3 text-muted-foreground" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">Copy full address</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <a
+                              href={getExplorerAddressUrl(m.address)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
+                            >
+                              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                            </a>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">View on explorer</TooltipContent>
+                        </Tooltip>
+                      </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        {m.isVerified ? (
+                      <div className="flex flex-wrap gap-1">
+                        {m.isSuspended ? (
+                          <Badge variant="outline" className="border-destructive/30 text-destructive text-[10px]">Suspended</Badge>
+                        ) : m.isVerified ? (
                           <Badge variant="outline" className="border-success/30 text-success text-[10px]">Verified</Badge>
                         ) : (
                           <Badge variant="outline" className="border-warning/30 text-warning text-[10px]">Unverified</Badge>
-                        )}
-                        {m.isSuspended && (
-                          <Badge variant="outline" className="border-destructive/30 text-destructive text-[10px]">Suspended</Badge>
                         )}
                       </div>
                     </TableCell>
@@ -291,17 +358,73 @@ export default function AdminPage() {
                     <TableCell className="text-right hidden sm:table-cell font-mono text-caption">
                       {formatSbtc(m.totalVolume)}
                     </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        {!m.isVerified && (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Verify ${m.name}`} disabled={!!pendingAction} onClick={() => verifyMerchant(m.id)}>
-                            {pendingAction === `verify-${m.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4 text-success" />}
-                          </Button>
+                    <TableCell className="text-right">
+                      <div className="flex gap-1 justify-end">
+                        {!m.isVerified && !m.isSuspended && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10"
+                                disabled={!isContractOwner || !!pendingAction}
+                                onClick={() => verifyMerchant(m.id)}
+                              >
+                                {pendingAction === `verify-${m.id}` ? (
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                ) : (
+                                  <BadgeCheck className="h-3.5 w-3.5" />
+                                )}
+                                <span className="hidden lg:inline">Verify</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">Mark merchant as verified</TooltipContent>
+                          </Tooltip>
                         )}
                         {!m.isSuspended && (
-                          <Button size="icon" variant="ghost" className="h-9 w-9" aria-label={`Suspend ${m.name}`} disabled={!!pendingAction} onClick={() => suspendMerchant(m.id)}>
-                            {pendingAction === `suspend-${m.id}` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ban className="h-4 w-4 text-destructive" />}
-                          </Button>
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                    disabled={!isContractOwner || !!pendingAction}
+                                  >
+                                    {pendingAction === `suspend-${m.id}` ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <Ban className="h-3.5 w-3.5" />
+                                    )}
+                                    <span className="hidden lg:inline">Suspend</span>
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Suspend this merchant</TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Suspend {m.name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will prevent <span className="font-mono text-foreground">{m.address.slice(0, 8)}…{m.address.slice(-6)}</span> from
+                                  creating invoices or receiving payments. This action requires an on-chain transaction.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => suspendMerchant(m.id)}
+                                >
+                                  Suspend Merchant
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                        {m.isSuspended && (
+                          <span className="text-caption text-muted-foreground italic px-2">Suspended</span>
                         )}
                       </div>
                     </TableCell>
@@ -311,6 +434,7 @@ export default function AdminPage() {
             </Table>
             </div>
           </div>
+          </TooltipProvider>
         </CardContent>
       </Card>
     </div>
