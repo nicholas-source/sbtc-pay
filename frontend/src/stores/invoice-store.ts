@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
-import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, getMerchant as getMerchantOnChain } from "@/lib/stacks/contract";
+import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain } from "@/lib/stacks/contract";
 import { API_URL } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
@@ -160,6 +160,96 @@ function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtB
   return new Date(createdTime + msFromCreation);
 }
 
+/**
+ * Reconcile Supabase invoice data against on-chain contract state.
+ * Filters out v3 ghost invoices and corrects stale amounts/status.
+ * Falls back to Supabase data if chain reads fail entirely.
+ */
+async function reconcileWithChain(
+  invoices: Invoice[],
+  merchantPrincipal: string,
+  db: ReturnType<typeof supabaseWithWallet>,
+): Promise<Invoice[]> {
+  const chainable = invoices.filter((inv) => inv.dbId > 0);
+  if (chainable.length === 0) return invoices;
+
+  const chainResults = await Promise.allSettled(
+    chainable.map((inv) => getInvoiceOnChain(inv.dbId, merchantPrincipal)),
+  );
+
+  // If ALL chain reads failed (API down), fall back to Supabase data
+  if (chainResults.every((r) => r.status === "rejected")) {
+    console.warn("[reconcile] All chain reads failed — using Supabase fallback");
+    return invoices;
+  }
+
+  const reconciled: Invoice[] = [];
+  const fixes: Array<{ id: number; data: Record<string, unknown> }> = [];
+
+  for (let i = 0; i < chainable.length; i++) {
+    const inv = chainable[i];
+    const result = chainResults[i];
+
+    if (result.status === "rejected" || !result.value) {
+      console.warn(`[reconcile] Invoice ${inv.id} (db=${inv.dbId}): not found on-chain, removing`);
+      continue;
+    }
+
+    const chain = result.value;
+
+    // Wrong merchant — v3 ID collision
+    if (chain.merchant !== merchantPrincipal) {
+      console.warn(`[reconcile] Invoice ${inv.id}: merchant mismatch (chain=${chain.merchant})`);
+      continue;
+    }
+
+    const chainAmount = Number(chain.amount);
+    const chainAmountPaid = Number(chain.amountPaid);
+    const chainStatus = STATUS_MAP[chain.status] ?? "pending";
+
+    if (
+      inv.amount !== chainAmount ||
+      inv.amountPaid !== chainAmountPaid ||
+      inv.status !== chainStatus ||
+      inv.memo !== chain.memo
+    ) {
+      console.info(
+        `[reconcile] Invoice ${inv.id}: correcting stale data ` +
+        `(amount ${inv.amount}→${chainAmount}, status ${inv.status}→${chainStatus})`,
+      );
+      inv.amount = chainAmount;
+      inv.amountPaid = chainAmountPaid;
+      inv.status = chainStatus;
+      inv.memo = chain.memo;
+      inv.payerAddress = chain.payer || "";
+
+      fixes.push({
+        id: inv.dbId,
+        data: {
+          amount: chainAmount,
+          amount_paid: chainAmountPaid,
+          status: chain.status,
+          memo: chain.memo,
+          payer: chain.payer,
+        },
+      });
+    }
+
+    reconciled.push(inv);
+  }
+
+  // Background-fix stale Supabase rows (fire and forget)
+  if (fixes.length > 0) {
+    Promise.all(
+      fixes.map(({ id, data }) => db.from("invoices").update(data).eq("id", id)),
+    ).catch((err) => console.error("[reconcile] Background fix failed:", err));
+  }
+
+  // Include optimistic invoices (dbId <= 0)
+  const optimistic = invoices.filter((inv) => inv.dbId <= 0);
+  return [...optimistic, ...reconciled];
+}
+
 function generateId(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let result = "";
@@ -221,9 +311,12 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
         refundsByInvoice.set(r.invoice_id, arr);
       }
 
-      const invoices = invoiceRows.map((row) =>
+      const invoicesRaw = invoiceRows.map((row) =>
         mapDbInvoice(row, paymentsByInvoice.get(row.id) ?? [], refundsByInvoice.get(row.id) ?? []),
       );
+
+      // Reconcile with on-chain data — filters ghosts, corrects stale fields
+      const invoices = await reconcileWithChain(invoicesRaw, merchantPrincipal, db);
 
       // Preserve pending invoices that aren't yet in Supabase.
       // This covers both pure optimistic (dbId === 0) AND backfilled (dbId > 0 but
