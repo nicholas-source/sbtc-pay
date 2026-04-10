@@ -162,7 +162,7 @@ function flattenCvJson(cv: any): unknown {
   if (t?.startsWith("buff") || t?.startsWith("(buff")) return v;
 
   // Optional types
-  if (t === "none" || t?.includes("none")) return null;
+  if (t === "none") return null;
   if (t?.startsWith("(optional") || t?.startsWith("(some")) {
     if (v === null || v === undefined) return null;
     return flattenCvJson(v);
