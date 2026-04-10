@@ -1,14 +1,16 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { format } from "date-fns";
-import { RotateCcw, ArrowUpRight, Receipt, Search } from "lucide-react";
+import { RotateCcw, ArrowUpRight, Receipt, Search, Download } from "lucide-react";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import type { Invoice, Refund } from "@/stores/invoice-store";
 import StatCard from "@/components/dashboard/StatCard";
 import InvoiceDetail from "@/components/invoice/InvoiceDetail";
 import EmptyState from "@/components/dashboard/EmptyState";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { exportToCSV } from "@/lib/export-csv";
 
 import { formatSbtc } from "@/lib/constants";
 import { useSatsToUsd } from "@/stores/wallet-store";
@@ -62,6 +64,17 @@ function RefundsPage() {
     return { count: flatRefunds.length, totalAmount, uniqueInvoices };
   }, [flatRefunds]);
 
+  const handleExport = useCallback(() => {
+    const rows = flatRefunds.map((f) => ({
+      "Invoice ID": f.invoiceId,
+      "Refund Amount (sats)": f.refund.amount,
+      Reason: f.refund.reason,
+      Date: format(f.refund.timestamp, "yyyy-MM-dd HH:mm"),
+      "TX ID": f.refund.txId,
+    }));
+    exportToCSV(rows, `refunds-${format(new Date(), "yyyy-MM-dd")}.csv`);
+  }, [flatRefunds]);
+
   function handleInvoiceClick(invoice: Invoice) {
     setSelectedInvoice(invoice);
     setDetailOpen(true);
@@ -69,9 +82,17 @@ function RefundsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-heading-lg text-foreground">Refunds</h1>
-        <p className="text-body-sm text-muted-foreground mt-1">Track and manage all refund transactions.</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-heading-lg text-foreground">Refunds</h1>
+          <p className="text-body-sm text-muted-foreground mt-1">Track and manage all refund transactions.</p>
+        </div>
+        {flatRefunds.length > 0 && (
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="mr-1 h-4 w-4" />
+            Export CSV
+          </Button>
+        )}
       </div>
 
       {flatRefunds.length === 0 ? (

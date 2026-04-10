@@ -1,18 +1,5 @@
 import { describe, it, expect } from "vitest";
-
-/**
- * Tests for CSV export utility.
- * We test the escaping logic without triggering DOM download.
- */
-
-// Inline the escape logic since the module triggers DOM APIs
-function escapeCSV(value: string | number): string {
-  const str = String(value);
-  if (str.includes(",") || str.includes('"') || str.includes("\n")) {
-    return `"${str.replace(/"/g, '""')}"`;
-  }
-  return str;
-}
+import { escapeCSV } from "@/lib/export-csv";
 
 describe("escapeCSV", () => {
   it("returns plain string as-is", () => {

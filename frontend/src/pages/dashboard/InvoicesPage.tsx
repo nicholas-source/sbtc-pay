@@ -1,11 +1,14 @@
-import { useState, useMemo } from "react";
-import { FileText, Clock, CheckCircle } from "lucide-react";
+import { useState, useMemo, useCallback } from "react";
+import { FileText, Clock, CheckCircle, Download } from "lucide-react";
+import { format } from "date-fns";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
 import CreateInvoiceDialog from "@/components/invoice/CreateInvoiceDialog";
 import InvoiceTable from "@/components/invoice/InvoiceTable";
 import InvoiceDetail from "@/components/invoice/InvoiceDetail";
 import StatCard from "@/components/dashboard/StatCard";
 import EmptyState from "@/components/dashboard/EmptyState";
+import { Button } from "@/components/ui/button";
+import { exportToCSV } from "@/lib/export-csv";
 
 import { formatSbtc } from "@/lib/constants";
 import { useSatsToUsd } from "@/stores/wallet-store";
@@ -22,6 +25,19 @@ function InvoicesPage() {
     const pendingAmount = pending.reduce((s, i) => s + (i.amount - i.amountPaid), 0);
     const paidAmount = paid.reduce((s, i) => s + i.amountPaid, 0);
     return { total: invoices.length, pendingAmount, paidAmount };
+  }, [invoices]);
+
+  const handleExport = useCallback(() => {
+    const rows = invoices.map((inv) => ({
+      "Invoice ID": inv.id,
+      "Amount (sats)": inv.amount,
+      "Amount Paid (sats)": inv.amountPaid,
+      Status: inv.status,
+      Memo: inv.memo ?? "",
+      Created: format(new Date(inv.createdAt), "yyyy-MM-dd HH:mm"),
+      Payer: inv.payer ?? "",
+    }));
+    exportToCSV(rows, `invoices-${format(new Date(), "yyyy-MM-dd")}.csv`);
   }, [invoices]);
 
   function handleSelect(invoice: Invoice) {
@@ -53,7 +69,13 @@ function InvoicesPage() {
           <h1 className="text-heading-lg text-foreground">Invoices</h1>
           <p className="text-body-sm text-muted-foreground mt-1">Create and manage payment invoices</p>
         </div>
-        <CreateInvoiceDialog />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleExport}>
+            <Download className="mr-1 h-4 w-4" />
+            Export CSV
+          </Button>
+          <CreateInvoiceDialog />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
