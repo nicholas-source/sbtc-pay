@@ -188,7 +188,7 @@ async function reconcileWithChain(
   }
 
   const reconciled: Invoice[] = [];
-  const fixes: Array<{ id: number; data: Record<string, unknown> }> = [];
+  const fixes: Array<{ id: number; data: Partial<Tables<'invoices'>> }> = [];
 
   for (let i = 0; i < chainable.length; i++) {
     const inv = chainable[i];

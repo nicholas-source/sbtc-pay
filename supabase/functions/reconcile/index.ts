@@ -1,3 +1,4 @@
+// @ts-nocheck — Deno runtime types; VS Code TypeScript can't resolve esm.sh imports
 /**
  * Reconciliation Edge Function
  *
