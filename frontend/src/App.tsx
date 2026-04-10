@@ -1,12 +1,12 @@
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { lazy, Suspense, useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import CustomerLayout from "@/components/layout/CustomerLayout";
-import CommandPalette from "@/components/dashboard/CommandPalette";
+const CommandPalette = lazy(() => import("@/components/dashboard/CommandPalette"));
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import InvoicesSkeleton from "@/components/dashboard/InvoicesSkeleton";
 import RefundsSkeleton from "@/components/dashboard/RefundsSkeleton";
@@ -35,6 +35,15 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient();
 
+// Scroll to top on route change
+function ScrollToTop() {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+  return null;
+}
+
 // Initialize wallet connection on app load
 function WalletInitializer() {
   const checkConnection = useWalletStore((state) => state.checkConnection);
@@ -51,8 +60,9 @@ function WalletInitializer() {
 
 function PageLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
+    <div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-busy="true" aria-label="Loading page">
       <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <span className="sr-only">Loading…</span>
     </div>
   );
 }
@@ -101,7 +111,8 @@ const App = () => (
       <WalletInitializer />
       <Sonner />
       <BrowserRouter>
-        <CommandPalette />
+        <ScrollToTop />
+        <Suspense fallback={null}><CommandPalette /></Suspense>
         <Suspense fallback={<PageLoader />}>
           <AnimatedRoutes />
         </Suspense>

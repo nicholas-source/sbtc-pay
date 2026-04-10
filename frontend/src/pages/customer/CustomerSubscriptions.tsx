@@ -131,7 +131,7 @@ function CustomerSubscriptions() {
 
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10">
+                            <Button variant="outline" size="sm" className="text-destructive border-destructive/30 hover:bg-destructive/10 transition-colors">
                               <XCircle className="mr-1 h-4 w-4" /> Cancel
                             </Button>
                           </AlertDialogTrigger>

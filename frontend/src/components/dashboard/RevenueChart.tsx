@@ -112,9 +112,9 @@ export default function RevenueChart() {
             <AreaChart data={data} margin={{ top: 4, right: 4, left: isMobile ? -20 : 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(27, 98%, 54%)" stopOpacity={0.4} />
-                  <stop offset="50%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0.15} />
-                  <stop offset="100%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4} />
+                  <stop offset="50%" stopColor="hsl(var(--chart-2))" stopOpacity={0.15} />
+                  <stop offset="100%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -137,7 +137,7 @@ export default function RevenueChart() {
               <Area
                 type="monotone"
                 dataKey="sats"
-                stroke="hsl(27, 98%, 54%)"
+                stroke="hsl(var(--chart-1))"
                 strokeWidth={2}
                 fill="url(#revenueGradient)"
                 animationDuration={800}

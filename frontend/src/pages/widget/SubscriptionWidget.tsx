@@ -110,7 +110,7 @@ export default function SubscriptionWidget() {
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-4 w-4 text-primary" />
               <span className="text-body font-bold text-primary">sBTC Pay</span>
-              <Badge variant="outline" className="text-[10px] border-stacks text-stacks">Subscribe</Badge>
+              <Badge variant="outline" className="text-micro border-stacks text-stacks">Subscribe</Badge>
             </div>
 
             <div className="text-center space-y-1">
@@ -142,7 +142,7 @@ export default function SubscriptionWidget() {
               </Button>
             )}
 
-            <p className="text-[10px] text-muted-foreground text-center">
+            <p className="text-micro text-muted-foreground text-center">
               {isConnected && address ? (
                 <>Connected: <code className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</code> · </>
               ) : null}

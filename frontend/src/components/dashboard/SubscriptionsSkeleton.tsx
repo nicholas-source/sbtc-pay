@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function SubscriptionsSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="status" aria-busy="true" aria-label="Loading subscriptions">
+      <span className="sr-only">Loading subscriptions…</span>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -38,7 +39,7 @@ export default function SubscriptionsSkeleton() {
           <Skeleton className="h-5 w-40" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[300px] w-full rounded-lg" />
+          <Skeleton className="h-[280px] w-full rounded-lg" />
         </CardContent>
       </Card>
 

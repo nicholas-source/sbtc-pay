@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function InvoicesSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="status" aria-busy="true" aria-label="Loading invoices">
+      <span className="sr-only">Loading invoices…</span>
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

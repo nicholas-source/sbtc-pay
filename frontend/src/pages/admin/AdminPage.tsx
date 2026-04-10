@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatSbtc } from "@/lib/constants";
 import { getExplorerAddressUrl } from "@/lib/stacks/config";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -276,8 +277,7 @@ export default function AdminPage() {
         </CardHeader>
         <CardContent>
           <TooltipProvider delayDuration={200}>
-          <div className="rounded-lg border overflow-hidden">
-            <div className="overflow-x-auto">
+          <ScrollableTable label="Merchants table">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
@@ -323,13 +323,14 @@ export default function AdminPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-6 w-6"
+                              className="h-8 w-8 focus-ring"
                               onClick={() => {
                                 navigator.clipboard.writeText(m.address);
                                 toast.success("Address copied");
                               }}
+                              aria-label={`Copy address for ${m.name}`}
                             >
-                              <Copy className="h-3 w-3 text-muted-foreground" />
+                              <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent side="top">Copy full address</TooltipContent>
@@ -340,9 +341,10 @@ export default function AdminPage() {
                               href={getExplorerAddressUrl(m.address)}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-accent"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-accent focus-ring"
+                              aria-label={`View ${m.name} on explorer`}
                             >
-                              <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                             </a>
                           </TooltipTrigger>
                           <TooltipContent side="top">View on explorer</TooltipContent>
@@ -352,11 +354,11 @@ export default function AdminPage() {
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {m.isSuspended ? (
-                          <Badge variant="outline" className="border-destructive/30 text-destructive text-[10px]">Suspended</Badge>
+                          <Badge variant="outline" className="border-destructive/30 text-destructive text-micro">Suspended</Badge>
                         ) : m.isVerified ? (
-                          <Badge variant="outline" className="border-success/30 text-success text-[10px]">Verified</Badge>
+                          <Badge variant="outline" className="border-success/30 text-success text-micro">Verified</Badge>
                         ) : (
-                          <Badge variant="outline" className="border-warning/30 text-warning text-[10px]">Unverified</Badge>
+                          <Badge variant="outline" className="border-warning/30 text-warning text-micro">Unverified</Badge>
                         )}
                       </div>
                     </TableCell>
@@ -374,7 +376,7 @@ export default function AdminPage() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10"
+                                className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
                                 disabled={!isContractOwner || !!pendingAction}
                                 onClick={() => verifyMerchant(m.id)}
                               >
@@ -397,7 +399,7 @@ export default function AdminPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                    className="h-8 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 transition-colors"
                                     disabled={!isContractOwner || !!pendingAction}
                                   >
                                     {pendingAction === `suspend-${m.id}` ? (
@@ -440,8 +442,7 @@ export default function AdminPage() {
                 ))}
               </TableBody>
             </Table>
-            </div>
-          </div>
+          </ScrollableTable>
           </TooltipProvider>
         </CardContent>
       </Card>

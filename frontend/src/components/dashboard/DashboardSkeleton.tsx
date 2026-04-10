@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 
 export default function DashboardSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="status" aria-busy="true" aria-label="Loading dashboard">
+      <span className="sr-only">Loading dashboard…</span>
       {/* Header */}
       <div>
         <Skeleton className="h-8 w-40" />
@@ -32,7 +33,7 @@ export default function DashboardSkeleton() {
           <Skeleton className="h-5 w-32" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[300px] w-full rounded-lg" />
+          <Skeleton className="h-[280px] w-full rounded-lg" />
         </CardContent>
       </Card>
 

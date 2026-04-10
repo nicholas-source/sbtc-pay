@@ -4,7 +4,8 @@ import { Separator } from "@/components/ui/separator";
 
 export default function SettingsSkeleton() {
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl" role="status" aria-busy="true" aria-label="Loading settings">
+      <span className="sr-only">Loading settings…</span>
       <div>
         <Skeleton className="h-8 w-28" />
         <Skeleton className="h-4 w-48 mt-2" />

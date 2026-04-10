@@ -3,7 +3,8 @@ import { Card, CardContent } from "@/components/ui/card";
 
 export default function RefundsSkeleton() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" role="status" aria-busy="true" aria-label="Loading refunds">
+      <span className="sr-only">Loading refunds…</span>
       <div>
         <Skeleton className="h-8 w-28" />
         <Skeleton className="h-4 w-56 mt-2" />

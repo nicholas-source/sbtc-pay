@@ -115,7 +115,7 @@ export default function ActivityFeed() {
         ) : (
         <div className="relative" aria-live="polite">
           {/* Timeline line */}
-          <div className="absolute left-[15px] top-0 bottom-0 w-px bg-border" />
+          <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
 
           <div className="space-y-1">
             {events.map((event, i) => {
@@ -127,7 +127,7 @@ export default function ActivityFeed() {
                   className={`relative flex items-start gap-3 py-2 pl-1 animate-fade-slide-up ${stagger}`}
                 >
                   {/* Dot */}
-                  <div className={`relative z-10 flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full ${bgMap[event.type]}`}>
+                  <div className={`relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${bgMap[event.type]}`}>
                     <Icon className={`h-3.5 w-3.5 ${colorMap[event.type]}`} />
                   </div>
 

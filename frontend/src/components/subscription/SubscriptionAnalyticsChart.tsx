@@ -90,11 +90,11 @@ export default function SubscriptionAnalyticsChart() {
           <CardTitle className="text-heading-sm">Subscription Analytics</CardTitle>
           <div className="flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(27, 98%, 54%)" }} />
+              <span className="inline-block h-2 w-2 rounded-full bg-chart-1" />
               Subscribers
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: "hsl(210, 98%, 54%)" }} />
+              <span className="inline-block h-2 w-2 rounded-full bg-chart-3" />
               Revenue
             </span>
           </div>
@@ -117,12 +117,12 @@ export default function SubscriptionAnalyticsChart() {
             <AreaChart data={data} margin={{ top: 4, right: isMobile ? 4 : 8, left: isMobile ? -20 : 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="subAnalyticsSubsGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(27, 98%, 54%)" stopOpacity={0.4} />
-                  <stop offset="100%" stopColor="hsl(27, 98%, 54%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity={0.4} />
+                  <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="subAnalyticsRevGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0.35} />
-                  <stop offset="100%" stopColor="hsl(263, 70%, 58%)" stopOpacity={0} />
+                  <stop offset="0%" stopColor="hsl(var(--chart-2))" stopOpacity={0.35} />
+                  <stop offset="100%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
@@ -156,7 +156,7 @@ export default function SubscriptionAnalyticsChart() {
                 yAxisId="left"
                 type="monotone"
                 dataKey="subscribers"
-                stroke="hsl(27, 98%, 54%)"
+                stroke="hsl(var(--chart-1))"
                 strokeWidth={2}
                 fill="url(#subAnalyticsSubsGrad)"
                 animationDuration={800}
@@ -165,7 +165,7 @@ export default function SubscriptionAnalyticsChart() {
                 yAxisId={isMobile ? "left" : "right"}
                 type="monotone"
                 dataKey="revenue"
-                stroke="hsl(263, 70%, 58%)"
+                stroke="hsl(var(--chart-2))"
                 strokeWidth={2}
                 fill="url(#subAnalyticsRevGrad)"
                 animationDuration={800}

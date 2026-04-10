@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -102,7 +103,7 @@ export default function InvoiceTable({ onSelect }: Props) {
 
   const SortHeader = ({ label, field }: { label: string; field: SortKey }) => (
     <button
-      className="inline-flex items-center gap-1 hover:text-foreground focus-ring rounded-sm"
+      className="inline-flex items-center gap-1 transition-colors hover:text-foreground focus-ring rounded-sm"
       onClick={() => toggleSort(field)}
       aria-sort={getSortDirection(field)}
     >
@@ -177,8 +178,7 @@ export default function InvoiceTable({ onSelect }: Props) {
           description={search || statusFilter !== "all" || dateRange !== "all" ? "Try adjusting your search or filter criteria." : "Create your first invoice to get started."}
         />
       ) : (
-        <div className="rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
+        <ScrollableTable label="Invoices table">
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
@@ -205,12 +205,12 @@ export default function InvoiceTable({ onSelect }: Props) {
                     <TableCell className="font-mono text-xs">
                       {inv.id}
                       {inv.dbId === 0 && (
-                        <span className="ml-1.5 text-[10px] text-yellow-400" title="Confirming on-chain">⏳</span>
+                        <span className="ml-1.5 text-micro text-warning" title="Confirming on-chain">⏳</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right font-mono font-tabular">
-                      <div>{formatSbtc(inv.amount)} <span className="text-muted-foreground text-[10px]">sBTC</span></div>
-                      <div className="text-[10px] text-muted-foreground">${satsToUsd(inv.amount)}</div>
+                      <div>{formatSbtc(inv.amount)} <span className="text-muted-foreground text-micro">sBTC</span></div>
+                      <div className="text-micro text-muted-foreground">${satsToUsd(inv.amount)}</div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {inv.status === "paid" ? (
@@ -231,7 +231,7 @@ export default function InvoiceTable({ onSelect }: Props) {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Invoice actions">
+                          <Button variant="ghost" size="icon" className="h-8 w-8 focus-ring" aria-label="Invoice actions">
                             <span className="text-lg leading-none">⋯</span>
                           </Button>
                         </DropdownMenuTrigger>
@@ -255,8 +255,7 @@ export default function InvoiceTable({ onSelect }: Props) {
               })}
             </TableBody>
           </Table>
-          </div>
-        </div>
+        </ScrollableTable>
       )}
     </div>
   );

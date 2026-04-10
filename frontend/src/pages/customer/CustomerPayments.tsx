@@ -5,6 +5,7 @@ import { Inbox, ExternalLink, Bitcoin } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useWalletStore } from "@/stores/wallet-store";
@@ -86,8 +87,7 @@ export default function CustomerPayments() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            <div className="rounded-lg border overflow-hidden">
-              <div className="overflow-x-auto">
+            <ScrollableTable label="Payment history">
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
@@ -108,8 +108,8 @@ export default function CustomerPayments() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono font-tabular">
-                        <div>{formatSbtc(p.amount)} <span className="text-muted-foreground text-[10px]">sBTC</span></div>
-                        <div className="text-[10px] text-muted-foreground">${satsToUsd(p.amount)}</div>
+                        <div>{formatSbtc(p.amount)} <span className="text-muted-foreground text-micro">sBTC</span></div>
+                        <div className="text-micro text-muted-foreground">${satsToUsd(p.amount)}</div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-mono text-caption text-muted-foreground">
                         {p.txId.slice(0, 10)}…
@@ -121,8 +121,7 @@ export default function CustomerPayments() {
                   ))}
                 </TableBody>
               </Table>
-              </div>
-            </div>
+            </ScrollableTable>
           </CardContent>
         </Card>
       )}

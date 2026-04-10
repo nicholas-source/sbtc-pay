@@ -96,7 +96,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
 
           {/* Optimistic invoice banner */}
           {invoice.dbId === 0 && (
-            <div className="rounded-md bg-yellow-500/10 border border-yellow-500/30 px-3 py-2 text-xs text-yellow-400">
+            <div className="rounded-md bg-warning/10 border border-warning/30 px-3 py-2 text-xs text-warning">
               ⏳ Confirming on-chain… Payment link will be available once confirmed.
             </div>
           )}

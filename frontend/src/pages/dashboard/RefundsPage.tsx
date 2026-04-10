@@ -9,6 +9,7 @@ import EmptyState from "@/components/dashboard/EmptyState";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { exportToCSV } from "@/lib/export-csv";
 
@@ -129,8 +130,7 @@ function RefundsPage() {
           {filtered.length === 0 ? (
               <EmptyState icon={Search} title="No results" description="Try adjusting your search query." />
             ) : (
-              <div className="rounded-lg border">
-                <div className="overflow-x-auto">
+              <ScrollableTable label="Refunds table">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -145,7 +145,7 @@ function RefundsPage() {
                     {filtered.map((f, i) => (
                       <TableRow key={`${f.invoiceId}-${i}`}>
                         <TableCell>
-                          <button onClick={() => handleInvoiceClick(f.invoice)} className="font-mono text-sm text-primary hover:underline">
+                          <button onClick={() => handleInvoiceClick(f.invoice)} className="font-mono text-sm text-primary transition-colors hover:underline focus-ring rounded-sm">
                             {f.invoiceId}
                           </button>
                         </TableCell>
@@ -166,8 +166,7 @@ function RefundsPage() {
                     ))}
                   </TableBody>
                 </Table>
-                </div>
-              </div>
+              </ScrollableTable>
             )}
         </>
       )}

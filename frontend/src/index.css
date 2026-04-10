@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -81,6 +79,11 @@
 
     /* Focus ring */
     --focus-ring: 27 98% 54%;
+
+    /* Chart colors (aliases of primary/secondary/info) */
+    --chart-1: 27 98% 54%;
+    --chart-2: 263 70% 58%;
+    --chart-3: 210 80% 56%;
   }
 }
 
@@ -148,6 +151,43 @@
   /* Micro-interaction: satisfying button press */
   .btn-press {
     @apply transition-transform duration-100 active:scale-[0.97];
+  }
+
+  /* Scroll hint for overflow tables — right fade when scrollable */
+  .overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--surface-3)) transparent;
+  }
+
+  .overflow-x-auto:focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: -2px;
+    border-radius: 0.25rem;
+  }
+
+  /* Scroll fade indicator wrapper — add to parent of overflow-x-auto */
+  .table-scroll-container {
+    position: relative;
+  }
+
+  .table-scroll-container::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 2rem;
+    pointer-events: none;
+    background: linear-gradient(to right, transparent, hsl(var(--background) / 0.8));
+    opacity: 1;
+    transition: opacity 0.2s;
+    border-radius: 0 0.5rem 0.5rem 0;
+  }
+
+  /* Hide fade when scrolled to end (toggled via JS or when not overflowing) */
+  .table-scroll-container.scrolled-end::after,
+  .table-scroll-container:not(.is-overflowing)::after {
+    opacity: 0;
   }
 
   /* Entrance animation utility */

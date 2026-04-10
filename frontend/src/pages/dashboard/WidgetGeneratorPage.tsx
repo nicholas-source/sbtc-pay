@@ -93,10 +93,10 @@ export default function WidgetGeneratorPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Tabs value={widgetType} onValueChange={(v) => setWidgetType(v as WidgetType)}>
-              <TabsList className="w-full">
-                <TabsTrigger value="direct" className="flex-1">Direct Pay</TabsTrigger>
-                <TabsTrigger value="invoice" className="flex-1">Invoice</TabsTrigger>
-                <TabsTrigger value="subscription" className="flex-1">Subscribe</TabsTrigger>
+              <TabsList className="w-full overflow-x-auto">
+                <TabsTrigger value="direct" className="flex-1 min-w-0 text-body-sm sm:text-body">Direct Pay</TabsTrigger>
+                <TabsTrigger value="invoice" className="flex-1 min-w-0 text-body-sm sm:text-body">Invoice</TabsTrigger>
+                <TabsTrigger value="subscription" className="flex-1 min-w-0 text-body-sm sm:text-body">Subscribe</TabsTrigger>
               </TabsList>
 
               <TabsContent value="direct" className="space-y-3 mt-4">
@@ -173,7 +173,7 @@ export default function WidgetGeneratorPage() {
               <CardTitle className="text-heading-sm flex items-center gap-2">
                 <Eye className="h-4 w-4" /> Live Preview
               </CardTitle>
-              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-caption text-primary hover:underline">
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer" className="text-caption text-primary transition-colors hover:underline">
                 Open ↗
               </a>
             </CardHeader>
