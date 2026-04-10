@@ -30,7 +30,6 @@ function PaymentPage() {
   const btcPriceUsd = useBtcPrice();
   // Try local store first (merchant viewing their own invoice)
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
-  const simulatePayment = useInvoiceStore((s) => s.simulatePayment);
   const { isConnected, isConnecting, address, sbtcBalance, connect, connectionError, clearError, fetchBalances } = useWalletStore();
 
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
@@ -221,12 +220,13 @@ function PaymentPage() {
           setPaymentState("confirmed");
         }
       } else {
-        // Mock payment for demo invoices
-        await new Promise((r) => setTimeout(r, 2000));
-        if (!mountedRef.current) return;
-        const payment = simulatePayment(invoice.id, effectivePayAmount);
-        setCompletedPayment(payment);
-        setPaymentState("confirmed");
+        // Invoice not yet confirmed on-chain or wallet not connected
+        const reason = !address
+          ? "Please connect your wallet to pay this invoice."
+          : "This invoice is still being confirmed on-chain. Please try again in a few minutes.";
+        setErrorMessage(reason);
+        setPaymentState("error");
+        toast.error(reason);
       }
     } catch (error) {
       if (!mountedRef.current) return;
@@ -245,7 +245,7 @@ function PaymentPage() {
       setPaymentState("error");
       toast.error(message);
     }
-  }, [invoice, effectivePayAmount, paymentState, isBlockchainInvoice, blockchainInvoiceId, address, simulatePayment, fetchBalances]);
+  }, [invoice, effectivePayAmount, paymentState, isBlockchainInvoice, blockchainInvoiceId, address, fetchBalances]);
 
   // --- Loading ---
   if (invoiceLoading) {

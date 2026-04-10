@@ -6,6 +6,13 @@ import { useMerchantStore } from "./merchant-store";
 import { useNotificationLogStore, type NotifEventKey } from "./notification-log-store";
 import { supabaseWithWallet } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
+import {
+  pauseSubscription as pauseSubOnChain,
+  resumeSubscription as resumeSubOnChain,
+  cancelSubscription as cancelSubOnChain,
+  processSubscriptionPayment as processSubPaymentOnChain,
+  CONTRACT_ERRORS,
+} from "@/lib/stacks/contract";
 
 export type SubscriptionInterval = "weekly" | "monthly" | "yearly";
 export type SubscriberStatus = "active" | "paused" | "cancelled";
@@ -35,14 +42,15 @@ interface SubscriptionStore {
   plans: SubscriptionPlan[];
   subscribers: Subscriber[];
   isLoading: boolean;
+  pendingTxIds: Set<string>; // subscriber IDs with pending on-chain tx
   fetchSubscriptions: (merchantPrincipal: string) => Promise<void>;
   createPlan: (data: Omit<SubscriptionPlan, "id" | "createdAt" | "isActive" | "merchantAddress">) => SubscriptionPlan;
   togglePlan: (id: string) => void;
   getPlansForMerchant: (address: string) => SubscriptionPlan[];
-  pauseSubscription: (id: string) => void;
-  resumeSubscription: (id: string) => void;
-  cancelSubscription: (id: string) => void;
-  simulateRenewal: (subscriberId: string) => Payment | null;
+  pauseSubscription: (id: string) => Promise<void>;
+  resumeSubscription: (id: string) => Promise<void>;
+  cancelSubscription: (id: string) => Promise<void>;
+  processRenewal: (subscriberId: string) => Promise<void>;
 }
 
 function generatePlanId(): string {
@@ -50,13 +58,6 @@ function generatePlanId(): string {
   let r = "";
   for (let i = 0; i < 4; i++) r += chars[Math.floor(Math.random() * chars.length)];
   return `PLAN-${r}`;
-}
-
-function randomTxId(): string {
-  const hex = "0123456789abcdef";
-  let r = "0x";
-  for (let i = 0; i < 40; i++) r += hex[Math.floor(Math.random() * 16)];
-  return r;
 }
 
 function nextPayment(from: Date, interval: SubscriptionInterval): Date {
@@ -98,10 +99,27 @@ function notifyEvent(eventKey: NotifEventKey, label: string) {
   useNotificationLogStore.getState().addLog({ eventType: eventKey, label, timestamp: new Date(), channel });
 }
 
+/** Extract numeric on-chain ID from store ID like "SUB-42" */
+function parseChainId(storeId: string): number {
+  const num = parseInt(storeId.replace("SUB-", ""), 10);
+  if (isNaN(num)) throw new Error(`Invalid subscription ID: ${storeId}`);
+  return num;
+}
+
+/** Map contract error codes to user-friendly messages */
+function contractErrorMsg(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  for (const [code, label] of Object.entries(CONTRACT_ERRORS)) {
+    if (msg.includes(code)) return label;
+  }
+  return msg;
+}
+
 export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
   plans: [],
   subscribers: [],
   isLoading: false,
+  pendingTxIds: new Set<string>(),
 
   fetchSubscriptions: async (merchantPrincipal) => {
     set({ isLoading: true });
@@ -208,64 +226,120 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
 
   getPlansForMerchant: (address) => get().plans.filter((p) => p.merchantAddress === address),
 
-  pauseSubscription: (id) => {
-    set((s) => ({
-      subscribers: s.subscribers.map((sub) =>
-        sub.id === id && sub.status === "active" ? { ...sub, status: "paused" as SubscriberStatus } : sub
-      ),
-    }));
-    notifyEvent("pauseResume", "Subscription Paused");
+  pauseSubscription: async (id) => {
+    const chainId = parseChainId(id);
+    set((s) => ({ pendingTxIds: new Set([...s.pendingTxIds, id]) }));
+    try {
+      await pauseSubOnChain(chainId);
+      set((s) => ({
+        subscribers: s.subscribers.map((sub) =>
+          sub.id === id && sub.status === "active" ? { ...sub, status: "paused" as SubscriberStatus } : sub
+        ),
+      }));
+      notifyEvent("pauseResume", "Subscription Paused");
+    } catch (err) {
+      throw new Error(contractErrorMsg(err));
+    } finally {
+      set((s) => {
+        const next = new Set(s.pendingTxIds);
+        next.delete(id);
+        return { pendingTxIds: next };
+      });
+    }
   },
 
-  resumeSubscription: (id) => {
-    set((s) => ({
-      subscribers: s.subscribers.map((sub) => {
-        if (sub.id !== id || sub.status !== "paused") return sub;
-        const plan = s.plans.find((p) => p.id === sub.planId);
-        return {
-          ...sub,
-          status: "active" as SubscriberStatus,
-          nextPaymentAt: plan ? nextPayment(new Date(), plan.interval) : sub.nextPaymentAt,
-        };
-      }),
-    }));
-    notifyEvent("pauseResume", "Subscription Resumed");
+  resumeSubscription: async (id) => {
+    const chainId = parseChainId(id);
+    set((s) => ({ pendingTxIds: new Set([...s.pendingTxIds, id]) }));
+    try {
+      await resumeSubOnChain(chainId);
+      set((s) => ({
+        subscribers: s.subscribers.map((sub) => {
+          if (sub.id !== id || sub.status !== "paused") return sub;
+          const plan = s.plans.find((p) => p.id === sub.planId);
+          return {
+            ...sub,
+            status: "active" as SubscriberStatus,
+            nextPaymentAt: plan ? nextPayment(new Date(), plan.interval) : sub.nextPaymentAt,
+          };
+        }),
+      }));
+      notifyEvent("pauseResume", "Subscription Resumed");
+    } catch (err) {
+      throw new Error(contractErrorMsg(err));
+    } finally {
+      set((s) => {
+        const next = new Set(s.pendingTxIds);
+        next.delete(id);
+        return { pendingTxIds: next };
+      });
+    }
   },
 
-  cancelSubscription: (id) => {
-    set((s) => ({
-      subscribers: s.subscribers.map((sub) =>
-        sub.id === id && sub.status !== "cancelled" ? { ...sub, status: "cancelled" as SubscriberStatus } : sub
-      ),
-    }));
-    notifyEvent("cancellation", "Subscription Cancelled");
+  cancelSubscription: async (id) => {
+    const chainId = parseChainId(id);
+    set((s) => ({ pendingTxIds: new Set([...s.pendingTxIds, id]) }));
+    try {
+      await cancelSubOnChain(chainId);
+      set((s) => ({
+        subscribers: s.subscribers.map((sub) =>
+          sub.id === id && sub.status !== "cancelled" ? { ...sub, status: "cancelled" as SubscriberStatus } : sub
+        ),
+      }));
+      notifyEvent("cancellation", "Subscription Cancelled");
+    } catch (err) {
+      throw new Error(contractErrorMsg(err));
+    } finally {
+      set((s) => {
+        const next = new Set(s.pendingTxIds);
+        next.delete(id);
+        return { pendingTxIds: next };
+      });
+    }
   },
 
-  simulateRenewal: (subscriberId) => {
+  processRenewal: async (subscriberId) => {
     const sub = get().subscribers.find((s) => s.id === subscriberId);
-    if (!sub || sub.status !== "active") return null;
+    if (!sub || sub.status !== "active") throw new Error("Subscription is not active");
     const plan = get().plans.find((p) => p.id === sub.planId);
-    if (!plan) return null;
+    if (!plan) throw new Error("Plan not found");
 
-    const payment: Payment = {
-      timestamp: new Date(),
-      amount: plan.amount,
-      txId: randomTxId(),
-    };
+    const chainId = parseChainId(subscriberId);
+    set((s) => ({ pendingTxIds: new Set([...s.pendingTxIds, subscriberId]) }));
+    try {
+      const { txId } = await processSubPaymentOnChain({
+        subscriptionId: chainId,
+        amount: BigInt(plan.amount),
+        subscriberAddress: sub.payerAddress,
+      });
 
-    set((s) => ({
-      subscribers: s.subscribers.map((existing) =>
-        existing.id === subscriberId
-          ? {
-              ...existing,
-              nextPaymentAt: nextPayment(new Date(), plan.interval),
-              payments: [...existing.payments, payment],
-            }
-          : existing
-      ),
-    }));
+      const payment: Payment = {
+        timestamp: new Date(),
+        amount: plan.amount,
+        txId,
+      };
 
-    notifyEvent("renewal", "Renewal Processed");
-    return payment;
+      set((s) => ({
+        subscribers: s.subscribers.map((existing) =>
+          existing.id === subscriberId
+            ? {
+                ...existing,
+                nextPaymentAt: nextPayment(new Date(), plan.interval),
+                payments: [...existing.payments, payment],
+              }
+            : existing
+        ),
+      }));
+
+      notifyEvent("renewal", "Renewal Processed");
+    } catch (err) {
+      throw new Error(contractErrorMsg(err));
+    } finally {
+      set((s) => {
+        const next = new Set(s.pendingTxIds);
+        next.delete(subscriberId);
+        return { pendingTxIds: next };
+      });
+    }
   },
 }));

@@ -72,11 +72,12 @@ export default function SubscriberTable({ planId }: Props) {
   const pauseRaw = useSubscriptionStore((s) => s.pauseSubscription);
   const resumeRaw = useSubscriptionStore((s) => s.resumeSubscription);
   const cancelRaw = useSubscriptionStore((s) => s.cancelSubscription);
-  const simulateRenewal = useSubscriptionStore((s) => s.simulateRenewal);
+  const processRenewal = useSubscriptionStore((s) => s.processRenewal);
+  const pendingTxIds = useSubscriptionStore((s) => s.pendingTxIds);
 
-  const pause = (id: string) => { try { pauseRaw(id); toast.success("Subscription paused"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to pause"); } };
-  const resume = (id: string) => { try { resumeRaw(id); toast.success("Subscription resumed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to resume"); } };
-  const cancel = (id: string) => { try { cancelRaw(id); toast.success("Subscription cancelled"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to cancel"); } };
+  const pause = async (id: string) => { try { await pauseRaw(id); toast.success("Subscription paused"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to pause"); } };
+  const resume = async (id: string) => { try { await resumeRaw(id); toast.success("Subscription resumed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to resume"); } };
+  const cancel = async (id: string) => { try { await cancelRaw(id); toast.success("Subscription cancelled"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to cancel"); } };
 
   const totalPages = Math.max(1, Math.ceil(filteredSubscribers.length / PAGE_SIZE));
   const paginatedSubscribers = filteredSubscribers.slice(
@@ -109,10 +110,12 @@ export default function SubscriberTable({ planId }: Props) {
     });
   };
 
-  const handleRenewal = (subId: string) => {
-    const payment = simulateRenewal(subId);
-    if (payment) {
-      toast.success(`Renewal processed: ${formatSbtc(payment.amount)} sBTC collected`);
+  const handleRenewal = async (subId: string) => {
+    try {
+      await processRenewal(subId);
+      toast.success("Renewal payment submitted on-chain");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to process renewal");
     }
   };
 
@@ -219,14 +222,18 @@ export default function SubscriberTable({ planId }: Props) {
                         {sub.status !== "cancelled" && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Subscription actions">
-                                <MoreHorizontal className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Subscription actions" disabled={pendingTxIds.has(sub.id)}>
+                                {pendingTxIds.has(sub.id) ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <MoreHorizontal className="h-4 w-4" />
+                                )}
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               {sub.status === "active" && (
-                                <DropdownMenuItem aria-label="Simulate renewal payment" onClick={() => handleRenewal(sub.id)}>
-                                  <RefreshCw className="mr-2 h-4 w-4" /> Simulate Renewal
+                                <DropdownMenuItem aria-label="Process renewal payment" onClick={() => handleRenewal(sub.id)}>
+                                  <RefreshCw className="mr-2 h-4 w-4" /> Process Renewal
                                 </DropdownMenuItem>
                               )}
                               {sub.status === "active" ? (

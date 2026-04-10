@@ -191,16 +191,14 @@ async function reconcileWithChain(
     const result = chainResults[i];
 
     if (result.status === "rejected" || !result.value) {
-      console.warn(`[reconcile] Invoice ${inv.id} (db=${inv.dbId}): not found on-chain, removing`);
-      continue;
+      continue; // not found on-chain — ghost invoice
     }
 
     const chain = result.value;
 
     // Wrong merchant — v3 ID collision
     if (chain.merchant !== merchantPrincipal) {
-      console.warn(`[reconcile] Invoice ${inv.id}: merchant mismatch (chain=${chain.merchant})`);
-      continue;
+      continue; // merchant mismatch — v3 ID collision
     }
 
     const chainAmount = Number(chain.amount);

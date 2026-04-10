@@ -398,7 +398,6 @@ export async function registerMerchant(params: {
     params.logoUrl ? Cl.some(Cl.stringUtf8(params.logoUrl)) : Cl.none(),
   ];
 
-  console.log('[registerMerchant] Calling stx_callContract...');
   const response = await request('stx_callContract', {
     contract: PAYMENT_CONTRACT_TYPED,
     functionName: 'register-merchant',
