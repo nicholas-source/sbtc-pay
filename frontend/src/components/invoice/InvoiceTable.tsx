@@ -215,13 +215,13 @@ export default function InvoiceTable({ onSelect }: Props) {
                     <TableCell className="hidden md:table-cell">
                       {inv.status === "paid" ? (
                         <Check className="h-4 w-4 text-success" />
-                      ) : inv.status === "partial" ? (
-                        <span className="text-xs font-mono text-info">{pct}%</span>
+                      ) : (inv.status === "partial" || inv.amountPaid > 0) ? (
+                        <span className={cn("text-xs font-mono", inv.status === "expired" ? "text-destructive/70" : "text-info")}>{pct}%</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell><InvoiceStatusBadge status={inv.status} /></TableCell>
+                    <TableCell><InvoiceStatusBadge status={inv.status} amountPaid={inv.amountPaid} /></TableCell>
                     <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                       {formatDistanceToNow(inv.createdAt, { addSuffix: true })}
                     </TableCell>

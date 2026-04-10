@@ -259,7 +259,7 @@ async function reconcileInvoices(
         // Get current Supabase row
         const { data: row } = await supabase
           .from("invoices")
-          .select("id, status, amount, amount_paid, amount_refunded, expires_at_block, payer, merchant_principal")
+          .select("id, status, amount, amount_paid, amount_refunded, created_at_block, expires_at_block, payer, merchant_principal")
           .eq("id", invoiceId)
           .single();
 
@@ -295,11 +295,13 @@ async function reconcileInvoices(
         }
 
         // Compare and update if drifted
+        const chainCreatedAt = Number(chain["created-at"] ?? 0);
         const updates: Record<string, unknown> = {};
         if (chainStatus !== row.status) updates.status = chainStatus;
         if (chainAmount !== Number(row.amount ?? 0)) updates.amount = chainAmount;
         if (chainAmountPaid !== Number(row.amount_paid ?? 0)) updates.amount_paid = chainAmountPaid;
         if (chainAmountRefunded !== Number(row.amount_refunded ?? 0)) updates.amount_refunded = chainAmountRefunded;
+        if (chainCreatedAt && chainCreatedAt !== Number(row.created_at_block ?? 0)) updates.created_at_block = chainCreatedAt;
         if (expiresAt !== Number(row.expires_at_block ?? 0)) updates.expires_at_block = expiresAt;
         if (chainPayer !== row.payer) updates.payer = chainPayer;
         if (chainMerchant && chainMerchant !== row.merchant_principal) updates.merchant_principal = chainMerchant;

@@ -153,8 +153,12 @@ function mapDbInvoice(
  * Uses AVG_BLOCK_TIME_SECONDS (testnet=120s, mainnet=600s) and anchors to the invoice creation timestamp.
  */
 function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtBlock: number): Date | null {
-  if (!expiresAtBlock || expiresAtBlock <= createdAtBlock) return null;
-  const blockDelta = expiresAtBlock - createdAtBlock;
+  if (!expiresAtBlock) return null;
+  // If created_at_block > expires_at_block (e.g. mixed Stacks/burn heights), use
+  // a small positive delta so the expiry is still shown rather than returning null.
+  const blockDelta = expiresAtBlock > createdAtBlock
+    ? expiresAtBlock - createdAtBlock
+    : 6; // fallback ~12min on testnet, ~1hr on mainnet
   const msFromCreation = blockDelta * AVG_BLOCK_TIME_SECONDS * 1000;
   const createdTime = new Date(createdAt).getTime();
   return new Date(createdTime + msFromCreation);

@@ -63,7 +63,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
         <SheetHeader className="pb-4">
           <div className="flex items-center gap-3">
             <SheetTitle className="font-mono text-xl">{invoice.id}</SheetTitle>
-            <InvoiceStatusBadge status={invoice.status} />
+            <InvoiceStatusBadge status={invoice.status} amountPaid={invoice.amountPaid} />
           </div>
           <div className="flex gap-4 text-xs text-muted-foreground mt-1">
             <span>Created {formatDistanceToNow(invoice.createdAt, { addSuffix: true })}</span>
@@ -101,6 +101,13 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
             </div>
           )}
 
+          {/* Expired with partial payment banner */}
+          {invoice.status === "expired" && invoice.amountPaid > 0 && (
+            <div className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
+              This invoice expired with {formatSbtc(invoice.amountPaid)} sBTC received ({pct}% of total). Consider issuing a refund to the payer.
+            </div>
+          )}
+
           {/* Actions */}
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={copyLink} className="flex-1" disabled={invoice.dbId === 0}>
@@ -111,7 +118,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                 <XCircle className="mr-2 h-3.5 w-3.5" />Cancel Invoice
               </Button>
             )}
-            {invoice.amountPaid > 0 && (invoice.status === "paid" || invoice.status === "partial") && (
+            {invoice.amountPaid > 0 && (invoice.status === "paid" || invoice.status === "partial" || invoice.status === "expired") && (
               <Button variant="outline" size="sm" onClick={() => setRefundOpen(true)} className="flex-1">
                 <RotateCcw className="mr-2 h-3.5 w-3.5" />Refund
               </Button>
