@@ -119,8 +119,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         isVerified: m.is_verified ?? false,
         isSuspended: !(m.is_active ?? true),
         registeredAt: new Date(m.created_at),
-        invoiceCount: 0,
-        totalVolume: 0,
+        invoiceCount: m.invoice_count ?? 0,
+        totalVolume: m.total_received ?? 0,
       }));
 
       set({

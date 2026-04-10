@@ -34,8 +34,11 @@ function CustomerSubscriptions() {
   const resumeSub = useSubscriptionStore((s) => s.resumeSubscription);
   const cancelSub = useSubscriptionStore((s) => s.cancelSubscription);
 
-  // Show all seed subs for demo purposes (wallet may not match seed addresses)
-  const mySubs = useMemo(() => subscribers, [subscribers]);
+  // Filter to subscriptions belonging to the connected wallet
+  const mySubs = useMemo(
+    () => (address ? subscribers.filter((s) => s.payerAddress?.toLowerCase() === address.toLowerCase()) : []),
+    [subscribers, address],
+  );
 
   const activeSubs = useMemo(() => mySubs.filter((s) => s.status !== "cancelled"), [mySubs]);
   const pastSubs = useMemo(() => mySubs.filter((s) => s.status === "cancelled"), [mySubs]);

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
+import { useWalletStore } from "@/stores/wallet-store";
 
 import { formatSbtc } from "@/lib/constants";
 import { useSatsToUsd } from "@/stores/wallet-store";
@@ -22,14 +23,17 @@ interface PaymentRow {
 
 export default function CustomerPayments() {
   const satsToUsd = useSatsToUsd();
+  const { address } = useWalletStore();
   const invoices = useInvoiceStore((s) => s.invoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
 
   const allPayments = useMemo(() => {
     const rows: PaymentRow[] = [];
+    const wallet = address?.toLowerCase();
 
-    // Invoice payments
+    // Invoice payments — only where connected wallet is the payer
     invoices.forEach((inv) => {
+      if (wallet && inv.payerAddress?.toLowerCase() !== wallet) return;
       inv.payments.forEach((p) => {
         rows.push({
           id: `${inv.id}-${p.txId.slice(0, 8)}`,
@@ -42,8 +46,9 @@ export default function CustomerPayments() {
       });
     });
 
-    // Subscription payments
+    // Subscription payments — only where connected wallet is the subscriber
     subscribers.forEach((sub) => {
+      if (wallet && sub.payerAddress?.toLowerCase() !== wallet) return;
       sub.payments.forEach((p) => {
         rows.push({
           id: `${sub.id}-${p.txId.slice(0, 8)}`,
@@ -57,7 +62,7 @@ export default function CustomerPayments() {
     });
 
     return rows.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
-  }, [invoices, subscribers]);
+  }, [invoices, subscribers, address]);
 
   return (
     <PageTransition className="mx-auto max-w-4xl space-y-6 p-6">
