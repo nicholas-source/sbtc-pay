@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain } from "@/lib/stacks/contract";
-import { API_URL, fetchBurnBlockHeight } from "@/lib/stacks/config";
+import { API_URL, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -150,12 +150,12 @@ function mapDbInvoice(
 /**
  * Convert a block-height-based expiration to a Date.
  * Returns null if the invoice never expires (expires_at_block <= created_at_block or 0).
- * Uses ~10 min/block average for Stacks and anchors to the invoice creation timestamp.
+ * Uses AVG_BLOCK_TIME_SECONDS (testnet=120s, mainnet=600s) and anchors to the invoice creation timestamp.
  */
 function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtBlock: number): Date | null {
   if (!expiresAtBlock || expiresAtBlock <= createdAtBlock) return null;
   const blockDelta = expiresAtBlock - createdAtBlock;
-  const msFromCreation = blockDelta * 10 * 60 * 1000; // ~10 min per block
+  const msFromCreation = blockDelta * AVG_BLOCK_TIME_SECONDS * 1000;
   const createdTime = new Date(createdAt).getTime();
   return new Date(createdTime + msFromCreation);
 }
