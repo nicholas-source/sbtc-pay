@@ -166,7 +166,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         const STATUS_LABELS = ["pending", "partial", "paid", "expired", "cancelled", "refunded"] as const;
 
         // First pass: apply expiration from Supabase data
-        const needsChainCheck: number[] = [];
+        const stillPendingOrPartial: number[] = [];
         const rowLabels = new Map<number, string>();
         for (const row of invoiceRows ?? []) {
           let label = STATUS_LABELS[row.status] ?? "pending";
@@ -180,23 +180,24 @@ export const useAdminStore = create<AdminState>((set, get) => ({
             label = "expired";
           }
           rowLabels.set(row.id, label);
-          // If still pending/partial and expires_at_block is missing, verify on-chain
-          if ((label === "pending" || label === "partial") && expiresAt === 0 && burnHeight > 0) {
-            needsChainCheck.push(row.id);
+          // Any invoice still pending/partial needs on-chain verification
+          // (Supabase expires_at_block may be stale, missing, or wrong)
+          if ((label === "pending" || label === "partial") && burnHeight > 0) {
+            stillPendingOrPartial.push(row.id);
           }
         }
 
-        // Second pass: on-chain verification for invoices with missing expiry data
-        if (needsChainCheck.length > 0) {
+        // Second pass: on-chain verification for all remaining pending/partial invoices
+        if (stillPendingOrPartial.length > 0) {
           const senderAddr = walletAddress;
           const chainResults = await Promise.allSettled(
-            needsChainCheck.map((id) => getInvoiceOnChain(id, senderAddr)),
+            stillPendingOrPartial.map((id) => getInvoiceOnChain(id, senderAddr)),
           );
           chainResults.forEach((result, idx) => {
             if (result.status === "fulfilled" && result.value) {
               const onChain = result.value;
               if (onChain.expiresAt > 0 && burnHeight > onChain.expiresAt) {
-                rowLabels.set(needsChainCheck[idx], "expired");
+                rowLabels.set(stillPendingOrPartial[idx], "expired");
               }
             }
           });
