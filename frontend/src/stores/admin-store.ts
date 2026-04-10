@@ -14,7 +14,7 @@ import {
   suspendMerchant as suspendOnChain,
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
-import { supabaseWithWallet } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 
 export interface PlatformStats {
   totalMerchants: number;
@@ -105,9 +105,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
       const config = configResult.status === "fulfilled" ? configResult.value : null;
 
-      // Fetch registered merchants from Supabase
-      const db = supabaseWithWallet(walletAddress);
-      const { data: merchantRows } = await db
+      // Fetch ALL merchants (admin needs full visibility, no wallet-scoped RLS)
+      const { data: merchantRows } = await supabase
         .from("merchants")
         .select("*")
         .order("id", { ascending: false });
