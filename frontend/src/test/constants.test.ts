@@ -55,33 +55,38 @@ describe("sbtcToSats", () => {
 
 describe("formatSbtc", () => {
   it("formats 1 BTC worth of sats", () => {
-    expect(formatSbtc(100_000_000)).toBe("1.00000000");
+    expect(formatSbtc(100_000_000)).toBe("1.00");
   });
 
-  it("formats small amounts with 8 decimals", () => {
-    expect(formatSbtc(1)).toBe("0.00000001");
+  it("formats small amounts as sats", () => {
+    expect(formatSbtc(1)).toBe("1 sat");
+    expect(formatSbtc(999)).toBe("999 sats");
   });
 
   it("formats 50000 sats", () => {
-    expect(formatSbtc(50_000)).toBe("0.00050000");
+    expect(formatSbtc(50_000)).toBe("0.0005");
   });
 
   it("formats 0 sats", () => {
-    expect(formatSbtc(0)).toBe("0.00000000");
+    expect(formatSbtc(0)).toBe("0");
   });
 
   it("formats 9000 sats (typical test payment)", () => {
-    expect(formatSbtc(9000)).toBe("0.00009000");
+    expect(formatSbtc(9000)).toBe("0.00009");
   });
 });
 
 describe("formatSbtcCompact", () => {
+  it("formats 0 cleanly", () => {
+    expect(formatSbtcCompact(0)).toBe("0");
+  });
+
   it("shows full precision for tiny amounts", () => {
     expect(formatSbtcCompact(1)).toBe("0.00000001");
   });
 
-  it("shows full precision for amounts < 0.001 sBTC", () => {
-    expect(formatSbtcCompact(50_000)).toBe("0.00050000");
+  it("shows 4 decimals for amounts near 0.001 sBTC", () => {
+    expect(formatSbtcCompact(50_000)).toBe("0.0005");
   });
 
   it("shows 2 decimals for whole sBTC amounts", () => {

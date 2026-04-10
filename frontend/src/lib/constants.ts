@@ -41,30 +41,48 @@ export function sbtcToSats(sbtc: number): number {
 
 /**
  * Format a sats amount as an sBTC display string.
- * Shows up to 8 decimal places, trims trailing zeros but keeps at least 2.
- * Examples:
- *   50000      → "0.00050000"
+ * Smart formatting:
+ *   0          → "0"
+ *   1          → "1 sat"       (< 1000 sats → show sats for clarity)
+ *   999        → "999 sats"
+ *   1000       → "0.00001"
+ *   50000      → "0.0005"
+ *   12500      → "0.000125"
  *   100000000  → "1.00"
- *   12500      → "0.00012500"
- *   1          → "0.00000001"
+ *   250000000  → "2.50"
  */
 export function formatSbtc(sats: number): string {
+  if (sats === 0) return "0";
+  if (sats < 1000) return `${sats} sat${sats === 1 ? "" : "s"}`;
   const sbtc = satsToSbtc(sats);
-  // Always show 8 decimals for consistency (matches Bitcoin convention)
-  return sbtc.toFixed(8);
+  if (sbtc >= 1) return sbtc.toFixed(2);
+  // For sub-1 amounts, use enough precision then trim trailing zeros
+  const decimals = sbtc >= 0.001 ? 4 : sbtc >= 0.000001 ? 6 : 8;
+  return sbtc.toFixed(decimals).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+/**
+ * Format sats as sBTC with full 8-decimal precision.
+ * Use in tooltips, detail views, or when exact value matters.
+ */
+export function formatSbtcFull(sats: number): string {
+  if (sats === 0) return "0.00000000";
+  return satsToSbtc(sats).toFixed(8);
 }
 
 /**
  * Abbreviate an sBTC amount for compact display (charts, stat cards).
  * Examples:
+ *   0           → "0"
  *   50000       → "0.0005"
  *   100000000   → "1.0"
  *   5000000000  → "50.0"
  */
 export function formatSbtcCompact(sats: number): string {
+  if (sats === 0) return "0";
   const sbtc = satsToSbtc(sats);
   if (sbtc >= 1000) return `${(sbtc / 1000).toFixed(1)}K`;
   if (sbtc >= 1) return sbtc.toFixed(2);
-  if (sbtc >= 0.001) return sbtc.toFixed(4);
-  return sbtc.toFixed(8);
+  if (sbtc >= 0.001) return sbtc.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
+  return sbtc.toFixed(8).replace(/0+$/, "").replace(/\.$/, "");
 }

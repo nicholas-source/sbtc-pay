@@ -21,7 +21,7 @@ import { useAdminStore } from "@/stores/admin-store";
 import { useWalletStore } from "@/stores/wallet-store";
 
 import { cn } from "@/lib/utils";
-import { formatSbtcCompact, formatSbtc } from "@/lib/constants";
+import { formatSbtc } from "@/lib/constants";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -120,10 +120,10 @@ export default function AdminPage() {
 
       {/* Platform Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <StatCard label="Merchants" value={stats.totalMerchants.toString()} icon={Users} accent="info" />
+        <StatCard label="Merchants" value={Math.max(stats.totalMerchants, merchants.length).toString()} icon={Users} accent="info" />
         <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
         <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
-        <StatCard label="Total Volume" value={`${formatSbtcCompact(stats.totalVolume)} sBTC`} icon={TrendingUp} accent="success" />
+        <StatCard label="Total Volume" value={`${formatSbtc(stats.totalVolume)} sBTC`} icon={TrendingUp} accent="success" />
         <StatCard label="Fees Collected" value={`${formatSbtc(stats.feesCollected)} sBTC`} icon={Bitcoin} accent="warning" />
       </div>
 
@@ -289,7 +289,7 @@ export default function AdminPage() {
                       {format(m.registeredAt, "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-right hidden sm:table-cell font-mono text-caption">
-                      {formatSbtcCompact(m.totalVolume)}
+                      {formatSbtc(m.totalVolume)}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
