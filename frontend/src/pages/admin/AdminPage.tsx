@@ -133,7 +133,31 @@ export default function AdminPage() {
       {/* Platform Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard label="Merchants" value={Math.max(stats.totalMerchants, merchants.length).toString()} icon={Users} accent="info" />
-        <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
+        <div className="space-y-2">
+          <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
+          {stats.totalInvoices > 0 && (
+            <div className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-caption text-muted-foreground">
+              {stats.invoiceBreakdown.paid > 0 && (
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-success" />{stats.invoiceBreakdown.paid} Paid</span>
+              )}
+              {stats.invoiceBreakdown.pending > 0 && (
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-warning" />{stats.invoiceBreakdown.pending} Pending</span>
+              )}
+              {stats.invoiceBreakdown.partial > 0 && (
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-info" />{stats.invoiceBreakdown.partial} Partial</span>
+              )}
+              {stats.invoiceBreakdown.expired > 0 && (
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />{stats.invoiceBreakdown.expired} Expired</span>
+              )}
+              {stats.invoiceBreakdown.cancelled > 0 && (
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-destructive" />{stats.invoiceBreakdown.cancelled} Cancelled</span>
+              )}
+              {stats.invoiceBreakdown.refunded > 0 && (
+                <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-secondary" />{stats.invoiceBreakdown.refunded} Refunded</span>
+              )}
+            </div>
+          )}
+        </div>
         <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
         <StatCard label="Total Volume" value={`${formatSbtc(stats.totalVolume)} sBTC`} icon={TrendingUp} accent="success" />
         <StatCard label="Fees Collected" value={`${formatSbtc(stats.feesCollected)} sBTC`} icon={Bitcoin} accent="warning" />

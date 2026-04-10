@@ -16,6 +16,7 @@ import {
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
 import { supabase } from "@/lib/supabase/client";
+import { fetchBurnBlockHeight } from "@/lib/stacks/config";
 
 export interface PlatformStats {
   totalMerchants: number;
@@ -23,6 +24,14 @@ export interface PlatformStats {
   totalSubscriptions: number;
   totalVolume: number;
   feesCollected: number;
+  invoiceBreakdown: {
+    paid: number;
+    pending: number;
+    expired: number;
+    cancelled: number;
+    refunded: number;
+    partial: number;
+  };
 }
 
 export interface MerchantEntry {
@@ -82,6 +91,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     totalSubscriptions: 0,
     totalVolume: 0,
     feesCollected: 0,
+    invoiceBreakdown: { paid: 0, pending: 0, expired: 0, cancelled: 0, refunded: 0, partial: 0 },
   },
   isLoading: false,
   pendingAction: null,
@@ -145,8 +155,30 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         }),
       );
 
+      // Compute invoice status breakdown with client-side expiration detection
+      const breakdown = { paid: 0, pending: 0, expired: 0, cancelled: 0, refunded: 0, partial: 0 };
+      try {
+        const [{ data: invoiceRows }, burnHeight] = await Promise.all([
+          supabase.from("invoices").select("status, expires_at_block"),
+          fetchBurnBlockHeight().catch(() => 0),
+        ]);
+        const STATUS_LABELS = ["pending", "partial", "paid", "expired", "cancelled", "refunded"] as const;
+        for (const row of invoiceRows ?? []) {
+          let label = STATUS_LABELS[row.status] ?? "pending";
+          if (
+            burnHeight > 0 &&
+            row.expires_at_block > 0 &&
+            burnHeight > row.expires_at_block &&
+            (label === "pending" || label === "partial")
+          ) {
+            label = "expired";
+          }
+          if (label in breakdown) breakdown[label as keyof typeof breakdown]++;
+        }
+      } catch { /* non-critical */ }
+
       set({
-        stats,
+        stats: { ...stats, invoiceBreakdown: breakdown },
         contractPaused: config?.isPaused ?? false,
         feeBps: config?.platformFeeBps ?? 50,
         feeRecipient: config?.feeRecipient ?? "",
