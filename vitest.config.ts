@@ -25,6 +25,8 @@ export default defineConfig({
     // use vitest-environment-clarinet
     environment: "clarinet",
     pool: "forks",
+    // only run Clarity contract tests (exclude frontend tests)
+    include: ["tests/**/*.test.ts"],
     // clarinet handles test isolation by resetting the simnet between tests
     isolate: false,
     maxWorkers: 1,

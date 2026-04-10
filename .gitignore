@@ -12,3 +12,16 @@ coverage
 costs-reports.json
 node_modules
 scripts/
+
+docs
+
+# Supabase CLI temp files
+supabase/.temp/
+
+# Root lockfile (SDK dev tools only)
+package-lock.json
+
+# Environment secrets (never commit)
+.env
+.env.local
+.env.*.local

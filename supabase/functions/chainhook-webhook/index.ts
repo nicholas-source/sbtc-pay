@@ -9,6 +9,20 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const CHAINHOOK_AUTH_TOKEN = Deno.env.get("CHAINHOOK_AUTH_TOKEN") ?? "";
 
+// Timing-safe string comparison to prevent timing attacks on auth token
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const encoder = new TextEncoder();
+  const bufA = encoder.encode(a);
+  const bufB = encoder.encode(b);
+  // Constant-time comparison: always iterates full length
+  let mismatch = 0;
+  for (let i = 0; i < bufA.length; i++) {
+    mismatch |= bufA[i] ^ bufB[i];
+  }
+  return mismatch === 0;
+}
+
 // Expected contract identifier (testnet)
 const CONTRACT_ID =
   "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v4";
@@ -692,10 +706,12 @@ Deno.serve(async (req: Request) => {
     const authHeader = req.headers.get("authorization") ?? "";
     // Accept both "Bearer <token>" and plain "<token>" formats
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
-    if (token !== CHAINHOOK_AUTH_TOKEN) {
-      console.error("Auth failed. Header:", authHeader.slice(0, 20) + "...", "Expected token starts:", CHAINHOOK_AUTH_TOKEN.slice(0, 8) + "...");
+    if (!timingSafeEqual(token, CHAINHOOK_AUTH_TOKEN)) {
+      console.error("Auth failed. Header prefix:", authHeader.slice(0, 20) + "...");
       return new Response("Unauthorized", { status: 401 });
     }
+  } else {
+    console.warn("CHAINHOOK_AUTH_TOKEN not set — webhook is unauthenticated!");
   }
 
   try {
