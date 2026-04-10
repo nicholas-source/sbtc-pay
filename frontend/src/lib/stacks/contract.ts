@@ -554,6 +554,39 @@ export async function cancelInvoice(invoiceId: number): Promise<{ txId: string }
 }
 
 /**
+ * Pay a merchant directly (no invoice)
+ */
+export async function payMerchantDirect(params: {
+  merchantAddress: string;
+  amount: bigint;
+  memo: string;
+  payerAddress: string;
+}): Promise<{ txId: string }> {
+  validateStringLength(params.memo, 'Memo', CONTRACT_LIMITS.MEMO);
+
+  const functionArgs = [
+    Cl.principal(params.merchantAddress),
+    Cl.uint(params.amount),
+    Cl.stringUtf8(params.memo),
+  ];
+
+  const postCondition = Pc.principal(params.payerAddress)
+    .willSendLte(params.amount)
+    .ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName);
+
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'pay-merchant-direct',
+    functionArgs,
+    network: NETWORK_MODE,
+    postConditions: [postCondition],
+    postConditionMode: 'deny',
+  });
+
+  return { txId: response.txid };
+}
+
+/**
  * Create a subscription
  */
 export async function createSubscription(params: {
