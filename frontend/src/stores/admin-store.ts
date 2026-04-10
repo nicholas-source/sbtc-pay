@@ -12,6 +12,7 @@ import {
   acceptOwnership as acceptOwnershipOnChain,
   verifyMerchant as verifyOnChain,
   suspendMerchant as suspendOnChain,
+  getMerchant as getMerchantOnChain,
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
 import { supabase } from "@/lib/supabase/client";
@@ -111,7 +112,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         .select("*")
         .order("id", { ascending: false });
 
-      const merchants: MerchantEntry[] = (merchantRows ?? []).map((m) => ({
+      const merchantsFromDb: MerchantEntry[] = (merchantRows ?? []).map((m) => ({
         id: `M-${m.id}`,
         name: m.name || "Unknown",
         address: m.principal,
@@ -121,6 +122,28 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         invoiceCount: m.invoice_count ?? 0,
         totalVolume: m.total_received ?? 0,
       }));
+
+      // Reconcile with on-chain data (source of truth for name, status, volume)
+      const merchants = await Promise.all(
+        merchantsFromDb.map(async (m) => {
+          try {
+            const onChain = await getMerchantOnChain(m.address);
+            if (onChain) {
+              return {
+                ...m,
+                name: onChain.name || m.name,
+                isVerified: onChain.isVerified,
+                isSuspended: !onChain.isActive,
+                invoiceCount: onChain.invoiceCount,
+                totalVolume: Number(onChain.totalReceived),
+              };
+            }
+            return m;
+          } catch {
+            return m; // fallback to cached Supabase data
+          }
+        }),
+      );
 
       set({
         stats,
