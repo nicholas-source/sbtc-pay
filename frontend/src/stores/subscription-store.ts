@@ -91,8 +91,25 @@ function notifyEvent(eventKey: NotifEventKey, label: string) {
   const hasEmail = !!profile.notifications.email;
   const hasWebhook = !!profile.notifications.webhookUrl;
 
+  // Attempt real webhook delivery if configured
   if (hasWebhook) {
-    toast.info(`Webhook notification sent for: ${label}`);
+    const webhookUrl = profile.notifications.webhookUrl;
+    fetch(webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        event: eventKey,
+        label,
+        merchant: profile.id,
+        timestamp: new Date().toISOString(),
+      }),
+    }).then(() => {
+      toast.success(`Webhook delivered: ${label}`);
+    }).catch(() => {
+      toast.warning(`Webhook delivery failed for: ${label}`, {
+        description: "The endpoint may be unreachable or blocked by CORS.",
+      });
+    });
   }
 
   const channel: "email" | "webhook" | "both" = hasEmail && hasWebhook ? "both" : hasEmail ? "email" : "webhook";

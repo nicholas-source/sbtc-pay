@@ -25,7 +25,7 @@ export default function NotificationHistory() {
           <CardTitle className="text-heading-sm flex items-center gap-2">
             <History className="h-5 w-5" /> Notification History
           </CardTitle>
-          <CardDescription>Recent simulated notification events.</CardDescription>
+          <CardDescription>Recent notification events delivered to your configured channels.</CardDescription>
         </div>
         {logs.length > 0 && (
           <Button variant="outline" size="sm" onClick={clearLogs}>
