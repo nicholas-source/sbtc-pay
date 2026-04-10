@@ -252,7 +252,14 @@ export default function AdminPage() {
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="text-heading-sm">Merchant Management</CardTitle>
-            <p className="text-body-sm text-muted-foreground mt-1">{merchants.length} registered merchant{merchants.length !== 1 ? "s" : ""}</p>
+            <p className="text-body-sm text-muted-foreground mt-1">
+              {merchants.length} registered merchant{merchants.length !== 1 ? "s" : ""}
+              {stats.totalMerchants > merchants.length && (
+                <span className="text-warning ml-2">
+                  ({stats.totalMerchants - merchants.length} pending indexing)
+                </span>
+              )}
+            </p>
           </div>
           {merchants.length > 0 && (
             <div className="relative w-full sm:w-64">

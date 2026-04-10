@@ -234,6 +234,25 @@ async function reconcileWithChain(
     }
 
     reconciled.push(inv);
+
+    // Consistency check: detect if Supabase payment/refund history is incomplete
+    const supaPaymentSum = inv.payments.reduce((sum, p) => sum + p.amount, 0);
+    const supaRefundSum = inv.refunds.reduce((sum, r) => sum + r.amount, 0);
+    if (supaPaymentSum !== chainAmountPaid) {
+      console.warn(
+        `[reconcile] Invoice ${inv.id}: payment history mismatch — ` +
+        `Supabase sum=${supaPaymentSum}, on-chain amountPaid=${chainAmountPaid}`,
+      );
+    }
+    if (chain.amountRefunded !== undefined) {
+      const chainRefunded = Number(chain.amountRefunded);
+      if (supaRefundSum !== chainRefunded) {
+        console.warn(
+          `[reconcile] Invoice ${inv.id}: refund history mismatch — ` +
+          `Supabase sum=${supaRefundSum}, on-chain amountRefunded=${chainRefunded}`,
+        );
+      }
+    }
   }
 
   // Background-fix stale Supabase rows (fire and forget)

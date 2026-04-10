@@ -11,6 +11,7 @@ import {
   resumeSubscription as resumeSubOnChain,
   cancelSubscription as cancelSubOnChain,
   processSubscriptionPayment as processSubPaymentOnChain,
+  getSubscription as getSubOnChain,
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
 
@@ -212,9 +213,76 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
         });
       }
 
+      // Reconcile each subscriber with on-chain data (source of truth)
+      const chainResults = await Promise.allSettled(
+        subscribers.map((sub) => {
+          const numId = parseInt(sub.id.replace("SUB-", ""), 10);
+          return getSubOnChain(numId, merchantPrincipal);
+        }),
+      );
+
+      const reconciledSubs: Subscriber[] = [];
+      const reconciledPlans = new Map(planMap);
+      const fixes: Array<{ id: number; data: Record<string, unknown> }> = [];
+
+      for (let i = 0; i < subscribers.length; i++) {
+        const sub = subscribers[i];
+        const result = chainResults[i];
+
+        if (result.status === "rejected" || !result.value) {
+          reconciledSubs.push(sub); // chain unavailable, keep Supabase data
+          continue;
+        }
+
+        const chain = result.value;
+        const chainStatus = SUB_STATUS_MAP[chain.status] ?? "active";
+        const chainAmount = Number(chain.amount);
+        const dbId = parseInt(sub.id.replace("SUB-", ""), 10);
+
+        // Correct subscriber from chain
+        const corrected: Subscriber = {
+          ...sub,
+          payerAddress: chain.subscriber,
+          status: chainStatus,
+          payments: sub.payments, // keep payment history from Supabase
+        };
+        reconciledSubs.push(corrected);
+
+        // Correct plan from chain
+        const planKey = sub.planId;
+        const existing = reconciledPlans.get(planKey) ?? reconciledPlans.values().next().value;
+        if (existing) {
+          reconciledPlans.set(planKey, {
+            ...existing,
+            name: chain.name || existing.name,
+            amount: chainAmount,
+            isActive: chain.status === 0,
+          });
+        }
+
+        // Detect stale Supabase rows and queue background fixes
+        if (
+          sub.status !== chainStatus ||
+          (reconciledPlans.get(planKey)?.amount ?? 0) !== chainAmount
+        ) {
+          fixes.push({
+            id: dbId,
+            data: { status: chain.status, amount: chainAmount, name: chain.name },
+          });
+        }
+      }
+
+      // Background-fix stale Supabase rows
+      if (fixes.length > 0) {
+        const db = supabaseWithWallet(merchantPrincipal);
+        Promise.all(
+          fixes.map(({ id, data }) => db.from("subscriptions").update(data).eq("id", id)),
+        ).catch((err) => console.warn("[reconcile-subs] Background fix failed:", err));
+      }
+
       set({
-        plans: Array.from(planMap.values()),
-        subscribers,
+        plans: Array.from(reconciledPlans.values()),
+        subscribers: reconciledSubs,
         isLoading: false,
       });
     } catch (err) {
