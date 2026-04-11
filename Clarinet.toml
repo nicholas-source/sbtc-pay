@@ -14,8 +14,13 @@ contract_id = 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token'
 #clarity_version = 4
 #epoch = 'latest'
 
-[contracts.payment-v4]
-path = 'contracts/payment-v4.clar'
+#[contracts.payment-v4]
+#path = 'contracts/payment-v4.clar'
+#clarity_version = 4
+#epoch = 'latest'
+
+[contracts.payment-v5]
+path = 'contracts/payment-v5.clar'
 clarity_version = 4
 epoch = 'latest'
 

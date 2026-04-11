@@ -25,7 +25,7 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 // Expected contract identifier (testnet)
 const CONTRACT_ID =
-  "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v4";
+  "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v5";
 
 const [CONTRACT_ADDRESS, CONTRACT_NAME] = CONTRACT_ID.split(".");
 

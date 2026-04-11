@@ -9,7 +9,7 @@ const merchant2 = accounts.get("wallet_2")!;
 const payer1 = accounts.get("wallet_3")!;
 const payer2 = accounts.get("wallet_4")!;
 
-const CONTRACT_NAME = "payment-v4";
+const CONTRACT_NAME = "payment-v5";
 
 // Helper: register a merchant with full v4 args
 function registerMerchant(sender: string, name = "Test Merchant") {

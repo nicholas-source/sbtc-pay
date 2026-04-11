@@ -37,9 +37,9 @@ const API_URL = NETWORK === "testnet"
   ? "https://api.testnet.hiro.so"
   : "https://api.mainnet.hiro.so";
 
-// Contract identifier — payment-v4
+// Contract identifier — payment-v5
 const CONTRACT_ID = Deno.env.get("PAYMENT_CONTRACT_ID")
-  ?? "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v4";
+  ?? "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v5";
 const [CONTRACT_ADDRESS, CONTRACT_NAME] = CONTRACT_ID.split(".");
 
 // A valid sender address for read-only calls (doesn't need to own anything)
