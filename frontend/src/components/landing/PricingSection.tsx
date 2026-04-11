@@ -14,7 +14,7 @@ const checkpoints = [
 
 export default function PricingSection() {
   return (
-    <section id="pricing" className="py-24 relative">
+    <section id="pricing" className="py-12 sm:py-16 md:py-24 relative">
       <div className="absolute inset-0 bg-surface-1/50" />
       <div className="container relative">
         <motion.div

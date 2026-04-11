@@ -94,6 +94,7 @@
 
   html {
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: hsl(220 16% 6%);
   }
 
   body {

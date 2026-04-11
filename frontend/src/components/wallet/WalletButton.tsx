@@ -76,7 +76,7 @@ export function WalletButton() {
         <Button 
           onClick={handleConnect} 
           disabled={isConnecting}
-          className="gap-2" 
+          className="gap-2"
           aria-label="Connect wallet"
         >
           {isConnecting ? (
@@ -104,7 +104,7 @@ export function WalletButton() {
           <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-64">
+      <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-2rem)]">
         <div className="px-3 py-2.5 space-y-2">
           <div className="flex justify-between text-body-sm">
             <span className="text-muted-foreground">sBTC</span>

@@ -14,16 +14,16 @@ const fadeUp = {
 
 export default function HeroSection() {
   return (
-    <section id="main-content" className="relative pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-44 lg:pb-32 bg-grid">
+    <section id="main-content" className="relative pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-44 lg:pb-32 bg-grid">
       <div className="container relative">
         <motion.div
-          className="mx-auto max-w-3xl text-center px-4 sm:px-6"
+          className="mx-auto max-w-3xl text-center"
           initial="hidden"
           animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
         >
           <motion.div variants={fadeUp} custom={0}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-caption font-semibold text-primary">
+            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 sm:px-4 py-1.5 text-caption font-semibold text-primary">
               <Bitcoin className="h-3.5 w-3.5" />
               Powered by Stacks & sBTC
             </span>
@@ -32,7 +32,7 @@ export default function HeroSection() {
           <motion.h1
             variants={fadeUp}
             custom={1}
-            className="mt-6 text-2xl sm:text-3xl md:text-display-lg lg:text-display-xl tracking-tight"
+            className="mt-6 text-display sm:text-display-lg lg:text-display-xl tracking-tight"
           >
             Accept Bitcoin payments.{" "}
             <span className="text-primary">Built on Stacks.</span>

@@ -28,7 +28,7 @@ export default function FeaturesSection() {
     <section id="features" className="py-12 sm:py-16 md:py-24 relative">
       <div className="container">
         <motion.div
-          className="text-center mb-16"
+          className="text-center mb-8 sm:mb-12 md:mb-16"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
