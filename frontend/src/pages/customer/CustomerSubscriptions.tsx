@@ -97,7 +97,7 @@ function CustomerSubscriptions() {
 
                 return (
                   <Card key={sub.id}>
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
                       <CardTitle className="text-heading-sm">{plan.name}</CardTitle>
                       <Badge variant="outline" className={statusStyles[sub.status]}>
                         {sub.status}
@@ -171,7 +171,7 @@ function CustomerSubscriptions() {
 
                 return (
                   <Card key={sub.id} className="opacity-60">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                    <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between pb-2">
                       <CardTitle className="text-heading-sm">{plan.name}</CardTitle>
                       <Badge variant="outline" className={statusStyles[sub.status]}>
                         {sub.status}

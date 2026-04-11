@@ -78,7 +78,7 @@ export default function DirectPaymentWidget() {
   if (!addr) {
     return (
       <PageTransition>
-        <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+        <div className="min-h-svh flex items-center justify-center p-4 bg-background">
           <Card className="w-full max-w-sm border-border">
             <CardContent className="p-6 flex flex-col items-center gap-4 text-center">
               <AlertTriangle className="h-10 w-10 text-destructive" />
@@ -96,7 +96,7 @@ export default function DirectPaymentWidget() {
   if (payState === "confirmed" && txId) {
     return (
       <PageTransition>
-        <div className={`min-h-screen flex items-center justify-center p-4 ${theme === "dark" ? "bg-background" : "bg-white"}`}>
+        <div className={`min-h-svh flex items-center justify-center p-4 ${theme === "dark" ? "bg-background" : "bg-white"}`}>
           <Card className="w-full max-w-sm border-border">
             <CardContent className="p-6 space-y-4 text-center">
               <Check className="h-12 w-12 text-success mx-auto" />
@@ -121,7 +121,7 @@ export default function DirectPaymentWidget() {
 
   return (
     <PageTransition>
-      <div className={`min-h-screen flex items-center justify-center p-4 ${theme === "dark" ? "bg-background" : "bg-white"}`}>
+      <div className={`min-h-svh flex items-center justify-center p-4 ${theme === "dark" ? "bg-background" : "bg-white"}`}>
         <Card className="w-full max-w-sm border-border">
           <CardContent className="p-6 space-y-5">
             <div className="flex items-center justify-center gap-2">
@@ -132,7 +132,7 @@ export default function DirectPaymentWidget() {
 
             <div className="flex justify-center">
               <div className="rounded-lg bg-white p-2.5 sm:p-3">
-                <QRCodeSVG value={addr} size={140} level="M" className="h-[110px] w-[110px] sm:h-[140px] sm:w-[140px]" />
+                <QRCodeSVG value={addr} size={140} level="M" className="h-[100px] w-[100px] sm:h-[120px] sm:w-[120px] md:h-[140px] md:w-[140px]" />
               </div>
             </div>
 

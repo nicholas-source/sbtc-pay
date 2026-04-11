@@ -8,7 +8,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 export default function LandingPage() {
   return (
     <PageTransition>
-      <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      <div className="min-h-svh bg-background text-foreground overflow-x-hidden">
         <a href="#main-content" className="skip-link">Skip to main content</a>
         <LandingNavbar />
         <HeroSection />

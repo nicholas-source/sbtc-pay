@@ -100,7 +100,7 @@ export default function AdminPage() {
   }, [feeRecipient]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="mx-auto max-w-6xl space-y-6 p-3 sm:p-4 md:p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -131,7 +131,7 @@ export default function AdminPage() {
       )}
 
       {/* Platform Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         <StatCard label="Merchants" value={Math.max(stats.totalMerchants, merchants.length).toString()} icon={Users} accent="info" />
         <div className="space-y-2">
           <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
@@ -288,7 +288,7 @@ export default function AdminPage() {
             </p>
           </div>
           {merchants.length > 0 && (
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full sm:w-64 md:w-72">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search merchants…"
@@ -310,7 +310,7 @@ export default function AdminPage() {
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden lg:table-cell">Registered</TableHead>
                   <TableHead className="text-right hidden sm:table-cell">Volume</TableHead>
-                  <TableHead className="w-[140px] text-right">Actions</TableHead>
+                  <TableHead className="w-[100px] sm:w-[140px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -462,7 +462,7 @@ export default function AdminPage() {
                             <TooltipTrigger asChild>
                               <span className="text-caption text-destructive/60 italic px-2 cursor-help">Suspended</span>
                             </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[200px] text-center">
+                            <TooltipContent side="top" className="max-w-[160px] sm:max-w-[200px] text-center">
                               Merchant must self-reactivate via their own wallet
                             </TooltipContent>
                           </Tooltip>

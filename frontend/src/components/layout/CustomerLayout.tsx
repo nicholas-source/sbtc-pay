@@ -10,9 +10,9 @@ const tabs = [
 
 export default function CustomerLayout() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-svh bg-background">
       <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30">
-        <div className="mx-auto max-w-4xl flex items-center justify-between px-4 h-16">
+        <div className="mx-auto max-w-4xl flex items-center justify-between px-3 sm:px-4 h-14 sm:h-16">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
               <Bitcoin className="h-4 w-4 text-primary-foreground" />

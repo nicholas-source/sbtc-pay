@@ -33,7 +33,7 @@ export default function PricingSection() {
         </motion.div>
 
         <motion.div
-          className="mt-12 mx-auto max-w-md"
+          className="mt-12 mx-auto max-w-sm sm:max-w-md px-2 sm:px-0"
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -41,7 +41,7 @@ export default function PricingSection() {
         >
           <Card className="border-primary/30 relative overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
-            <CardContent className="p-5 sm:p-8">
+            <CardContent className="p-4 sm:p-6 md:p-8">
               <div className="text-center">
                 <motion.div
                   className="text-4xl sm:text-display-lg md:text-display-xl text-primary font-black"

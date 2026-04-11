@@ -60,7 +60,7 @@ export default function WidgetGeneratorPage() {
     }
   }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme]);
 
-  const embedCode = `<iframe src="${previewUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:380px;" allow="clipboard-write"></iframe>`;
+  const embedCode = `<iframe src="${previewUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:420px;" allow="clipboard-write"></iframe>`;
 
   const copyEmbed = async () => {
     try {
@@ -93,10 +93,10 @@ export default function WidgetGeneratorPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Tabs value={widgetType} onValueChange={(v) => setWidgetType(v as WidgetType)}>
-              <TabsList className="w-full overflow-x-auto">
-                <TabsTrigger value="direct" className="flex-1 min-w-0 text-body-sm sm:text-body">Direct Pay</TabsTrigger>
-                <TabsTrigger value="invoice" className="flex-1 min-w-0 text-body-sm sm:text-body">Invoice</TabsTrigger>
-                <TabsTrigger value="subscription" className="flex-1 min-w-0 text-body-sm sm:text-body">Subscribe</TabsTrigger>
+              <TabsList className="w-full flex-wrap">
+                <TabsTrigger value="direct" className="flex-1 min-w-0 text-xs sm:text-body-sm">Direct Pay</TabsTrigger>
+                <TabsTrigger value="invoice" className="flex-1 min-w-0 text-xs sm:text-body-sm">Invoice</TabsTrigger>
+                <TabsTrigger value="subscription" className="flex-1 min-w-0 text-xs sm:text-body-sm">Subscribe</TabsTrigger>
               </TabsList>
 
               <TabsContent value="direct" className="space-y-3 mt-4">
@@ -179,7 +179,7 @@ export default function WidgetGeneratorPage() {
             </CardHeader>
             <CardContent>
               <div className="rounded-lg border border-border overflow-hidden bg-background">
-                <iframe src={previewUrl} className="w-full h-[480px]" title="Widget preview" />
+                <iframe src={previewUrl} className="w-full h-[320px] sm:h-[400px] md:h-[480px]" title="Widget preview" />
               </div>
             </CardContent>
           </Card>

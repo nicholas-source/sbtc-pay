@@ -26,7 +26,7 @@ export default function LandingNavbar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
             <Bitcoin className="h-4.5 w-4.5 text-primary-foreground" />
           </div>
-          <span className="text-lg font-bold">sBTC Pay</span>
+          <span className="text-base sm:text-lg font-bold">sBTC Pay</span>
         </Link>
         <nav aria-label="Main navigation" className="hidden md:flex items-center gap-8 text-body-sm text-muted-foreground">
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>

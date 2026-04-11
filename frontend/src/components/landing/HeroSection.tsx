@@ -14,10 +14,10 @@ const fadeUp = {
 
 export default function HeroSection() {
   return (
-    <section id="main-content" className="relative pt-32 pb-24 lg:pt-44 lg:pb-32 bg-grid">
+    <section id="main-content" className="relative pt-20 pb-16 sm:pt-24 sm:pb-20 lg:pt-44 lg:pb-32 bg-grid">
       <div className="container relative">
         <motion.div
-          className="mx-auto max-w-3xl text-center"
+          className="mx-auto max-w-3xl text-center px-4 sm:px-6"
           initial="hidden"
           animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
@@ -32,7 +32,7 @@ export default function HeroSection() {
           <motion.h1
             variants={fadeUp}
             custom={1}
-            className="mt-6 text-3xl sm:text-4xl md:text-display-lg lg:text-display-xl tracking-tight"
+            className="mt-6 text-2xl sm:text-3xl md:text-display-lg lg:text-display-xl tracking-tight"
           >
             Accept Bitcoin payments.{" "}
             <span className="text-primary">Built on Stacks.</span>
@@ -47,7 +47,7 @@ export default function HeroSection() {
             and embeddable widgets — all trustlessly on the blockchain.
           </motion.p>
 
-          <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+          <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center gap-2.5 sm:gap-3 md:gap-4">
             <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" asChild>
               <Link to="/dashboard">
                 Get Started

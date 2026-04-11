@@ -60,8 +60,8 @@ function WalletInitializer() {
 
 function PageLoader() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background" role="status" aria-busy="true" aria-label="Loading page">
-      <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+    <div className="flex min-h-svh items-center justify-center bg-background" role="status" aria-busy="true" aria-label="Loading page">
+      <div className="h-6 w-6 sm:h-8 sm:w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
       <span className="sr-only">Loading…</span>
     </div>
   );

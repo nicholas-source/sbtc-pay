@@ -586,9 +586,9 @@ export default PaymentPage;
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <PageTransition>
-      <div className="flex min-h-screen items-center justify-center bg-background p-4">
+      <div className="flex min-h-svh items-center justify-center bg-background p-3 sm:p-4">
         <Card className="w-full max-w-md border-border">
-          <CardContent className="p-6 sm:p-8 space-y-6">
+          <CardContent className="p-4 sm:p-6 md:p-8 space-y-6">
             {/* Branding */}
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-6 w-6 text-primary" />

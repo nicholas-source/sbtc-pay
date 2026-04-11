@@ -112,7 +112,7 @@ export default function SubscriptionAnalyticsChart() {
         </ToggleGroup>
       </CardHeader>
       <CardContent>
-        <div className="h-[280px] sm:h-[320px]">
+        <div className="h-[220px] sm:h-[280px] md:h-[320px] lg:h-[360px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 4, right: isMobile ? 4 : 8, left: isMobile ? -20 : 0, bottom: 0 }}>
               <defs>

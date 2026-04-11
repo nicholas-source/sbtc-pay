@@ -102,7 +102,7 @@ export default function RevenueChart() {
         </ToggleGroup>
       </CardHeader>
       <CardContent>
-        <div className="h-[280px] sm:h-[320px]">
+        <div className="h-[220px] sm:h-[280px] md:h-[320px] lg:h-[360px]">
           {!hasRevenue ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
               No revenue yet. Create invoices and receive payments to see your chart.

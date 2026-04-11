@@ -120,7 +120,7 @@ export default function InvoiceTable({ onSelect }: Props) {
           <Input placeholder="Search invoices..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" aria-label="Search invoices" />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px] md:w-[160px]"><SelectValue placeholder="All statuses" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All statuses</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
@@ -132,7 +132,7 @@ export default function InvoiceTable({ onSelect }: Props) {
           </SelectContent>
         </Select>
         <Select value={dateRange} onValueChange={(v) => setDateRange(v as typeof dateRange)}>
-          <SelectTrigger className="w-full sm:w-[160px]"><SelectValue placeholder="All time" /></SelectTrigger>
+          <SelectTrigger className="w-full sm:w-[140px] md:w-[160px]"><SelectValue placeholder="All time" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All time</SelectItem>
             <SelectItem value="today">Today</SelectItem>
@@ -147,7 +147,7 @@ export default function InvoiceTable({ onSelect }: Props) {
         <div className="flex flex-wrap gap-2 items-center">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("flex-1 min-w-[130px] justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("flex-1 sm:min-w-[130px] justify-start text-left font-normal", !customFrom && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {customFrom ? format(customFrom, "PP") : "From"}
               </Button>
@@ -159,7 +159,7 @@ export default function InvoiceTable({ onSelect }: Props) {
           <span className="text-muted-foreground text-sm">→</span>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className={cn("flex-1 min-w-[130px] justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
+              <Button variant="outline" className={cn("flex-1 sm:min-w-[130px] justify-start text-left font-normal", !customTo && "text-muted-foreground")}>
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {customTo ? format(customTo, "PP") : "To"}
               </Button>
@@ -182,13 +182,13 @@ export default function InvoiceTable({ onSelect }: Props) {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead className="w-[120px]"><SortHeader label="Invoice" field="id" /></TableHead>
+                <TableHead className="min-w-[80px]"><SortHeader label="Invoice" field="id" /></TableHead>
                 <TableHead className="text-right"><SortHeader label="Amount" field="amount" /></TableHead>
                 <TableHead className="hidden md:table-cell">Paid</TableHead>
                 <TableHead><SortHeader label="Status" field="status" /></TableHead>
                 <TableHead className="hidden lg:table-cell"><SortHeader label="Created" field="createdAt" /></TableHead>
                 <TableHead className="hidden lg:table-cell"><SortHeader label="Expires" field="expiresAt" /></TableHead>
-                <TableHead className="w-[60px]" />
+                <TableHead className="w-10 sm:w-[60px]" />
               </TableRow>
             </TableHeader>
             <TableBody>

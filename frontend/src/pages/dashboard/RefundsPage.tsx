@@ -118,7 +118,7 @@ function RefundsPage() {
               <Input placeholder="Search by invoice, reason, or transaction…" value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" />
             </div>
             <Select value={sortBy} onValueChange={(v) => setSortBy(v as "date" | "amount")}>
-              <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+              <SelectTrigger className="w-full sm:w-40"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="date">Sort by date</SelectItem>
                 <SelectItem value="amount">Sort by amount</SelectItem>
@@ -155,7 +155,7 @@ function RefundsPage() {
                           </div>
                           <div className="text-xs text-muted-foreground">${satsToUsd(f.refund.amount)}</div>
                         </TableCell>
-                        <TableCell className="hidden sm:table-cell text-sm max-w-[200px] truncate">{f.refund.reason}</TableCell>
+                        <TableCell className="hidden sm:table-cell text-sm max-w-[140px] md:max-w-[200px] truncate">{f.refund.reason}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
                           {format(f.refund.timestamp, "MMM d, yyyy HH:mm")}
                         </TableCell>

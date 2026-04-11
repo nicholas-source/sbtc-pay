@@ -41,8 +41,8 @@ export default function StatCard({ label, displayValue, unit, usd, icon: Icon, c
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-body-sm font-medium text-muted-foreground">{label}</CardTitle>
-        <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", iconBgMap[accent])}>
-          <Icon className="h-4 w-4" />
+        <div className={cn("flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg", iconBgMap[accent])}>
+          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
         </div>
       </CardHeader>
       <CardContent>

@@ -25,8 +25,8 @@ export default function EmptyState({ icon: Icon, title, description, action, acc
   return (
     <Card className="border-dashed">
       <CardContent className="flex flex-col items-center justify-center py-16 text-center">
-        <div className={cn("flex h-14 w-14 items-center justify-center rounded-full mb-4 animate-scale-in", iconColorMap[accent])}>
-          <Icon className="h-7 w-7" />
+        <div className={cn("flex h-11 w-11 sm:h-14 sm:w-14 items-center justify-center rounded-full mb-4 animate-scale-in", iconColorMap[accent])}>
+          <Icon className="h-5 w-5 sm:h-7 sm:w-7" />
         </div>
         <h3 className="text-heading-sm text-foreground">{title}</h3>
         <p className="text-body-sm text-muted-foreground mt-1 max-w-sm">{description}</p>

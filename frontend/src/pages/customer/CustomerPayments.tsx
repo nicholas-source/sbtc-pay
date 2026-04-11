@@ -101,7 +101,7 @@ export default function CustomerPayments() {
                 <TableBody>
                   {allPayments.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-medium text-foreground max-w-[200px] truncate">{p.label}</TableCell>
+                      <TableCell className="font-medium text-foreground max-w-[120px] sm:max-w-[200px] truncate">{p.label}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={p.type === "invoice" ? "border-primary/30 text-primary" : "border-stacks/30 text-stacks"}>
                           {p.type}

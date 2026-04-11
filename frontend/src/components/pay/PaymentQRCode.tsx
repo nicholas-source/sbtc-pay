@@ -14,7 +14,7 @@ export function PaymentQRCode({ address }: Props) {
           level="M"
           bgColor="#ffffff"
           fgColor="#0a0a0f"
-          className="h-[110px] w-[110px] sm:h-[140px] sm:w-[140px]"
+          className="h-[100px] w-[100px] sm:h-[120px] sm:w-[120px] md:h-[140px] md:w-[140px]"
         />
       </div>
     </div>

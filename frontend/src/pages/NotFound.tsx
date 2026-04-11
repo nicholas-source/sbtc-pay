@@ -9,11 +9,11 @@ function NotFound() {
 
   return (
     <PageTransition>
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="flex min-h-svh items-center justify-center bg-background p-6">
         <div className="text-center space-y-6 max-w-md">
           <div className="flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
-              <Bitcoin className="h-8 w-8 text-primary" />
+            <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-primary/10">
+              <Bitcoin className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             </div>
           </div>
 

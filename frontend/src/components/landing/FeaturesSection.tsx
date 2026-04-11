@@ -25,7 +25,7 @@ const colorClasses = {
 
 export default function FeaturesSection() {
   return (
-    <section id="features" className="py-24 relative">
+    <section id="features" className="py-12 sm:py-16 md:py-24 relative">
       <div className="container">
         <motion.div
           className="text-center mb-16"
@@ -54,8 +54,8 @@ export default function FeaturesSection() {
             >
               <Card className="h-full group">
                 <CardContent className="p-6">
-                  <div className={`flex h-11 w-11 items-center justify-center rounded-lg ${colorClasses[f.color].bg} ${colorClasses[f.color].text} mb-4 transition-colors`}>
-                    <f.icon className="h-5 w-5" />
+                  <div className={`flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-lg ${colorClasses[f.color].bg} ${colorClasses[f.color].text} mb-4 transition-colors`}>
+                    <f.icon className="h-4 w-4 sm:h-5 sm:w-5" />
                   </div>
                   <h3 className="text-heading-sm text-foreground mb-2">{f.title}</h3>
                   <p className="text-body-sm text-muted-foreground">{f.desc}</p>

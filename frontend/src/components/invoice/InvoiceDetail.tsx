@@ -59,7 +59,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
   return (
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="sm:max-w-lg overflow-y-auto">
+      <SheetContent className="max-w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="pb-4">
           <div className="flex items-center gap-3">
             <SheetTitle className="font-mono text-xl">{invoice.id}</SheetTitle>

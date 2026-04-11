@@ -33,7 +33,7 @@ export default function DashboardSkeleton() {
           <Skeleton className="h-5 w-32" />
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[280px] w-full rounded-lg" />
+          <Skeleton className="h-[220px] sm:h-[280px] md:h-[320px] w-full rounded-lg" />
         </CardContent>
       </Card>
 

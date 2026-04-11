@@ -88,7 +88,7 @@ export function DashboardLayout() {
   }, [setSidebarOpen]);
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-svh bg-background overflow-hidden">
       {/* Skip navigation */}
       <a href="#main-content" className="skip-link">
         Skip to main content
@@ -98,7 +98,7 @@ export function DashboardLayout() {
       <aside
         aria-label="Main navigation"
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 lg:relative overflow-hidden",
+          "fixed inset-y-0 left-0 z-40 flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 lg:relative overflow-y-auto",
           sidebarOpen ? "w-64" : "w-0 lg:w-16"
         )}
       >
@@ -175,7 +175,7 @@ export function DashboardLayout() {
       {/* Main content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top bar */}
-        <header aria-label="Dashboard toolbar" className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4 lg:px-6">
+        <header aria-label="Dashboard toolbar" className="flex h-14 sm:h-16 shrink-0 items-center justify-between border-b border-border bg-background px-3 sm:px-4 lg:px-6">
           <button
             ref={toggleButtonRef}
             onClick={toggleSidebar}

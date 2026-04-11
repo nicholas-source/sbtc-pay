@@ -230,7 +230,7 @@ export default function InvoicePaymentWidget() {
 function WidgetShell({ children }: { children: React.ReactNode }) {
   return (
     <PageTransition>
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
+      <div className="min-h-svh flex items-center justify-center p-4 bg-background">
         <Card className="w-full max-w-xs border-border">
           <CardContent className="p-5 space-y-4">
             <div className="flex items-center justify-center gap-2">

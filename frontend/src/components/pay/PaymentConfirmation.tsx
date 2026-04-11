@@ -89,7 +89,7 @@ export function PaymentConfirmation({ payment, amount, confirmed = true }: Props
           <div className="flex justify-between">
             <span className="text-muted-foreground">Transaction</span>
             {payment.txId && payment.txId !== "pending" ? (
-              <code className="truncate max-w-[180px] text-foreground font-mono text-caption">
+              <code className="truncate max-w-[140px] sm:max-w-[180px] md:max-w-[260px] text-foreground font-mono text-caption">
                 {payment.txId}
               </code>
             ) : (

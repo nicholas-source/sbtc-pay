@@ -115,7 +115,7 @@ export default function ActivityFeed() {
         ) : (
         <div className="relative" aria-live="polite">
           {/* Timeline line */}
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-border" />
+          <div className="absolute left-2.5 sm:left-4 top-0 bottom-0 w-px bg-border" />
 
           <div className="space-y-1">
             {events.map((event, i) => {

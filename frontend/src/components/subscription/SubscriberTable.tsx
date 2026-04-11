@@ -142,7 +142,7 @@ export default function SubscriberTable({ planId }: Props) {
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | SubscriberStatus)}>
-          <SelectTrigger className="w-[140px] h-9 text-sm">
+          <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
