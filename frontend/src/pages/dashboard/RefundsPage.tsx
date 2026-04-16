@@ -58,9 +58,16 @@ function RefundsPage() {
   }, [flatRefunds, search, sortBy]);
 
   const stats = useMemo(() => {
-    const totalAmount = flatRefunds.reduce((s, f) => s + f.refund.amount, 0);
+    const sbtcAmount = flatRefunds.filter((f) => f.invoice.tokenType !== 'stx').reduce((s, f) => s + f.refund.amount, 0);
+    const stxAmount = flatRefunds.filter((f) => f.invoice.tokenType === 'stx').reduce((s, f) => s + f.refund.amount, 0);
+    const totalUsd = (sbtcAmount > 0 ? parseFloat(amountToUsd(sbtcAmount, 'sbtc')) : 0)
+      + (stxAmount > 0 ? parseFloat(amountToUsd(stxAmount, 'stx')) : 0);
+    const totalDisplay = [
+      sbtcAmount > 0 ? `${formatAmount(sbtcAmount, 'sbtc')} sBTC` : '',
+      stxAmount > 0 ? `${formatAmount(stxAmount, 'stx')} STX` : '',
+    ].filter(Boolean).join(' + ') || '0';
     const uniqueInvoices = new Set(flatRefunds.map((f) => f.invoiceId)).size;
-    return { count: flatRefunds.length, totalAmount, uniqueInvoices };
+    return { count: flatRefunds.length, totalDisplay, totalUsd, uniqueInvoices };
   }, [flatRefunds]);
 
   const handleExport = useCallback(() => {
@@ -105,7 +112,7 @@ function RefundsPage() {
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard label="Total Refunds" value={stats.count} displayValue={stats.count.toString()} icon={RotateCcw} change="" accent="destructive" />
-            <StatCard label="Total Refunded" value={stats.totalAmount} displayValue={formatAmount(stats.totalAmount, 'sbtc')} unit="sBTC" usd={`$${amountToUsd(stats.totalAmount, 'sbtc')}`} icon={ArrowUpRight} change="" accent="warning" />
+            <StatCard label="Total Refunded" value={stats.totalUsd} displayValue={stats.totalDisplay} unit="" usd={stats.totalUsd > 0 ? `$${stats.totalUsd.toFixed(2)}` : ""} icon={ArrowUpRight} change="" accent="warning" />
             <StatCard label="Invoices Affected" value={stats.uniqueInvoices} displayValue={stats.uniqueInvoices.toString()} icon={Receipt} change="" accent="info" />
           </div>
 
