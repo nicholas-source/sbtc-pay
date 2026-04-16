@@ -70,7 +70,7 @@ export default function AdminPage() {
   const {
     contractPaused, toggleContractPause, feeBps, updateFeeBps,
     feeRecipient, updateFeeRecipient, pendingOwner, currentOwner,
-    initiateOwnershipTransfer, cancelOwnershipTransfer,
+    initiateOwnershipTransfer, cancelOwnershipTransfer, acceptOwnership,
     merchants, stats, verifyMerchant, suspendMerchant,
     isLoading, pendingAction, fetchAdminData, isContractOwner,
   } = useAdminStore();
@@ -218,7 +218,7 @@ export default function AdminPage() {
                   <Input
                     type="number"
                     min={0}
-                    max={1000}
+                    max={500}
                     value={newFeeBps}
                     onChange={(e) => setNewFeeBps(e.target.value)}
                     className="w-24 font-mono"
@@ -255,17 +255,28 @@ export default function AdminPage() {
                       <p className="text-caption text-foreground">Pending transfer to:</p>
                       <code className="text-caption font-mono text-muted-foreground">{pendingOwner}</code>
                     </div>
+                    {pendingOwner === address ? (
+                      <Button size="sm" variant="default" disabled={!!pendingAction} onClick={() => acceptOwnership()}>
+                        {pendingAction === "accept" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Accept Ownership"}
+                      </Button>
+                    ) : null}
                     <Button size="sm" variant="destructive" disabled={!isContractOwner || !!pendingAction} onClick={() => cancelOwnershipTransfer()}>
                       {pendingAction === "cancelTransfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel"}
                     </Button>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
-                    <Input placeholder="New owner address" value={transferAddress} onChange={(e) => setTransferAddress(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner} />
-                    <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction || !transferAddress} onClick={() => { initiateOwnershipTransfer(transferAddress); setTransferAddress(""); }}>
-                      {pendingAction === "transfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer</>}
-                    </Button>
-                  </div>
+                  <>
+                    <div className="flex items-center gap-2">
+                      <Input placeholder="New owner address" value={transferAddress} onChange={(e) => setTransferAddress(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner} />
+                      <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction || !transferAddress} onClick={() => { initiateOwnershipTransfer(transferAddress); setTransferAddress(""); }}>
+                        {pendingAction === "transfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer</>}
+                      </Button>
+                    </div>
+                    <p className="text-micro text-muted-foreground/70 mt-1">
+                      The new owner must call <code className="font-mono">accept-ownership</code> on the contract to complete the transfer.
+                      On-chain acceptance UI — <span className="text-muted-foreground">coming soon</span>.
+                    </p>
+                  </>
                 )}
               </div>
             </motion.div>
