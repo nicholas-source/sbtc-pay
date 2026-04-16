@@ -16,21 +16,17 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
 import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
-import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight } from "@/lib/stacks/config";
+import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, type TokenType, TOKEN_DECIMALS } from "@/lib/stacks/config";
 
-import { SATS_PER_BTC, formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
+import { formatAmount, humanToBaseUnits, baseToHuman, tokenLabel, amountToUsd } from "@/lib/constants";
 import { useBtcPrice } from "@/stores/wallet-store";
-
-function formatAmount(sats: number) {
-  return formatSbtc(sats);
-}
 
 function PaymentPage() {
   const { invoiceId } = useParams();
   const btcPriceUsd = useBtcPrice();
   // Try local store first (merchant viewing their own invoice)
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
-  const { isConnected, isConnecting, address, sbtcBalance, connect, connectionError, clearError, fetchBalances } = useWalletStore();
+  const { isConnected, isConnecting, address, sbtcBalance, stxBalance, connect, connectionError, clearError, fetchBalances } = useWalletStore();
 
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
@@ -106,6 +102,7 @@ function PaymentPage() {
           reason: r.reason || "",
           txId: r.tx_id || "",
         })),
+        tokenType: onChain.tokenType || 'sbtc',
       });
       setInvoiceLoading(false);
     })();
@@ -144,7 +141,7 @@ function PaymentPage() {
     if (!invoice) return 0;
     if (invoice.allowPartial && payAmount !== "") {
       const val = parseFloat(payAmount);
-      if (!isNaN(val) && val > 0) return Math.min(sbtcToSats(val), remaining);
+      if (!isNaN(val) && val > 0) return Math.min(humanToBaseUnits(val, invoice.tokenType), remaining);
     }
     return remaining;
   }, [invoice, payAmount, remaining]);
@@ -176,6 +173,7 @@ function PaymentPage() {
           invoiceId: blockchainInvoiceId,
           amount: BigInt(effectivePayAmount),
           payerAddress: address,
+          tokenType: invoice.tokenType,
         });
 
         if (!mountedRef.current) return;
@@ -208,10 +206,10 @@ function PaymentPage() {
               failMsg = CONTRACT_ERRORS[code] || `Contract error u${code}`;
               // Handle low-level token transfer errors (from ft-transfer?)
               if (code <= 10) {
-                if (code === 1) failMsg = "Insufficient sBTC balance";
+                if (code === 1) failMsg = `Insufficient ${tokenLabel(invoice.tokenType)} balance`;
                 else if (code === 2) failMsg = "Cannot pay invoice — your wallet is the fee recipient. Use a different wallet.";
                 else if (code === 3) failMsg = "Invalid payment amount";
-                else failMsg = "sBTC transfer failed — check your sBTC balance";
+                else failMsg = `${tokenLabel(invoice.tokenType)} transfer failed — check your balance`;
               }
             }
             setErrorMessage(failMsg);
@@ -371,16 +369,17 @@ function PaymentPage() {
 
   // --- Awaiting Payment ---
   const paidPercent = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
-  const usdAmount = (remaining / SATS_PER_BTC) * btcPriceUsd;
-  // Match contract's calculate-fee: floor division, min 1 sat when amount > 0
+  const tt = invoice.tokenType;
+  const usdAmount = parseFloat(amountToUsd(remaining, tt, btcPriceUsd));
+  // Match contract's calculate-fee: floor division, min 1 unit when amount > 0
   const feeSats = remaining > 0
     ? Math.max(Math.floor(remaining * feeBps / 10000), feeBps > 0 ? 1 : 0)
     : 0;
   const merchantReceives = remaining - feeSats;
   const feePercent = (feeBps / 100).toFixed(1);
-  // sbtcBalance is in sats (bigint), convert to number for comparison
-  const walletBalanceSats = Number(sbtcBalance);
-  const hasSufficient = isConnected && walletBalanceSats >= effectivePayAmount;
+  // Pick wallet balance based on token type
+  const walletBalanceUnits = Number(tt === 'stx' ? stxBalance : sbtcBalance);
+  const hasSufficient = isConnected && walletBalanceUnits >= effectivePayAmount;
 
   return (
     <PageShell>
@@ -390,7 +389,7 @@ function PaymentPage() {
       <div className="flex flex-col items-center gap-1 text-center">
         <span className="text-caption text-muted-foreground uppercase tracking-wider">Amount Due</span>
         <span className="text-3xl text-primary font-tabular font-bold">
-          {formatAmount(remaining)} <span className="text-lg font-medium">sBTC</span>
+          {formatAmount(remaining, tt)} <span className="text-lg font-medium">{tokenLabel(tt)}</span>
         </span>
         <span className="text-body-sm text-muted-foreground">
           ~${usdAmount.toFixed(2)} USD
@@ -409,25 +408,25 @@ function PaymentPage() {
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Fee Breakdown</p>
         <div className="flex justify-between text-body-sm">
           <span className="text-muted-foreground">Amount</span>
-          <span className="text-foreground font-tabular">{formatAmount(remaining)} sBTC</span>
+          <span className="text-foreground font-tabular">{formatAmount(remaining, tt)} {tokenLabel(tt)}</span>
         </div>
         <div className="flex justify-between text-body-sm">
           <span className="text-muted-foreground">Fee ({feePercent}%)</span>
-          <span className="text-foreground font-tabular">{formatAmount(feeSats)} sBTC</span>
+          <span className="text-foreground font-tabular">{formatAmount(feeSats, tt)} {tokenLabel(tt)}</span>
         </div>
         <Separator className="bg-border" />
         <div className="flex justify-between text-body-sm font-medium">
           <span className="text-muted-foreground">Merchant receives</span>
-          <span className="text-foreground font-tabular">{formatAmount(merchantReceives)} sBTC</span>
+          <span className="text-foreground font-tabular">{formatAmount(merchantReceives, tt)} {tokenLabel(tt)}</span>
         </div>
       </div>
 
       {/* Balance Check */}
       {isConnected && (
         <div className={`flex items-center justify-between rounded-lg p-3 text-body-sm ${hasSufficient ? "bg-success/10 border border-success/30" : "bg-destructive/10 border border-destructive/30"}`}>
-          <span className="text-muted-foreground">Your sBTC:</span>
+          <span className="text-muted-foreground">Your {tokenLabel(tt)}:</span>
           <span className={`font-tabular ${hasSufficient ? "text-success" : "text-destructive"}`}>
-            {formatAmount(walletBalanceSats)} sBTC — {hasSufficient ? "Sufficient" : "Insufficient"}
+            {formatAmount(walletBalanceUnits, tt)} {tokenLabel(tt)} — {hasSufficient ? "Sufficient" : "Insufficient"}
           </span>
         </div>
       )}
@@ -465,13 +464,13 @@ function PaymentPage() {
       <div className="space-y-4">
         {invoice.allowPartial && (
           <div className="space-y-2">
-            <label className="text-caption text-muted-foreground">Payment amount (sBTC)</label>
+            <label className="text-caption text-muted-foreground">Payment amount ({tokenLabel(tt)})</label>
             <Input
               type="number"
-              step="0.00000001"
-              min={0.00000001}
-              max={satsToSbtc(remaining)}
-              placeholder={formatAmount(remaining)}
+              step={tt === 'stx' ? '0.000001' : '0.00000001'}
+              min={tt === 'stx' ? 0.000001 : 0.00000001}
+              max={baseToHuman(remaining, tt)}
+              placeholder={formatAmount(remaining, tt)}
               value={payAmount}
               onChange={(e) => setPayAmount(e.target.value)}
               className="font-tabular [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -527,13 +526,8 @@ function PaymentPage() {
           <Button
             className="w-full h-12 text-body font-semibold gap-2"
             onClick={handlePay}
-            disabled={paymentState !== "idle"}
           >
-            {paymentState === "confirming" ? (
-              <><Loader2 className="h-5 w-5 animate-spin" />Processing...</>
-            ) : (
-              <><Bitcoin className="h-5 w-5" />Pay {formatAmount(effectivePayAmount)} sBTC</>
-            )}
+            <Bitcoin className="h-5 w-5" />Pay {formatAmount(effectivePayAmount, tt)} {tokenLabel(tt)}
           </Button>
         )}
 
