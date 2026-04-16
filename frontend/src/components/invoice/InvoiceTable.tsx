@@ -15,8 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-import { formatSbtc } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 
 type SortKey = "id" | "amount" | "createdAt" | "expiresAt" | "status";
 type SortDir = "asc" | "desc";
@@ -28,7 +27,6 @@ interface Props {
 }
 
 export default function InvoiceTable({ onSelect }: Props) {
-  const satsToUsd = useSatsToUsd();
   const invoices = useInvoiceStore((s) => s.invoices);
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const [search, setSearch] = useState("");
@@ -209,8 +207,8 @@ export default function InvoiceTable({ onSelect }: Props) {
                       )}
                     </TableCell>
                     <TableCell className="text-right font-mono font-tabular">
-                      <div>{formatSbtc(inv.amount)} <span className="text-muted-foreground text-micro">sBTC</span></div>
-                      <div className="text-micro text-muted-foreground">${satsToUsd(inv.amount)}</div>
+                      <div>{formatAmount(inv.amount, inv.tokenType)} <span className="text-muted-foreground text-micro">{tokenLabel(inv.tokenType)}</span></div>
+                      <div className="text-micro text-muted-foreground">${amountToUsd(inv.amount, inv.tokenType)}</div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {inv.status === "paid" ? (
