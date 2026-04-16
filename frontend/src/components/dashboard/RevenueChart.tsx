@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { format, subDays, subWeeks, subMonths, startOfDay, startOfWeek, startOfMonth } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { satsToSbtc, formatSbtcCompact, BTC_USD } from "@/lib/constants";
+import { amountToUsd } from "@/lib/constants";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
 
 type Period = "daily" | "weekly" | "monthly";
@@ -39,11 +39,16 @@ function buildRevenueData(invoices: Invoice[], period: Period) {
     }
   }
 
-  // Sum paid amounts into buckets using payment dates
-  const satsMap = new Map<string, number>();
-  buckets.forEach((b) => satsMap.set(b.key, 0));
+  // Sum paid amounts into buckets (converted to USD to avoid mixing sats and microSTX)
+  const usdMap = new Map<string, number>();
+  buckets.forEach((b) => usdMap.set(b.key, 0));
+
+  // Build a lookup of invoice tokenType by invoice id
+  const tokenByInvoice = new Map<string, 'sbtc' | 'stx'>();
+  for (const inv of invoices) tokenByInvoice.set(inv.id, inv.tokenType ?? 'sbtc');
 
   for (const inv of invoices) {
+    const tt = inv.tokenType ?? 'sbtc';
     for (const p of inv.payments) {
       if (p.amount <= 0) continue;
       const d = new Date(p.timestamp);
@@ -51,28 +56,25 @@ function buildRevenueData(invoices: Invoice[], period: Period) {
       if (period === "daily") key = format(d, "yyyy-MM-dd");
       else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
       else key = format(d, "yyyy-MM");
-      if (satsMap.has(key)) {
-        satsMap.set(key, satsMap.get(key)! + p.amount);
+      if (usdMap.has(key)) {
+        usdMap.set(key, usdMap.get(key)! + parseFloat(amountToUsd(p.amount, tt)));
       }
     }
   }
 
   return buckets.map((b) => {
-    const sats = satsMap.get(b.key) || 0;
-    return { date: b.label, sats, usd: +(sats * BTC_USD).toFixed(2) };
+    const usd = usdMap.get(b.key) || 0;
+    return { date: b.label, usd };
   });
 }
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; payload: { usd: number } }>; label?: string }) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number }>; label?: string }) => {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
       <p className="text-caption text-muted-foreground mb-1">{label}</p>
       <p className="font-mono-nums text-sm font-semibold text-foreground">
-        {satsToSbtc(payload[0].value).toFixed(8)} <span className="text-muted-foreground">sBTC</span>
-      </p>
-      <p className="font-mono-nums text-caption text-muted-foreground">
-        ${payload[0].payload.usd.toLocaleString()}
+        ${payload[0].value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-muted-foreground">USD</span>
       </p>
     </div>
   );
@@ -83,7 +85,7 @@ export default function RevenueChart() {
   const isMobile = useIsMobile();
   const invoices = useInvoiceStore((s) => s.invoices);
   const data = useMemo(() => buildRevenueData(invoices, period), [invoices, period]);
-  const hasRevenue = data.some((d) => d.sats > 0);
+  const hasRevenue = data.some((d) => d.usd > 0);
 
   return (
     <Card>
@@ -130,13 +132,13 @@ export default function RevenueChart() {
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => formatSbtcCompact(v)}
+                  tickFormatter={(v) => `$${v >= 1000 ? `${(v / 1000).toFixed(1)}K` : v.toFixed(0)}`}
                 />
               )}
               <Tooltip content={<CustomTooltip />} />
               <Area
                 type="monotone"
-                dataKey="sats"
+                dataKey="usd"
                 stroke="hsl(var(--chart-1))"
                 strokeWidth={2}
                 fill="url(#revenueGradient)"

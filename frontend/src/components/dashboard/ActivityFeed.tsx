@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownLeft, FileText, RefreshCcw, Repeat } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { formatSbtc } from "@/lib/constants";
+import { formatAmount } from "@/lib/constants";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useMemo } from "react";
@@ -138,7 +138,7 @@ export default function ActivityFeed() {
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <p className="font-mono-nums text-sm text-foreground">
-                        {event.type === "refund" ? "-" : "+"}{formatSbtc(event.amount)}
+                        {event.type === "refund" ? "-" : "+"}{formatAmount(event.amount, 'sbtc')}
                         <span className="text-muted-foreground ml-1 text-caption">sBTC</span>
                       </p>
                       <p className="text-caption text-muted-foreground">
