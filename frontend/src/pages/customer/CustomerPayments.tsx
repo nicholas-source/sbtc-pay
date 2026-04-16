@@ -10,7 +10,7 @@ import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useWalletStore } from "@/stores/wallet-store";
 
-import { formatAmount, amountToUsd } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel, type TokenType } from "@/lib/constants";
 
 interface PaymentRow {
   id: string;
@@ -19,11 +19,13 @@ interface PaymentRow {
   amount: number;
   txId: string;
   timestamp: Date;
+  tokenType: TokenType;
 }
 
 export default function CustomerPayments() {
   const { address } = useWalletStore();
   const invoices = useInvoiceStore((s) => s.invoices);
+  const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
 
   const allPayments = useMemo(() => {
@@ -41,12 +43,14 @@ export default function CustomerPayments() {
           amount: p.amount,
           txId: p.txId,
           timestamp: p.timestamp,
+          tokenType: inv.tokenType,
         });
       });
     });
 
     // Subscription payments — only where connected wallet is the subscriber
     subscribers.forEach((sub) => {
+      const plan = plans.find((p) => p.id === sub.planId);
       if (wallet && sub.payerAddress?.toLowerCase() !== wallet) return;
       sub.payments.forEach((p) => {
         rows.push({
@@ -56,6 +60,7 @@ export default function CustomerPayments() {
           amount: p.amount,
           txId: p.txId,
           timestamp: p.timestamp,
+          tokenType: plan?.tokenType ?? 'sbtc',
         });
       });
     });
@@ -106,8 +111,8 @@ export default function CustomerPayments() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono font-tabular">
-                        <div>{formatAmount(p.amount, 'sbtc')} <span className="text-muted-foreground text-micro">sBTC</span></div>
-                        <div className="text-micro text-muted-foreground">${amountToUsd(p.amount, 'sbtc')}</div>
+                        <div>{formatAmount(p.amount, p.tokenType)} <span className="text-muted-foreground text-micro">{tokenLabel(p.tokenType)}</span></div>
+                        <div className="text-micro text-muted-foreground">${amountToUsd(p.amount, p.tokenType)}</div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-mono text-caption text-muted-foreground">
                         {p.txId.slice(0, 10)}…
