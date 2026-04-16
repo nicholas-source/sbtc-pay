@@ -24,7 +24,7 @@ import { useWalletStore } from "@/stores/wallet-store";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
-import { formatSbtc } from "@/lib/constants";
+import { formatAmount, amountToUsd } from "@/lib/constants";
 import { getExplorerAddressUrl } from "@/lib/stacks/config";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 
@@ -159,8 +159,8 @@ export default function AdminPage() {
           )}
         </div>
         <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
-        <StatCard label="Total Volume" value={`${formatSbtc(stats.totalVolume)} sBTC`} icon={TrendingUp} accent="success" />
-        <StatCard label="Fees Collected" value={`${formatSbtc(stats.feesCollected)} sBTC`} icon={Bitcoin} accent="warning" />
+        <StatCard label="Total Volume" value={[stats.totalVolumeSbtc > 0 ? `${formatAmount(stats.totalVolumeSbtc, 'sbtc')} sBTC` : '', stats.totalVolumeStx > 0 ? `${formatAmount(stats.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={TrendingUp} accent="success" />
+        <StatCard label="Fees Collected" value={[stats.feesCollectedSbtc > 0 ? `${formatAmount(stats.feesCollectedSbtc, 'sbtc')} sBTC` : '', stats.feesCollectedStx > 0 ? `${formatAmount(stats.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={Bitcoin} accent="warning" />
       </div>
 
       {/* Contract Controls */}
@@ -390,7 +390,7 @@ export default function AdminPage() {
                       {format(m.registeredAt, "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="text-right hidden sm:table-cell font-mono text-caption">
-                      {formatSbtc(m.totalVolume)}
+                      {[m.totalVolumeSbtc > 0 ? `${formatAmount(m.totalVolumeSbtc, 'sbtc')} sBTC` : '', m.totalVolumeStx > 0 ? `${formatAmount(m.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' / ') || '0'}
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
