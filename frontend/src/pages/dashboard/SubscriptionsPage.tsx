@@ -10,11 +10,9 @@ import { useSubscriptionStore } from "@/stores/subscription-store";
 import { exportToCSV } from "@/lib/export-csv";
 import EmptyState from "@/components/dashboard/EmptyState";
 
-import { formatSbtc } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 
 function SubscriptionsPage() {
-  const satsToUsd = useSatsToUsd();
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
 
@@ -99,7 +97,7 @@ function SubscriptionsPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change="+1 this month" accent="secondary" />
             <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change="+2 this month" accent="info" />
-            <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} displayValue={formatSbtc(stats.monthlyRevenue)} unit="sBTC" usd={`≈ $${satsToUsd(stats.monthlyRevenue)}`} icon={TrendingUp} change="+12%" accent="success" />
+            <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} displayValue={formatAmount(stats.monthlyRevenue, 'sbtc')} unit="sBTC" usd={`≈ $${amountToUsd(stats.monthlyRevenue, 'sbtc')}`} icon={TrendingUp} change="+12%" accent="success" />
           </div>
 
           {/* Analytics Chart */}
