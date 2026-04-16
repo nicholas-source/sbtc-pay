@@ -166,6 +166,19 @@ function PaymentPage() {
           setPaymentState("error");
           return;
         }
+
+        // Guard: check wallet balance before attempting payment
+        const walletBalance = invoice.tokenType === 'stx' ? stxBalance : sbtcBalance;
+        if (walletBalance < BigInt(effectivePayAmount)) {
+          const label = tokenLabel(invoice.tokenType);
+          const needed = formatAmount(effectivePayAmount, invoice.tokenType);
+          const have = formatAmount(Number(walletBalance), invoice.tokenType);
+          const msg = `Insufficient ${label} balance: need ${needed} but wallet has ${have}`;
+          toast.error(msg);
+          setErrorMessage(msg);
+          setPaymentState("error");
+          return;
+        }
         // Real blockchain payment
         toast.info("Please confirm the transaction in your wallet");
         
