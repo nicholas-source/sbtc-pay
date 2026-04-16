@@ -8,10 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { formatSbtc } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
 import { payMerchantDirect, CONTRACT_ERRORS } from "@/lib/stacks/contract";
-import { PAYMENT_CONTRACT, getExplorerTxUrl } from "@/lib/stacks/config";
+import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
 
 export default function DirectPaymentWidget() {
   const { merchantAddress } = useParams();
@@ -20,6 +20,7 @@ export default function DirectPaymentWidget() {
   const memo = params.get("memo") || "";
   const theme = params.get("theme") || "dark";
   const color = params.get("color") || "orange";
+  const tokenType = (params.get("token") as TokenType) || 'sbtc';
 
   const [payAmount, setPayAmount] = useState(amount);
   const [payMemo, setPayMemo] = useState(memo);
@@ -57,6 +58,7 @@ export default function DirectPaymentWidget() {
         amount: BigInt(sats),
         memo: payMemo || "",
         payerAddress: address,
+        tokenType,
       });
 
       if (result.txId) {
@@ -102,7 +104,7 @@ export default function DirectPaymentWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Payment Submitted</p>
               <p className="text-body-sm text-muted-foreground">
-                {formatSbtc(Number(payAmount))} sBTC <span className="text-muted-foreground/70">(≈ ${satsToUsd(Number(payAmount))} USD)</span> sent to merchant
+                {formatAmount(Number(payAmount), tokenType)} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">(≈ ${amountToUsd(Number(payAmount), tokenType)} USD)</span> sent to merchant
               </p>
               <a
                 href={getExplorerTxUrl(txId)}
@@ -137,7 +139,7 @@ export default function DirectPaymentWidget() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-caption text-muted-foreground">Amount (sBTC)</label>
+              <label className="text-caption text-muted-foreground">Amount ({tokenLabel(tokenType)})</label>
               <Input
                 type="number"
                 min={1}
@@ -148,7 +150,7 @@ export default function DirectPaymentWidget() {
                 disabled={payState === "confirming"}
               />
               {payAmount && Number(payAmount) > 0 && (
-                <p className="text-caption text-muted-foreground">{formatSbtc(Number(payAmount))} sBTC <span className="text-muted-foreground/70">≈ ${satsToUsd(Number(payAmount))} USD</span></p>
+                <p className="text-caption text-muted-foreground">{formatAmount(Number(payAmount), tokenType)} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">≈ ${amountToUsd(Number(payAmount), tokenType)} USD</span></p>
               )}
             </div>
 
@@ -179,7 +181,7 @@ export default function DirectPaymentWidget() {
                 {payState === "confirming" ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
                 ) : (
-                  <><Wallet className="h-4 w-4" /> Pay {payAmount ? `${formatSbtc(Number(payAmount))} sBTC` : ""}</>
+                  <><Wallet className="h-4 w-4" /> Pay {payAmount ? `${formatAmount(Number(payAmount), tokenType)} ${tokenLabel(tokenType)}` : ""}</>
                 )}
               </Button>
             )}
