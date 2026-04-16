@@ -19,7 +19,7 @@ export default function InvoicePaymentWidget() {
   const { invoiceId } = useParams();
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
 
-  const { isConnected, address, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
   const satsToUsd = useSatsToUsd();
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
@@ -86,6 +86,14 @@ export default function InvoicePaymentWidget() {
 
     if (address === PAYMENT_CONTRACT.address) {
       toast.error("Fee-recipient wallet cannot make payments");
+      return;
+    }
+
+    // Guard: check wallet balance before attempting payment
+    const walletBalance = invoice.tokenType === 'stx' ? stxBalance : sbtcBalance;
+    if (walletBalance < BigInt(remaining)) {
+      const label = tokenLabel(invoice.tokenType);
+      toast.error(`Insufficient ${label} balance: need ${formatAmount(remaining, invoice.tokenType)} but wallet has ${formatAmount(Number(walletBalance), invoice.tokenType)}`);
       return;
     }
 
