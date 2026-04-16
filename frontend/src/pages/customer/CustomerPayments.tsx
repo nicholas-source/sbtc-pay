@@ -10,8 +10,7 @@ import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useWalletStore } from "@/stores/wallet-store";
 
-import { formatSbtc } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd } from "@/lib/constants";
 
 interface PaymentRow {
   id: string;
@@ -23,7 +22,6 @@ interface PaymentRow {
 }
 
 export default function CustomerPayments() {
-  const satsToUsd = useSatsToUsd();
   const { address } = useWalletStore();
   const invoices = useInvoiceStore((s) => s.invoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
@@ -108,8 +106,8 @@ export default function CustomerPayments() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-mono font-tabular">
-                        <div>{formatSbtc(p.amount)} <span className="text-muted-foreground text-micro">sBTC</span></div>
-                        <div className="text-micro text-muted-foreground">${satsToUsd(p.amount)}</div>
+                        <div>{formatAmount(p.amount, 'sbtc')} <span className="text-muted-foreground text-micro">sBTC</span></div>
+                        <div className="text-micro text-muted-foreground">${amountToUsd(p.amount, 'sbtc')}</div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-mono text-caption text-muted-foreground">
                         {p.txId.slice(0, 10)}…
