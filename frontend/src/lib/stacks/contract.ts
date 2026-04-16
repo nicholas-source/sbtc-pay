@@ -143,10 +143,12 @@ export const CONTRACT_ERRORS: Record<number, string> = {
   4004: 'Refund exceeds paid amount',
   4005: 'Already refunded',
   4006: 'No refund available',
+  4007: 'Refund window expired (30 days)',
   5001: 'Subscription not found',
   5002: 'Subscription inactive',
   5003: 'Subscription already exists',
   5004: 'Payment not due yet',
+  6001: 'Fee change too large (max ±1% per update)',
 };
 
 // Helper to deeply extract plain values from cvToValue's {type, value} wrappers (stacks v7+)
