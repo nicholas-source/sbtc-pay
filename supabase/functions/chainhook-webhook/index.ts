@@ -25,7 +25,14 @@ function timingSafeEqual(a: string, b: string): boolean {
 
 // Expected contract identifier (testnet)
 const CONTRACT_ID =
-  "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v5";
+  "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v6";
+
+// Convert contract token-type (u0=sBTC, u1=STX) to DB string
+function resolveTokenType(data: Record<string, unknown>): string {
+  const tt = data["token-type"];
+  if (tt === 1 || tt === "1") return "stx";
+  return "sbtc"; // default
+}
 
 const [CONTRACT_ADDRESS, CONTRACT_NAME] = CONTRACT_ID.split(".");
 
@@ -391,6 +398,7 @@ async function handleInvoiceCreated(
       created_at_block: data["block-height"] ?? blockHeight,
       expires_at_block: data["expires-at"],
       status: 0,
+      token_type: resolveTokenType(data),
     },
     { onConflict: "id" },
   );
@@ -424,6 +432,8 @@ async function handlePaymentReceived(
 
   const paymentIndex = (count ?? 0);
 
+  const tokenType = resolveTokenType(data);
+
   // Insert payment record
   const { error: paymentError } = await supabase.from("payments").insert({
     invoice_id: invoiceId,
@@ -435,6 +445,7 @@ async function handlePaymentReceived(
     merchant_received: data["merchant-received"] ?? 0,
     block_height: data["block-height"] ?? blockHeight,
     tx_id: txId,
+    token_type: tokenType,
   });
   if (paymentError) console.error("payment insert error:", paymentError);
 
@@ -453,33 +464,38 @@ async function handlePaymentReceived(
     .eq("id", invoiceId);
   if (invoiceError) console.error("invoice update error:", invoiceError);
 
-  // Update merchant stats
-  await supabase.rpc("increment_merchant_received", {
-    p_principal: data.merchant,
-    p_amount: data["merchant-received"] ?? 0,
-  }).catch(() => {});
+  // Update merchant stats (per-token)
+  const merchantRecv = (data["merchant-received"] ?? 0) as number;
+  if (tokenType === "stx") {
+    await supabase.rpc("increment_merchant_received", {
+      p_principal: data.merchant,
+      p_amount: merchantRecv,
+      p_token: "stx",
+    }).catch(() => {
+      // Fallback: direct update if RPC not updated yet
+      supabase.from("merchants").select("total_received_stx").eq("principal", data.merchant).single().then(({ data: m }) => {
+        if (m) supabase.from("merchants").update({ total_received_stx: (m.total_received_stx ?? 0) + merchantRecv }).eq("principal", data.merchant);
+      });
+    });
+  } else {
+    await supabase.rpc("increment_merchant_received", {
+      p_principal: data.merchant,
+      p_amount: merchantRecv,
+    }).catch(() => {});
+  }
 
-  // Update platform stats
-  await supabase
-    .from("platform_stats")
-    .update({
-      total_volume: (
-        await supabase.from("platform_stats").select("total_volume").eq(
-          "id",
-          1,
-        ).single()
-      ).data?.total_volume +
-        (data.amount as number),
-      total_fees_collected: (
-        await supabase
-          .from("platform_stats")
-          .select("total_fees_collected")
-          .eq("id", 1)
-          .single()
-      ).data?.total_fees_collected +
-        ((data.fee as number) ?? 0),
-    })
-    .eq("id", 1);
+  // Update platform stats (per-token)
+  const amt = data.amount as number;
+  const fee = (data.fee as number) ?? 0;
+  const volCol = tokenType === "stx" ? "total_volume_stx" : "total_volume_sbtc";
+  const feeCol = tokenType === "stx" ? "total_fees_stx" : "total_fees_sbtc";
+  const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
+  if (stats) {
+    await supabase.from("platform_stats").update({
+      [volCol]: (stats[volCol] ?? 0) + amt,
+      [feeCol]: (stats[feeCol] ?? 0) + fee,
+    }).eq("id", 1);
+  }
 }
 
 async function handleDirectPayment(
@@ -487,6 +503,8 @@ async function handleDirectPayment(
   txId: string,
   blockHeight: number,
 ) {
+  const tokenType = resolveTokenType(data);
+
   await supabase.from("direct_payments").insert({
     payer: data.payer,
     merchant_principal: data.merchant,
@@ -496,7 +514,31 @@ async function handleDirectPayment(
     memo: data.memo ?? "",
     block_height: data["block-height"] ?? blockHeight,
     tx_id: txId,
+    token_type: tokenType,
   });
+
+  // Update merchant total received (per-token)
+  const merchantRecv = (data["merchant-received"] ?? 0) as number;
+  const recvCol = tokenType === "stx" ? "total_received_stx" : "total_received_sbtc";
+  const { data: merchant } = await supabase.from("merchants").select(recvCol).eq("principal", data.merchant).single();
+  if (merchant) {
+    await supabase.from("merchants").update({
+      [recvCol]: (merchant[recvCol] ?? 0) + merchantRecv,
+    }).eq("principal", data.merchant);
+  }
+
+  // Update platform stats (per-token volume + fees)
+  const amt = data.amount as number;
+  const fee = (data.fee as number) ?? 0;
+  const volCol = tokenType === "stx" ? "total_volume_stx" : "total_volume_sbtc";
+  const feeCol = tokenType === "stx" ? "total_fees_stx" : "total_fees_sbtc";
+  const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
+  if (stats) {
+    await supabase.from("platform_stats").update({
+      [volCol]: (stats[volCol] ?? 0) + amt,
+      [feeCol]: (stats[feeCol] ?? 0) + fee,
+    }).eq("id", 1);
+  }
 }
 
 async function handleInvoiceCancelled(data: Record<string, unknown>) {
@@ -511,6 +553,8 @@ async function handleRefundProcessed(
   txId: string,
   blockHeight: number,
 ) {
+  const tokenType = resolveTokenType(data);
+
   // Insert refund record
   await supabase.from("refunds").upsert(
     {
@@ -522,43 +566,44 @@ async function handleRefundProcessed(
       reason: data.reason ?? "",
       processed_at_block: data["block-height"] ?? blockHeight,
       tx_id: txId,
+      token_type: tokenType,
     },
     { onConflict: "id" },
   );
 
-  // Update invoice
+  // Update invoice — only set status=5 (refunded) if total refunded >= amount paid
   const invoiceId = data["invoice-id"] as number;
   const { data: invoice } = await supabase
     .from("invoices")
-    .select("amount_refunded")
+    .select("amount_refunded, amount_paid")
     .eq("id", invoiceId)
     .single();
 
   if (invoice) {
+    const newRefunded = (invoice.amount_refunded ?? 0) + (data.amount as number);
+    const amountPaid = invoice.amount_paid ?? 0;
+    const updates: Record<string, unknown> = {
+      amount_refunded: newRefunded,
+      refunded_at_block: data["block-height"] ?? blockHeight,
+    };
+    // Contract only sets STATUS_REFUNDED when total refunded >= amount paid
+    if (newRefunded >= amountPaid) {
+      updates.status = 5;
+    }
     await supabase
       .from("invoices")
-      .update({
-        amount_refunded: (invoice.amount_refunded ?? 0) +
-          (data.amount as number),
-        status: 5,
-        refunded_at_block: data["block-height"] ?? blockHeight,
-      })
+      .update(updates)
       .eq("id", invoiceId);
   }
 
-  // Update platform refund stat
-  await supabase
-    .from("platform_stats")
-    .update({
-      total_refunds: (
-        await supabase.from("platform_stats").select("total_refunds").eq(
-          "id",
-          1,
-        ).single()
-      ).data?.total_refunds +
-        (data.amount as number),
-    })
-    .eq("id", 1);
+  // Update platform refund stat (per-token)
+  const refundCol = tokenType === "stx" ? "total_refunds_stx" : "total_refunds_sbtc";
+  const { data: stats } = await supabase.from("platform_stats").select(refundCol).eq("id", 1).single();
+  if (stats) {
+    await supabase.from("platform_stats").update({
+      [refundCol]: (stats[refundCol] ?? 0) + (data.amount as number),
+    }).eq("id", 1);
+  }
 }
 
 async function handleSubscriptionCreated(
@@ -589,6 +634,7 @@ async function handleSubscriptionCreated(
       status: 0,
       created_at_block: data["block-height"] ?? blockHeight,
       next_payment_at_block: data["block-height"] ?? blockHeight,
+      token_type: resolveTokenType(data),
     },
     { onConflict: "id" },
   );
@@ -612,6 +658,7 @@ async function handleSubscriptionPayment(
   blockHeight: number,
 ) {
   const subId = data["subscription-id"] as number;
+  const tokenType = resolveTokenType(data);
 
   await supabase.from("subscription_payments").insert({
     subscription_id: subId,
@@ -623,24 +670,52 @@ async function handleSubscriptionPayment(
     payment_number: data["payments-made"] ?? 0,
     block_height: data["block-height"] ?? blockHeight,
     tx_id: txId,
+    token_type: tokenType,
   });
+
+  // Get current subscription to compute next_payment_at
+  const { data: sub } = await supabase.from("subscriptions")
+    .select("total_paid, interval_blocks")
+    .eq("id", subId)
+    .single();
+
+  const currentBlock = (data["block-height"] ?? blockHeight) as number;
+  const intervalBlocks = sub?.interval_blocks ?? 144;
+  const nextPaymentAt = currentBlock + intervalBlocks;
 
   // Update subscription state
   await supabase
     .from("subscriptions")
     .update({
       payments_made: data["payments-made"],
-      total_paid: (
-        await supabase.from("subscriptions").select("total_paid").eq(
-          "id",
-          subId,
-        ).single()
-      ).data?.total_paid +
-        (data.amount as number),
-      last_payment_at_block: data["block-height"] ?? blockHeight,
-      next_payment_at_block: data["next-payment-at"] ?? blockHeight,
+      total_paid: (sub?.total_paid ?? 0) + (data.amount as number),
+      last_payment_at_block: currentBlock,
+      next_payment_at_block: nextPaymentAt,
     })
     .eq("id", subId);
+
+  // Update merchant total received (per-token)
+  const merchantRecv = (data["merchant-received"] ?? 0) as number;
+  const recvCol = tokenType === "stx" ? "total_received_stx" : "total_received_sbtc";
+  const { data: merchant } = await supabase.from("merchants").select(recvCol).eq("principal", data.merchant).single();
+  if (merchant) {
+    await supabase.from("merchants").update({
+      [recvCol]: (merchant[recvCol] ?? 0) + merchantRecv,
+    }).eq("principal", data.merchant);
+  }
+
+  // Update platform stats (per-token volume + fees)
+  const amt = data.amount as number;
+  const fee = (data.fee as number) ?? 0;
+  const volCol = tokenType === "stx" ? "total_volume_stx" : "total_volume_sbtc";
+  const feeCol = tokenType === "stx" ? "total_fees_stx" : "total_fees_sbtc";
+  const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
+  if (stats) {
+    await supabase.from("platform_stats").update({
+      [volCol]: (stats[volCol] ?? 0) + amt,
+      [feeCol]: (stats[feeCol] ?? 0) + fee,
+    }).eq("id", 1);
+  }
 }
 
 async function handleSubscriptionCancelled(data: Record<string, unknown>) {
