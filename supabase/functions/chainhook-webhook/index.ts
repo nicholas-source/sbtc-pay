@@ -395,6 +395,7 @@ async function handleInvoiceCreated(
       memo: data.memo ?? "",
       reference_id: data["reference-id"] ?? null,
       allow_partial: data["allow-partial"] ?? false,
+      allow_overpay: data["allow-overpay"] ?? false,
       created_at_block: data["block-height"] ?? blockHeight,
       expires_at_block: data["expires-at"],
       status: 0,
@@ -846,15 +847,26 @@ Deno.serve(async (req: Request) => {
           console.log(`Event: ${eventType} | tx: ${txId.slice(0, 12)}...`);
           const handler = EVENT_HANDLERS[eventType];
 
-          // Log every event
-          await supabase.from("events").upsert({
+          // Log every event (idempotency: skip if already processed)
+          const { data: upsertedRow, error: upsertError } = await supabase.from("events").upsert({
             event_type: eventType,
             tx_id: txId,
             block_height: blockHeight,
             block_hash: blockHash,
             contract_identifier: CONTRACT_ID,
             payload: data,
-          }, { onConflict: "tx_id,event_type", ignoreDuplicates: true });
+          }, { onConflict: "tx_id,event_type", ignoreDuplicates: true })
+            .select("id");
+
+          // If ignoreDuplicates caused a skip, upsertedRow is empty → event was already processed
+          if (upsertError) {
+            console.error(`Event upsert error for ${eventType}:`, upsertError);
+            continue;
+          }
+          if (!upsertedRow || upsertedRow.length === 0) {
+            console.log(`Duplicate event skipped: ${eventType} | tx: ${txId.slice(0, 12)}...`);
+            continue;
+          }
 
           // Process specific event
           if (handler) {
