@@ -5,11 +5,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { formatSbtc } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
-import { PAYMENT_CONTRACT, getExplorerTxUrl } from "@/lib/stacks/config";
+import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
 
 // Map interval label → approximate block count (~10 min/block)
 const INTERVAL_BLOCKS: Record<string, number> = {
@@ -27,6 +27,7 @@ export default function SubscriptionWidget() {
   const plan = params.get("plan") || "Standard Plan";
   const amount = params.get("amount") || "100000";
   const interval = params.get("interval") || "monthly";
+  const tokenType = (params.get("token") as TokenType) || 'sbtc';
 
   const addr = merchantAddress || "";
   const satsAmount = parseInt(amount) || 100000;
@@ -63,6 +64,7 @@ export default function SubscriptionWidget() {
         amount: BigInt(satsAmount),
         intervalBlocks,
         subscriberAddress: address,
+        tokenType,
       });
 
       if (result.txId) {
@@ -89,7 +91,7 @@ export default function SubscriptionWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Subscribed!</p>
               <p className="text-body-sm text-muted-foreground">
-                {formatSbtc(satsAmount)} sBTC (≈ ${satsToUsd(satsAmount)} USD) / {interval}
+                {formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)} (≈ ${amountToUsd(satsAmount, tokenType)} USD) / {interval}
               </p>
               <a href={getExplorerTxUrl(txId)} target="_blank" rel="noopener noreferrer"
                 className="text-primary text-body-sm underline">
@@ -116,8 +118,8 @@ export default function SubscriptionWidget() {
             <div className="text-center space-y-1">
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
-              <p className="text-2xl sm:text-sats text-primary font-tabular">{formatSbtc(satsAmount)} sBTC</p>
-              <p className="text-caption text-muted-foreground">≈ ${satsToUsd(satsAmount)} USD per {interval}</p>
+              <p className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)}</p>
+              <p className="text-caption text-muted-foreground">≈ ${amountToUsd(satsAmount, tokenType)} USD per {interval}</p>
             </div>
 
             {errorMsg && (
