@@ -292,6 +292,7 @@ async function reconcileInvoices(
               status: chainStatus,
               payer: chainPayer,
               allow_partial: Boolean(chain["allow-partial"]),
+              allow_overpay: Boolean(chain["allow-overpay"]),
               created_at_block: Number(chain["created-at"] ?? 0),
               expires_at_block: expiresAt,
               token_type: Number(chain["token-type"] ?? 0) === 1 ? "stx" : "sbtc",
