@@ -33,7 +33,7 @@ export default function SubscriptionWidget() {
   const satsAmount = parseInt(amount) || 100000;
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
 
-  const { isConnected, address, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
   const satsToUsd = useSatsToUsd();
   const [subState, setSubState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [txId, setTxId] = useState<string | null>(null);
@@ -50,6 +50,14 @@ export default function SubscriptionWidget() {
 
     if (address === PAYMENT_CONTRACT.address) {
       toast.error("Fee-recipient wallet cannot subscribe");
+      return;
+    }
+
+    // Guard: check wallet balance before attempting subscription
+    const walletBalance = tokenType === 'stx' ? stxBalance : sbtcBalance;
+    if (walletBalance < BigInt(satsAmount)) {
+      const label = tokenLabel(tokenType);
+      toast.error(`Insufficient ${label} balance: need ${formatAmount(satsAmount, tokenType)} but wallet has ${formatAmount(Number(walletBalance), tokenType)}`);
       return;
     }
 
