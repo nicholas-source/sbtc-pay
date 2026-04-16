@@ -12,7 +12,7 @@ import {
 } from "recharts";
 import { format, subDays, subWeeks, subMonths } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { satsToSbtc, formatSbtcCompact } from "@/lib/constants";
+import { baseToHuman, formatAmountCompact } from "@/lib/constants";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -66,7 +66,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
       {rev && (
         <>
           <p className="font-mono-nums text-sm font-semibold text-foreground">
-            {satsToSbtc(rev.value).toFixed(8)} <span className="text-muted-foreground">sBTC</span>
+            {baseToHuman(rev.value, 'sbtc').toFixed(8)} <span className="text-muted-foreground">sBTC</span>
           </p>
           <p className="font-mono-nums text-caption text-muted-foreground">
             ≈ ${rev.payload.revenueUsd.toLocaleString()}
@@ -148,7 +148,7 @@ export default function SubscriptionAnalyticsChart() {
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => formatSbtcCompact(v)}
+                  tickFormatter={(v) => formatAmountCompact(v, 'sbtc')}
                 />
               )}
               <Tooltip content={<CustomTooltip />} />
