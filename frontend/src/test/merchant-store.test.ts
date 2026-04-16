@@ -1,5 +1,13 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { useMerchantStore, defaultNotificationSettings } from "@/stores/merchant-store";
+
+// Mock contract calls so store tests don't need a wallet/network
+vi.mock("@/lib/stacks/contract", () => ({
+  registerMerchant: vi.fn().mockResolvedValue({ txId: "mock-tx-register" }),
+  updateMerchantProfile: vi.fn().mockResolvedValue({ txId: "mock-tx-update" }),
+  getMerchant: vi.fn().mockResolvedValue(null),
+  waitForTransaction: vi.fn().mockResolvedValue({ status: "success" }),
+}));
 
 beforeEach(() => {
   useMerchantStore.setState({ profile: null, isRegistering: false, isLoading: false });
@@ -47,7 +55,7 @@ describe("merchant-store", () => {
   });
 
   describe("updateProfile", () => {
-    it("updates partial profile fields", () => {
+    it("updates partial profile fields", async () => {
       const { setProfile, updateProfile } = useMerchantStore.getState();
       setProfile({
         id: "ST123",
@@ -60,7 +68,7 @@ describe("merchant-store", () => {
         notifications: { ...defaultNotificationSettings },
       });
 
-      updateProfile({ name: "New Name" });
+      await updateProfile({ name: "New Name" });
 
       const { profile } = useMerchantStore.getState();
       expect(profile!.name).toBe("New Name");
