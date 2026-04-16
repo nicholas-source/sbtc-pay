@@ -209,7 +209,7 @@ export const useWalletStore = create<WalletState>()(
             set({
               isConnected: true,
               address: stxAddr.address,
-              publicKey: stxAddr.publicKey || null,
+              publicKey: (stxAddr as { publicKey?: string }).publicKey || null,
               connectionError: null,
             });
             // Refresh balances
