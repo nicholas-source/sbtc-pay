@@ -24,10 +24,14 @@ describe("CONTRACT_ERRORS", () => {
     // Transfer errors
     expect(CONTRACT_ERRORS[4001]).toBe("Transfer failed");
     expect(CONTRACT_ERRORS[4004]).toBe("Refund exceeds paid amount");
+    expect(CONTRACT_ERRORS[4007]).toBe("Refund window expired (30 days)");
 
     // Subscription errors
     expect(CONTRACT_ERRORS[5001]).toBe("Subscription not found");
     expect(CONTRACT_ERRORS[5004]).toBe("Payment not due yet");
+
+    // Admin errors
+    expect(CONTRACT_ERRORS[6001]).toContain("Fee change too large");
   });
 
   it("returns undefined for unknown codes", () => {
