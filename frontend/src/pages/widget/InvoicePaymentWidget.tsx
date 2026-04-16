@@ -10,7 +10,7 @@ import { useInvoiceStore, STATUS_MAP, type Invoice } from "@/stores/invoice-stor
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { formatSbtc } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
 import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, fetchBurnBlockHeight } from "@/lib/stacks/config";
@@ -65,6 +65,7 @@ export default function InvoicePaymentWidget() {
         expiresAt: null,
         payments: [],
         refunds: [],
+        tokenType: onChain.tokenType || 'sbtc',
       });
       setLoading(false);
     }).catch(() => setLoading(false));
@@ -97,6 +98,7 @@ export default function InvoicePaymentWidget() {
         invoiceId: invoice.dbId,
         amount: BigInt(remaining),
         payerAddress: address,
+        tokenType: invoice.tokenType,
       });
 
       if (result.txId) {
@@ -134,6 +136,7 @@ export default function InvoicePaymentWidget() {
 
   const remaining = invoice.amount - invoice.amountPaid;
   const paidPct = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
+  const tt = invoice.tokenType;
 
   if (payState === "confirmed" && txId) {
     return (
@@ -141,7 +144,7 @@ export default function InvoicePaymentWidget() {
         <Check className="h-12 w-12 text-success mx-auto" />
         <p className="text-center text-heading-sm text-foreground">Payment Submitted</p>
         <p className="text-center text-body-sm text-muted-foreground">
-          {formatSbtc(remaining)} sBTC for Invoice #{invoice.id}
+          {formatAmount(remaining, tt)} {tokenLabel(tt)} for Invoice #{invoice.id}
         </p>
         <a href={getExplorerTxUrl(txId)} target="_blank" rel="noopener noreferrer"
           className="text-primary text-body-sm underline text-center block">
@@ -155,8 +158,8 @@ export default function InvoicePaymentWidget() {
     return (
       <WidgetShell>
         <p className="text-center text-heading-sm text-success">✓ Paid</p>
-        <p className="text-center text-sats text-primary font-tabular">{formatSbtc(invoice.amountPaid)} sBTC</p>
-        <p className="text-center text-caption text-muted-foreground">≈ ${satsToUsd(invoice.amountPaid)} USD</p>
+        <p className="text-center text-sats text-primary font-tabular">{formatAmount(invoice.amountPaid, tt)} {tokenLabel(tt)}</p>
+        <p className="text-center text-caption text-muted-foreground">≈ ${amountToUsd(invoice.amountPaid, tt)} USD</p>
       </WidgetShell>
     );
   }
@@ -184,8 +187,8 @@ export default function InvoicePaymentWidget() {
       </div>
 
       <div className="text-center">
-        <span className="text-2xl sm:text-sats text-primary font-tabular">{formatSbtc(remaining)} sBTC</span>
-        <p className="text-caption text-muted-foreground">≈ ${satsToUsd(remaining)} USD</p>
+        <span className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(remaining, tt)} {tokenLabel(tt)}</span>
+        <p className="text-caption text-muted-foreground">≈ ${amountToUsd(remaining, tt)} USD</p>
       </div>
 
       {invoice.amountPaid > 0 && <Progress value={paidPct} className="h-2" />}
@@ -213,7 +216,7 @@ export default function InvoicePaymentWidget() {
           {payState === "confirming" ? (
             <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
           ) : (
-            <><Wallet className="h-4 w-4" /> Pay {formatSbtc(remaining)} sBTC</>
+            <><Wallet className="h-4 w-4" /> Pay {formatAmount(remaining, tt)} {tokenLabel(tt)}</>
           )}
         </Button>
       )}
