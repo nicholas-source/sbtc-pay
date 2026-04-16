@@ -4,17 +4,20 @@ import { CheckCircle2, Loader2, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import type { Payment } from "@/stores/invoice-store";
-import { formatSbtc } from "@/lib/constants";
+import { formatAmount, tokenLabel } from "@/lib/constants";
 import { getExplorerTxUrl } from "@/lib/stacks/config";
+import type { TokenType } from "@/lib/stacks/config";
 
 interface Props {
   payment: Payment | null;
   amount: number;
+  /** Token type for formatting */
+  tokenType?: TokenType;
   /** When false, shows "Transaction Submitted" spinner instead of green checkmark */
   confirmed?: boolean;
 }
 
-export function PaymentConfirmation({ payment, amount, confirmed = true }: Props) {
+export function PaymentConfirmation({ payment, amount, tokenType = 'sbtc', confirmed = true }: Props) {
   const [showContent, setShowContent] = useState(false);
 
   useEffect(() => {
@@ -75,7 +78,7 @@ export function PaymentConfirmation({ payment, amount, confirmed = true }: Props
           {confirmed ? "Payment Confirmed" : "Transaction Submitted"}
         </p>
         <p className="text-sats text-primary mt-2 font-tabular">
-          {formatSbtc(amount)} sBTC
+          {formatAmount(amount, tokenType)} {tokenLabel(tokenType)}
         </p>
         {!confirmed && (
           <p className="text-body-sm text-muted-foreground mt-1">
