@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-import { formatSbtc, satsToSbtc, sbtcToSats } from "@/lib/constants";
+import { formatAmount, baseToHuman, humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useSatsToUsd } from "@/stores/wallet-store";
 
 const REASON_PRESETS = [
@@ -39,12 +39,13 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [refundType, setRefundType] = useState<"full" | "partial">("full");
   const [reasonPreset, setReasonPreset] = useState<string>("Customer request");
+  const tt = invoice.tokenType;
 
   const schema = z.object({
     amount: z.coerce
       .number()
       .positive("Amount must be positive")
-      .max(satsToSbtc(invoice.amountPaid), `Cannot exceed ${formatSbtc(invoice.amountPaid)} sBTC`),
+      .max(baseToHuman(invoice.amountPaid, tt), `Cannot exceed ${formatAmount(invoice.amountPaid, tt)} ${tokenLabel(tt)}`),
     reason: z.string().trim().min(1, "Reason is required").max(CONTRACT_LIMITS.REASON, `Max ${CONTRACT_LIMITS.REASON} characters`),
   });
 
@@ -53,19 +54,19 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      amount: satsToSbtc(invoice.amountPaid),
+      amount: baseToHuman(invoice.amountPaid, tt),
       reason: "Customer request",
     },
   });
 
   const amount = form.watch("amount");
-  const amountInSats = sbtcToSats(amount);
-  const usd = satsToUsd(amountInSats);
+  const amountInBaseUnits = humanToBaseUnits(amount, tt);
+  const usd = amountToUsd(amountInBaseUnits, tt);
 
   function handleTypeChange(type: "full" | "partial") {
     setRefundType(type);
     if (type === "full") {
-      form.setValue("amount", satsToSbtc(invoice.amountPaid));
+      form.setValue("amount", baseToHuman(invoice.amountPaid, tt));
     }
   }
 
@@ -84,11 +85,11 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
 
   async function handleConfirm() {
     const values = form.getValues();
-    const refundSats = sbtcToSats(values.amount);
+    const refundBaseUnits = humanToBaseUnits(values.amount, tt);
     try {
-      const success = await refundInvoice(invoice.id, refundSats, values.reason);
+      const success = await refundInvoice(invoice.id, refundBaseUnits, values.reason);
       if (success) {
-        toast.success("Refund processed", { description: `${formatSbtc(refundSats)} sBTC refunded` });
+        toast.success("Refund processed", { description: `${formatAmount(refundBaseUnits, tt)} ${tokenLabel(tt)} refunded` });
         setConfirmOpen(false);
         onOpenChange(false);
       } else {
@@ -110,7 +111,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
               <RotateCcw className="h-4 w-4" /> Refund {invoice.id}
             </DialogTitle>
             <DialogDescription>
-              Available: {formatSbtc(invoice.amountPaid)} sBTC (${satsToUsd(invoice.amountPaid)})
+              Available: {formatAmount(invoice.amountPaid, tt)} {tokenLabel(tt)} (${amountToUsd(invoice.amountPaid, tt)})
             </DialogDescription>
           </DialogHeader>
 
@@ -139,7 +140,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
                   name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Amount (sBTC)</FormLabel>
+                      <FormLabel>Amount ({tokenLabel(tt)})</FormLabel>
                       <FormControl>
                         <Input type="number" {...field} />
                       </FormControl>
@@ -196,7 +197,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
             <AlertDialogDescription asChild>
               <div className="space-y-2 text-sm">
                 <p>Invoice: <span className="font-mono font-semibold">{invoice.id}</span></p>
-                <p>Amount: <span className="font-mono font-semibold">{formatSbtc(amountInSats)} sBTC</span> (${usd})</p>
+                <p>Amount: <span className="font-mono font-semibold">{formatAmount(amountInBaseUnits, tt)} {tokenLabel(tt)}</span> (${usd})</p>
                 <p>Reason: {form.getValues("reason")}</p>
                 <p className="text-destructive font-medium mt-2">This refund is permanent and cannot be reversed.</p>
               </div>
