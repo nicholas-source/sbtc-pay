@@ -83,7 +83,7 @@ function AnimatedRoutes() {
         </Route>
 
         {/* Admin */}
-        <Route path="/admin" element={<ErrorBoundary><AdminPage /></ErrorBoundary>} />
+        <Route path="/admin" element={<ErrorBoundary><Suspense fallback={<DashboardSkeleton />}><AdminPage /></Suspense></ErrorBoundary>} />
 
         {/* Customer */}
         <Route path="/customer" element={<ErrorBoundary><CustomerLayout /></ErrorBoundary>}>
