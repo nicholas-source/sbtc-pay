@@ -28,7 +28,7 @@ export default function DirectPaymentWidget() {
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { isConnected, address, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
   const satsToUsd = useSatsToUsd();
   const addr = merchantAddress || "";
 
@@ -45,6 +45,14 @@ export default function DirectPaymentWidget() {
 
     if (address === PAYMENT_CONTRACT.address) {
       toast.error("Fee-recipient wallet cannot make payments");
+      return;
+    }
+
+    // Guard: check wallet balance before attempting payment
+    const walletBalance = tokenType === 'stx' ? stxBalance : sbtcBalance;
+    if (walletBalance < BigInt(sats)) {
+      const label = tokenLabel(tokenType);
+      toast.error(`Insufficient ${label} balance: need ${formatAmount(sats, tokenType)} but wallet has ${formatAmount(Number(walletBalance), tokenType)}`);
       return;
     }
 
