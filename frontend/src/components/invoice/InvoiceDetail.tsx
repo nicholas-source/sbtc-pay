@@ -11,8 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 
-import { formatSbtc } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 
 interface Props {
   invoice: Invoice | null;
@@ -21,7 +20,6 @@ interface Props {
 }
 
 export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange }: Props) {
-  const satsToUsd = useSatsToUsd();
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const liveInvoice = useInvoiceStore((s) => invoiceProp ? s.invoices.find((i) => i.id === invoiceProp.id) : undefined);
   const [refundOpen, setRefundOpen] = useState(false);
@@ -75,8 +73,8 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           {/* Amount */}
           <div className="rounded-lg border p-4">
             <p className="text-xs text-muted-foreground mb-1">Total Amount</p>
-            <p className="text-2xl font-mono font-bold font-tabular">{formatSbtc(invoice.amount)} <span className="text-sm text-muted-foreground">sBTC</span></p>
-            <p className="text-sm text-muted-foreground">${satsToUsd(invoice.amount)} USD</p>
+            <p className="text-2xl font-mono font-bold font-tabular">{formatAmount(invoice.amount, invoice.tokenType)} <span className="text-sm text-muted-foreground">{tokenLabel(invoice.tokenType)}</span></p>
+            <p className="text-sm text-muted-foreground">${amountToUsd(invoice.amount, invoice.tokenType)} USD</p>
           </div>
 
           {/* Partial progress */}
@@ -88,8 +86,8 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               </div>
               <Progress value={pct} className="h-2" />
               <div className="flex justify-between text-xs text-muted-foreground">
-                <span>{formatSbtc(invoice.amountPaid)} paid</span>
-                <span>{formatSbtc(invoice.amount - invoice.amountPaid)} remaining</span>
+                <span>{formatAmount(invoice.amountPaid, invoice.tokenType)} paid</span>
+                <span>{formatAmount(invoice.amount - invoice.amountPaid, invoice.tokenType)} remaining</span>
               </div>
             </div>
           )}
@@ -104,7 +102,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           {/* Expired with partial payment banner */}
           {invoice.status === "expired" && invoice.amountPaid > 0 && (
             <div className="rounded-md bg-destructive/10 border border-destructive/30 px-3 py-2 text-xs text-destructive">
-              This invoice expired with {formatSbtc(invoice.amountPaid)} sBTC received ({pct}% of total). Consider issuing a refund to the payer.
+              This invoice expired with {formatAmount(invoice.amountPaid, invoice.tokenType)} {tokenLabel(invoice.tokenType)} received ({pct}% of total). Consider issuing a refund to the payer.
             </div>
           )}
 
@@ -141,7 +139,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="font-mono font-tabular">+{formatSbtc(p.amount)} sBTC</span>
+                        <span className="font-mono font-tabular">+{formatAmount(p.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
                         <span className="text-xs text-muted-foreground">{format(p.timestamp, "MMM d, HH:mm")}</span>
                       </div>
                       <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{p.txId}</p>
@@ -166,7 +164,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <span className="font-mono font-tabular">-{formatSbtc(r.amount)} sBTC</span>
+                          <span className="font-mono font-tabular">-{formatAmount(r.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
                           <span className="text-xs text-muted-foreground">{format(r.timestamp, "MMM d, HH:mm")}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{r.reason}</p>
