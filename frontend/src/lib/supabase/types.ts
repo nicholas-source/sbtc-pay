@@ -20,6 +20,7 @@ export type Database = {
           merchant_principal: string
           merchant_received: number
           payer: string
+          token_type: string
           tx_id: string | null
         }
         Insert: {
@@ -32,6 +33,7 @@ export type Database = {
           merchant_principal: string
           merchant_received?: number
           payer: string
+          token_type?: string
           tx_id?: string | null
         }
         Update: {
@@ -44,6 +46,7 @@ export type Database = {
           merchant_principal?: string
           merchant_received?: number
           payer?: string
+          token_type?: string
           tx_id?: string | null
         }
         Relationships: []
@@ -57,6 +60,7 @@ export type Database = {
           id: number
           payload: Json
           processed_at: string
+          token_type: string | null
           tx_id: string
         }
         Insert: {
@@ -67,6 +71,7 @@ export type Database = {
           id?: number
           payload?: Json
           processed_at?: string
+          token_type?: string | null
           tx_id: string
         }
         Update: {
@@ -77,6 +82,7 @@ export type Database = {
           id?: number
           payload?: Json
           processed_at?: string
+          token_type?: string | null
           tx_id?: string
         }
         Relationships: []
@@ -100,6 +106,7 @@ export type Database = {
           reference_id: string | null
           refunded_at_block: number | null
           status: number
+          token_type: string
           updated_at: string
         }
         Insert: {
@@ -120,6 +127,7 @@ export type Database = {
           reference_id?: string | null
           refunded_at_block?: number | null
           status?: number
+          token_type?: string
           updated_at?: string
         }
         Update: {
@@ -140,6 +148,7 @@ export type Database = {
           reference_id?: string | null
           refunded_at_block?: number | null
           status?: number
+          token_type?: string
           updated_at?: string
         }
         Relationships: [
@@ -167,6 +176,10 @@ export type Database = {
           subscription_count: number
           total_received: number
           total_refunded: number
+          total_received_sbtc: number
+          total_refunded_sbtc: number
+          total_received_stx: number
+          total_refunded_stx: number
           updated_at: string
           webhook_url: string | null
         }
@@ -184,6 +197,10 @@ export type Database = {
           subscription_count?: number
           total_received?: number
           total_refunded?: number
+          total_received_sbtc?: number
+          total_refunded_sbtc?: number
+          total_received_stx?: number
+          total_refunded_stx?: number
           updated_at?: string
           webhook_url?: string | null
         }
@@ -201,6 +218,10 @@ export type Database = {
           subscription_count?: number
           total_received?: number
           total_refunded?: number
+          total_received_sbtc?: number
+          total_refunded_sbtc?: number
+          total_received_stx?: number
+          total_refunded_stx?: number
           updated_at?: string
           webhook_url?: string | null
         }
@@ -218,6 +239,7 @@ export type Database = {
           merchant_received: number
           payer: string
           payment_index: number
+          token_type: string
           tx_id: string | null
         }
         Insert: {
@@ -231,6 +253,7 @@ export type Database = {
           merchant_received?: number
           payer: string
           payment_index: number
+          token_type?: string
           tx_id?: string | null
         }
         Update: {
@@ -244,6 +267,7 @@ export type Database = {
           merchant_received?: number
           payer?: string
           payment_index?: number
+          token_type?: string
           tx_id?: string | null
         }
         Relationships: [
@@ -265,6 +289,12 @@ export type Database = {
           total_refunds: number
           total_subscriptions: number
           total_volume: number
+          total_volume_sbtc: number
+          total_fees_sbtc: number
+          total_refunds_sbtc: number
+          total_volume_stx: number
+          total_fees_stx: number
+          total_refunds_stx: number
           updated_at: string
         }
         Insert: {
@@ -275,6 +305,12 @@ export type Database = {
           total_refunds?: number
           total_subscriptions?: number
           total_volume?: number
+          total_volume_sbtc?: number
+          total_fees_sbtc?: number
+          total_refunds_sbtc?: number
+          total_volume_stx?: number
+          total_fees_stx?: number
+          total_refunds_stx?: number
           updated_at?: string
         }
         Update: {
@@ -285,6 +321,12 @@ export type Database = {
           total_refunds?: number
           total_subscriptions?: number
           total_volume?: number
+          total_volume_sbtc?: number
+          total_fees_sbtc?: number
+          total_refunds_sbtc?: number
+          total_volume_stx?: number
+          total_fees_stx?: number
+          total_refunds_stx?: number
           updated_at?: string
         }
         Relationships: []
@@ -299,6 +341,7 @@ export type Database = {
           merchant_principal: string
           processed_at_block: number
           reason: string
+          token_type: string
           tx_id: string | null
         }
         Insert: {
@@ -310,6 +353,7 @@ export type Database = {
           merchant_principal: string
           processed_at_block: number
           reason?: string
+          token_type?: string
           tx_id?: string | null
         }
         Update: {
@@ -321,6 +365,7 @@ export type Database = {
           merchant_principal?: string
           processed_at_block?: number
           reason?: string
+          token_type?: string
           tx_id?: string | null
         }
         Relationships: [
@@ -345,6 +390,7 @@ export type Database = {
           payment_number: number
           subscriber: string
           subscription_id: number
+          token_type: string
           tx_id: string | null
         }
         Insert: {
@@ -358,6 +404,7 @@ export type Database = {
           payment_number: number
           subscriber: string
           subscription_id: number
+          token_type?: string
           tx_id?: string | null
         }
         Update: {
@@ -371,6 +418,7 @@ export type Database = {
           payment_number?: number
           subscriber?: string
           subscription_id?: number
+          token_type?: string
           tx_id?: string | null
         }
         Relationships: [
@@ -398,6 +446,7 @@ export type Database = {
           payments_made: number
           status: number
           subscriber: string
+          token_type: string
           total_paid: number
           updated_at: string
         }
@@ -415,6 +464,7 @@ export type Database = {
           payments_made?: number
           status?: number
           subscriber: string
+          token_type?: string
           total_paid?: number
           updated_at?: string
         }
@@ -432,6 +482,7 @@ export type Database = {
           payments_made?: number
           status?: number
           subscriber?: string
+          token_type?: string
           total_paid?: number
           updated_at?: string
         }
