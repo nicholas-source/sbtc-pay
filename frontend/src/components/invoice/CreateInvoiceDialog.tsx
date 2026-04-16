@@ -20,17 +20,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
-import { sbtcToSats, formatSbtc } from "@/lib/constants";
+import { humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useSatsToUsd } from "@/stores/wallet-store";
+import type { TokenType } from "@/lib/stacks/config";
 
-const MIN_SBTC = 0.00001; // 1000 sats — contract minimum
-const MAX_SBTC = 21; // 21 sBTC — reasonable upper bound
+const MIN_AMOUNT = 0.00001;
+const MAX_AMOUNT = 21;
 
 const schema = z.object({
   amount: z.coerce.number()
     .positive("Amount must be greater than 0")
-    .min(MIN_SBTC, `Minimum amount is ${MIN_SBTC} sBTC`)
-    .max(MAX_SBTC, `Maximum amount is ${MAX_SBTC} sBTC`),
+    .min(MIN_AMOUNT, `Minimum amount is ${MIN_AMOUNT}`)
+    .max(MAX_AMOUNT, `Maximum amount is ${MAX_AMOUNT}`),
   memo: z.string().max(CONTRACT_LIMITS.MEMO, `Max ${CONTRACT_LIMITS.MEMO} characters`).optional().default(""),
   referenceId: z.string().max(CONTRACT_LIMITS.REFERENCE_ID, `Max ${CONTRACT_LIMITS.REFERENCE_ID} characters`).optional().default(""),
   allowPartial: z.boolean().default(false),
@@ -74,6 +75,7 @@ export default function CreateInvoiceDialog() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expirationPreset, setExpirationPreset] = useState("7d");
   const [customDate, setCustomDate] = useState<Date>();
+  const [tokenType, setTokenType] = useState<TokenType>('sbtc');
   const fetchInvoices = useInvoiceStore((s) => s.fetchInvoices);
   const createInvoiceLocal = useInvoiceStore((s) => s.createInvoice);
   const backfillFromChain = useInvoiceStore((s) => s.backfillFromChain);
@@ -85,8 +87,8 @@ export default function CreateInvoiceDialog() {
   });
 
   const watchAmount = form.watch("amount");
-  const satsAmount = watchAmount && watchAmount > 0 ? sbtcToSats(watchAmount) : 0;
-  const usdValue = satsAmount > 0 ? satsToUsd(satsAmount) : null;
+  const baseAmount = watchAmount && watchAmount > 0 ? humanToBaseUnits(watchAmount, tokenType) : 0;
+  const usdValue = baseAmount > 0 ? amountToUsd(baseAmount, tokenType) : null;
 
   async function onSubmit(data: FormValues) {
     if (!walletAddress) {
@@ -94,7 +96,7 @@ export default function CreateInvoiceDialog() {
       return;
     }
 
-    const amountInSats = sbtcToSats(data.amount);
+    const amountInBaseUnits = humanToBaseUnits(data.amount, tokenType);
     const expiresInBlocks = presetToBlocks(expirationPreset, customDate);
 
     setIsSubmitting(true);
@@ -102,22 +104,24 @@ export default function CreateInvoiceDialog() {
       toast.info("Please confirm the transaction in your wallet");
 
       const { txId } = await createInvoiceOnChain({
-        amount: BigInt(amountInSats),
+        amount: BigInt(amountInBaseUnits),
         memo: data.memo || "",
         referenceId: data.referenceId || undefined,
         expiresInBlocks,
         allowPartial: data.allowPartial,
         allowOverpay: data.allowOverpay,
+        tokenType,
       });
 
       // Immediately add optimistic invoice to the store so it's visible
       const optimistic = createInvoiceLocal({
-        amount: amountInSats,
+        amount: amountInBaseUnits,
         memo: data.memo || "",
         referenceId: data.referenceId || "",
         allowPartial: data.allowPartial,
         allowOverpay: data.allowOverpay,
         merchantAddress: walletAddress,
+        tokenType,
         txId,
       });
       const optimisticId = optimistic.id;
@@ -129,6 +133,7 @@ export default function CreateInvoiceDialog() {
       form.reset();
       setExpirationPreset("7d");
       setCustomDate(undefined);
+      setTokenType('sbtc');
 
       // Monitor the transaction in background, then refresh real data from Supabase
       waitForTransaction(txId, 90, 10000).then(async (result) => {
@@ -173,10 +178,10 @@ export default function CreateInvoiceDialog() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField control={form.control} name="amount" render={({ field }) => (
               <FormItem>
-                <FormLabel>Amount (sBTC)</FormLabel>
+                <FormLabel>Amount ({tokenLabel(tokenType)})</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <Input type="number" step="0.00000001" placeholder="0.001" {...field} className="font-mono pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                    <Input type="number" step={tokenType === 'stx' ? '0.000001' : '0.00000001'} placeholder="0.001" {...field} className="font-mono pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                     {usdValue && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
                         ≈ ${usdValue}
@@ -187,6 +192,18 @@ export default function CreateInvoiceDialog() {
                 <FormMessage />
               </FormItem>
             )} />
+
+            {/* Token Type Selector */}
+            <div>
+              <label className="text-sm font-medium">Token</label>
+              <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
+                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sbtc">sBTC</SelectItem>
+                  <SelectItem value="stx">STX</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             <FormField control={form.control} name="memo" render={({ field }) => (
               <FormItem>
