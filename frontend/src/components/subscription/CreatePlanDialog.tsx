@@ -29,10 +29,9 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { amountToUsd } from "@/lib/constants";
 
 export default function CreatePlanDialog() {
-  const satsToUsd = useSatsToUsd();
   const [open, setOpen] = useState(false);
   const createPlan = useSubscriptionStore((s) => s.createPlan);
 
@@ -42,7 +41,7 @@ export default function CreatePlanDialog() {
   });
 
   const amount = form.watch("amount");
-  const usdEstimate = amount ? satsToUsd(amount) : "0.00";
+  const usdEstimate = amount ? amountToUsd(amount, 'sbtc') : "0.00";
 
   function onSubmit(data: FormValues) {
     try {
@@ -51,6 +50,7 @@ export default function CreatePlanDialog() {
         description: data.description || "",
         amount: data.amount,
         interval: data.interval,
+        tokenType: 'sbtc',
       });
       toast.success("Subscription plan created");
       form.reset();
