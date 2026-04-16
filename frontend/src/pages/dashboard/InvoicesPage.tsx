@@ -20,9 +20,28 @@ function InvoicesPage() {
   const stats = useMemo(() => {
     const pending = invoices.filter((i) => i.status === "pending" || i.status === "partial");
     const paid = invoices.filter((i) => i.status === "paid");
-    const pendingAmount = pending.reduce((s, i) => s + (i.amount - i.amountPaid), 0);
-    const paidAmount = paid.reduce((s, i) => s + i.amountPaid, 0);
-    return { total: invoices.length, pendingAmount, paidAmount };
+
+    // Split by token type to avoid mixing sats and microSTX
+    const pendingSbtc = pending.filter((i) => i.tokenType !== 'stx').reduce((s, i) => s + (i.amount - i.amountPaid), 0);
+    const pendingStx = pending.filter((i) => i.tokenType === 'stx').reduce((s, i) => s + (i.amount - i.amountPaid), 0);
+    const paidSbtc = paid.filter((i) => i.tokenType !== 'stx').reduce((s, i) => s + i.amountPaid, 0);
+    const paidStx = paid.filter((i) => i.tokenType === 'stx').reduce((s, i) => s + i.amountPaid, 0);
+
+    const pendingUsd = (pendingSbtc > 0 ? parseFloat(amountToUsd(pendingSbtc, 'sbtc')) : 0)
+      + (pendingStx > 0 ? parseFloat(amountToUsd(pendingStx, 'stx')) : 0);
+    const paidUsd = (paidSbtc > 0 ? parseFloat(amountToUsd(paidSbtc, 'sbtc')) : 0)
+      + (paidStx > 0 ? parseFloat(amountToUsd(paidStx, 'stx')) : 0);
+
+    const pendingDisplay = [
+      pendingSbtc > 0 ? `${formatAmount(pendingSbtc, 'sbtc')} sBTC` : '',
+      pendingStx > 0 ? `${formatAmount(pendingStx, 'stx')} STX` : '',
+    ].filter(Boolean).join(' + ') || '0';
+    const paidDisplay = [
+      paidSbtc > 0 ? `${formatAmount(paidSbtc, 'sbtc')} sBTC` : '',
+      paidStx > 0 ? `${formatAmount(paidStx, 'stx')} STX` : '',
+    ].filter(Boolean).join(' + ') || '0';
+
+    return { total: invoices.length, pendingDisplay, pendingUsd, paidDisplay, paidUsd };
   }, [invoices]);
 
   const handleExport = useCallback(() => {
@@ -78,8 +97,8 @@ function InvoicesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Invoices" value={stats.total} displayValue={String(stats.total)} icon={FileText} change="" accent="primary" />
-        <StatCard label="Pending Amount" value={stats.pendingAmount} displayValue={formatAmount(stats.pendingAmount, 'sbtc')} unit="sBTC" usd={`$${amountToUsd(stats.pendingAmount, 'sbtc')}`} icon={Clock} change="" accent="warning" />
-        <StatCard label="Paid Amount" value={stats.paidAmount} displayValue={formatAmount(stats.paidAmount, 'sbtc')} unit="sBTC" usd={`$${amountToUsd(stats.paidAmount, 'sbtc')}`} icon={CheckCircle} change="" accent="success" />
+        <StatCard label="Pending Amount" value={stats.pendingUsd} displayValue={stats.pendingDisplay} unit="" usd={stats.pendingUsd > 0 ? `$${stats.pendingUsd.toFixed(2)}` : ""} icon={Clock} change="" accent="warning" />
+        <StatCard label="Paid Amount" value={stats.paidUsd} displayValue={stats.paidDisplay} unit="" usd={stats.paidUsd > 0 ? `$${stats.paidUsd.toFixed(2)}` : ""} icon={CheckCircle} change="" accent="success" />
       </div>
 
       <InvoiceTable onSelect={handleSelect} />
