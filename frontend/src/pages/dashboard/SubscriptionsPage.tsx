@@ -18,22 +18,35 @@ function SubscriptionsPage() {
 
   const stats = useMemo(() => {
     const activeSubs = subscribers.filter((s) => s.status === "active");
-    const monthlyRevenue = plans
-      .filter((p) => p.isActive)
-      .reduce((sum, plan) => {
-        const count = subscribers.filter(
-          (s) => s.planId === plan.id && s.status === "active"
-        ).length;
-        let monthly = plan.amount * count;
-        if (plan.interval === "weekly") monthly *= 4;
-        if (plan.interval === "yearly") monthly /= 12;
-        return sum + monthly;
-      }, 0);
+
+    // Split monthly revenue by token type
+    let sbtcRevenue = 0;
+    let stxRevenue = 0;
+    plans.filter((p) => p.isActive).forEach((plan) => {
+      const count = subscribers.filter(
+        (s) => s.planId === plan.id && s.status === "active"
+      ).length;
+      let monthly = plan.amount * count;
+      if (plan.interval === "weekly") monthly *= 4;
+      if (plan.interval === "yearly") monthly /= 12;
+      if (plan.tokenType === 'stx') stxRevenue += monthly;
+      else sbtcRevenue += monthly;
+    });
+
+    sbtcRevenue = Math.round(sbtcRevenue);
+    stxRevenue = Math.round(stxRevenue);
+    const revenueUsd = (sbtcRevenue > 0 ? parseFloat(amountToUsd(sbtcRevenue, 'sbtc')) : 0)
+      + (stxRevenue > 0 ? parseFloat(amountToUsd(stxRevenue, 'stx')) : 0);
+    const revenueDisplay = [
+      sbtcRevenue > 0 ? `${formatAmount(sbtcRevenue, 'sbtc')} sBTC` : '',
+      stxRevenue > 0 ? `${formatAmount(stxRevenue, 'stx')} STX` : '',
+    ].filter(Boolean).join(' + ') || '0';
 
     return {
       totalPlans: plans.length,
       activeSubscribers: activeSubs.length,
-      monthlyRevenue: Math.round(monthlyRevenue),
+      revenueDisplay,
+      revenueUsd,
     };
   }, [plans, subscribers]);
 
@@ -97,7 +110,7 @@ function SubscriptionsPage() {
           <div className="grid gap-4 sm:grid-cols-3">
             <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change="+1 this month" accent="secondary" />
             <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change="+2 this month" accent="info" />
-            <StatCard label="Monthly Revenue" value={stats.monthlyRevenue} displayValue={formatAmount(stats.monthlyRevenue, 'sbtc')} unit="sBTC" usd={`≈ $${amountToUsd(stats.monthlyRevenue, 'sbtc')}`} icon={TrendingUp} change="+12%" accent="success" />
+            <StatCard label="Monthly Revenue" value={stats.revenueUsd} displayValue={stats.revenueDisplay} unit="" usd={stats.revenueUsd > 0 ? `≈ $${stats.revenueUsd.toFixed(2)}` : ""} icon={TrendingUp} change="+12%" accent="success" />
           </div>
 
           {/* Analytics Chart */}
