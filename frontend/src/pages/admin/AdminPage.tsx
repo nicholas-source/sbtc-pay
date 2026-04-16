@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { formatAmount, amountToUsd } from "@/lib/constants";
 import { getExplorerAddressUrl } from "@/lib/stacks/config";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
+import { Navigate } from "react-router-dom";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -78,6 +79,11 @@ export default function AdminPage() {
   useEffect(() => {
     if (address) fetchAdminData(address);
   }, [address, fetchAdminData]);
+
+  // Redirect to dashboard if no wallet connected
+  if (!address && !isLoading) {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   const [newFeeBps, setNewFeeBps] = useState(feeBps.toString());
   const [newFeeRecipient, setNewFeeRecipient] = useState(feeRecipient);
@@ -167,7 +173,7 @@ export default function AdminPage() {
       <Card className={cn(!isContractOwner && !isLoading && "opacity-60")}>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-heading-sm">Contract Controls</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)}>
+          <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)} aria-label={showSettings ? "Hide advanced settings" : "Show advanced settings"} aria-expanded={showSettings}>
             <Settings className="h-4 w-4 mr-1" />
             {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
@@ -306,6 +312,7 @@ export default function AdminPage() {
                 value={merchantSearch}
                 onChange={(e) => setMerchantSearch(e.target.value)}
                 className="pl-9"
+                aria-label="Search merchants by name or address"
               />
             </div>
           )}
