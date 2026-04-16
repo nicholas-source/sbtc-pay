@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain } from "@/lib/stacks/contract";
-import { API_URL, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight } from "@/lib/stacks/config";
+import { API_URL, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight, type TokenType } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -36,6 +36,7 @@ export interface Invoice {
   expiresAt: Date | null;
   payments: Payment[];
   refunds: Refund[];
+  tokenType: TokenType;
   /** The on-chain tx ID that created this invoice (set for optimistic invoices) */
   txId?: string;
 }
@@ -86,6 +87,7 @@ interface CreateInvoiceData {
   allowPartial?: boolean;
   allowOverpay?: boolean;
   merchantAddress?: string;
+  tokenType?: TokenType;
   txId?: string;
 }
 
@@ -144,6 +146,7 @@ function mapDbInvoice(
       reason: r.reason || "",
       txId: r.tx_id || "",
     })),
+    tokenType: (row.token_type as TokenType) || 'sbtc',
   };
 }
 
@@ -401,6 +404,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       expiresAt: data.expiresAt ?? null,
       payments: [],
       refunds: [],
+      tokenType: data.tokenType ?? 'sbtc',
       txId: data.txId,
     };
     set((state) => {
@@ -454,6 +458,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
           refundAmount: BigInt(amount),
           reason,
           merchantAddress: invoice.merchantAddress,
+          tokenType: invoice.tokenType,
         });
         toast.success("Refund submitted!", { description: "Will update once confirmed." });
       } catch (error) {
@@ -602,6 +607,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
             allow_overpay: allowOverpay,
             created_at_block: blockHeight,
             expires_at_block: expiresInBlocks > 0 ? blockHeight + expiresInBlocks : blockHeight + 52560,
+            token_type: 'sbtc', // backfill defaults to sbtc; webhook will correct if stx
           }, { onConflict: "id" });
           if (error) console.error("backfill invoice upsert failed:", error.message);
         } else {
