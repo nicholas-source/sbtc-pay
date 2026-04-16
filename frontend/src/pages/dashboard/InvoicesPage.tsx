@@ -10,11 +10,9 @@ import EmptyState from "@/components/dashboard/EmptyState";
 import { Button } from "@/components/ui/button";
 import { exportToCSV } from "@/lib/export-csv";
 
-import { formatSbtc } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 
 function InvoicesPage() {
-  const satsToUsd = useSatsToUsd();
   const invoices = useInvoiceStore((s) => s.invoices);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -35,7 +33,7 @@ function InvoicesPage() {
       Status: inv.status,
       Memo: inv.memo ?? "",
       Created: format(new Date(inv.createdAt), "yyyy-MM-dd HH:mm"),
-      Payer: inv.payer ?? "",
+      Payer: inv.payerAddress ?? "",
     }));
     exportToCSV(rows, `invoices-${format(new Date(), "yyyy-MM-dd")}.csv`);
   }, [invoices]);
@@ -80,8 +78,8 @@ function InvoicesPage() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard label="Total Invoices" value={stats.total} displayValue={String(stats.total)} icon={FileText} change="" accent="primary" />
-        <StatCard label="Pending Amount" value={stats.pendingAmount} displayValue={formatSbtc(stats.pendingAmount)} unit="sBTC" usd={`$${satsToUsd(stats.pendingAmount)}`} icon={Clock} change="" accent="warning" />
-        <StatCard label="Paid Amount" value={stats.paidAmount} displayValue={formatSbtc(stats.paidAmount)} unit="sBTC" usd={`$${satsToUsd(stats.paidAmount)}`} icon={CheckCircle} change="" accent="success" />
+        <StatCard label="Pending Amount" value={stats.pendingAmount} displayValue={formatAmount(stats.pendingAmount, 'sbtc')} unit="sBTC" usd={`$${amountToUsd(stats.pendingAmount, 'sbtc')}`} icon={Clock} change="" accent="warning" />
+        <StatCard label="Paid Amount" value={stats.paidAmount} displayValue={formatAmount(stats.paidAmount, 'sbtc')} unit="sBTC" usd={`$${amountToUsd(stats.paidAmount, 'sbtc')}`} icon={CheckCircle} change="" accent="success" />
       </div>
 
       <InvoiceTable onSelect={handleSelect} />
