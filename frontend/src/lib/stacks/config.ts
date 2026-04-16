@@ -2,7 +2,7 @@
  * Stacks Blockchain Configuration
  * 
  * This file contains all the configuration needed to interact with
- * the payment-v5 smart contract on Stacks testnet/mainnet.
+ * the payment-v6 smart contract on Stacks testnet/mainnet.
  * 
  * Network mode, contract address, and API URLs are driven by
  * VITE_* environment variables so they can be changed in Vercel
@@ -45,7 +45,7 @@ const PAYMENT_CONTRACT_ADDRESS =
     : '');
 
 const PAYMENT_CONTRACT_NAME =
-  import.meta.env.VITE_PAYMENT_CONTRACT_NAME || 'payment-v5';
+  import.meta.env.VITE_PAYMENT_CONTRACT_NAME || 'payment-v6';
 
 export const PAYMENT_CONTRACT = {
   address: PAYMENT_CONTRACT_ADDRESS,
@@ -73,8 +73,22 @@ export const SBTC_CONTRACT_ID = `${SBTC_TOKEN.address}.${SBTC_TOKEN.name}` as co
 // Platform constants
 export const PLATFORM_FEE_BPS = 50; // 0.5%
 export const SATS_PER_BTC = 100_000_000;
-export const MIN_INVOICE_AMOUNT = 1000; // sats
+export const MICRO_STX_PER_STX = 1_000_000;
+export const MIN_INVOICE_AMOUNT = 1000; // sats or microSTX
 export const MAX_INVOICE_AMOUNT = 100_000_000_000; // sats (1000 BTC)
+
+// Token types (match contract constants)
+export type TokenType = 'sbtc' | 'stx';
+export const TOKEN_SBTC: TokenType = 'sbtc';
+export const TOKEN_STX: TokenType = 'stx';
+
+// Contract token-type encoding: u0 = sbtc, u1 = stx
+export const TOKEN_TYPE_MAP: Record<number, TokenType> = { 0: 'sbtc', 1: 'stx' };
+export const TOKEN_TYPE_UINT: Record<TokenType, number> = { sbtc: 0, stx: 1 };
+
+// Token display names
+export const TOKEN_DISPLAY: Record<TokenType, string> = { sbtc: 'sBTC', stx: 'STX' };
+export const TOKEN_DECIMALS: Record<TokenType, number> = { sbtc: 8, stx: 6 };
 
 // Block time (approximately 10 minutes on mainnet)
 export const AVG_BLOCK_TIME_SECONDS = NETWORK_MODE === 'testnet' ? 120 : 600;
@@ -126,9 +140,35 @@ export function formatSats(sats: number | bigint): string {
   return (Number(sats) / SATS_PER_BTC).toFixed(8);
 }
 
+export function formatMicroStx(microStx: number | bigint): string {
+  return (Number(microStx) / MICRO_STX_PER_STX).toFixed(6);
+}
+
+/** Format an amount based on token type */
+export function formatTokenAmount(amount: number | bigint, tokenType: TokenType): string {
+  if (tokenType === 'stx') return formatMicroStx(amount);
+  return formatSats(amount);
+}
+
 export function satsToUsd(sats: number | bigint, btcPriceUsd: number): string {
   const btc = Number(sats) / SATS_PER_BTC;
   return (btc * btcPriceUsd).toFixed(2);
+}
+
+export function microStxToUsd(microStx: number | bigint, stxPriceUsd: number): string {
+  const stx = Number(microStx) / MICRO_STX_PER_STX;
+  return (stx * stxPriceUsd).toFixed(2);
+}
+
+/** Convert any token amount to USD */
+export function tokenAmountToUsd(
+  amount: number | bigint,
+  tokenType: TokenType,
+  btcPriceUsd: number,
+  stxPriceUsd: number,
+): string {
+  if (tokenType === 'stx') return microStxToUsd(amount, stxPriceUsd);
+  return satsToUsd(amount, btcPriceUsd);
 }
 
 // Calculate fee for a given amount
