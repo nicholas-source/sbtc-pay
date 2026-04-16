@@ -16,8 +16,7 @@ import { useSubscriptionStore, type SubscriberStatus } from "@/stores/subscripti
 import { useWalletStore } from "@/stores/wallet-store";
 import ReminderBanner from "@/components/subscription/ReminderBanner";
 
-import { formatSbtc } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 
 const statusStyles: Record<SubscriberStatus, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -26,7 +25,6 @@ const statusStyles: Record<SubscriberStatus, string> = {
 };
 
 function CustomerSubscriptions() {
-  const satsToUsd = useSatsToUsd();
   const { address, isConnected } = useWalletStore();
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
@@ -93,7 +91,7 @@ function CustomerSubscriptions() {
               {activeSubs.map((sub) => {
                 const plan = getPlan(sub.planId);
                 if (!plan) return null;
-                const usd = satsToUsd(plan.amount);
+                const usd = amountToUsd(plan.amount, plan.tokenType);
 
                 return (
                   <Card key={sub.id}>
@@ -106,10 +104,10 @@ function CustomerSubscriptions() {
                     <CardContent className="space-y-3">
                       <div className="flex items-baseline gap-2">
                         <span className="font-mono-nums text-sats text-foreground">
-                          {formatSbtc(plan.amount)}
+                          {formatAmount(plan.amount, plan.tokenType)}
                         </span>
                         <span className="text-caption text-muted-foreground">
-                          sBTC / {plan.interval}
+                          {tokenLabel(plan.tokenType)} / {plan.interval}
                         </span>
                         <span className="text-caption text-muted-foreground">≈ ${usd}</span>
                       </div>
@@ -179,7 +177,7 @@ function CustomerSubscriptions() {
                     </CardHeader>
                     <CardContent>
                       <p className="text-body-sm text-muted-foreground">
-                        {formatSbtc(plan.amount)} sBTC / {plan.interval} — started{" "}
+                        {formatAmount(plan.amount, plan.tokenType)} {tokenLabel(plan.tokenType)} / {plan.interval} — started{" "}
                         {format(sub.startedAt, "MMM d, yyyy")}
                       </p>
                     </CardContent>
