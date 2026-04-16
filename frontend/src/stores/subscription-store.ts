@@ -14,6 +14,7 @@ import {
   getSubscription as getSubOnChain,
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
+import type { TokenType } from "@/lib/stacks/config";
 
 export type SubscriptionInterval = "weekly" | "monthly" | "yearly";
 export type SubscriberStatus = "active" | "paused" | "cancelled";
@@ -27,6 +28,7 @@ export interface SubscriptionPlan {
   merchantAddress: string;
   createdAt: Date;
   isActive: boolean;
+  tokenType: TokenType;
 }
 
 export interface Subscriber {
@@ -189,6 +191,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
             merchantAddress: row.merchant_principal,
             createdAt: new Date(row.created_at),
             isActive: row.status === 0,
+            tokenType: (row.token_type as TokenType) || 'sbtc',
           });
         }
 
@@ -223,7 +226,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
 
       const reconciledSubs: Subscriber[] = [];
       const reconciledPlans = new Map(planMap);
-      const fixes: Array<{ id: number; data: Record<string, unknown> }> = [];
+      const fixes: Array<{ id: number; data: { status?: number; amount?: number; name?: string } }> = [];
 
       for (let i = 0; i < subscribers.length; i++) {
         const sub = subscribers[i];
@@ -298,6 +301,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
       merchantAddress: "",
       createdAt: new Date(),
       isActive: true,
+      tokenType: 'sbtc',
     };
     set((s) => ({ plans: [plan, ...s.plans] }));
     return plan;
@@ -396,6 +400,7 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
         subscriptionId: chainId,
         amount: BigInt(plan.amount),
         subscriberAddress: sub.payerAddress,
+        tokenType: plan.tokenType,
       });
 
       const payment: Payment = {
