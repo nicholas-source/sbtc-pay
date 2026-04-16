@@ -252,6 +252,19 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   updateFeeBps: async (bps) => {
+    if (isNaN(bps) || bps < 0) {
+      toast.error("Invalid fee value");
+      return;
+    }
+    if (bps > 500) {
+      toast.error("Maximum fee is 500 BPS (5%)");
+      return;
+    }
+    const currentFee = get().feeBps;
+    if (Math.abs(bps - currentFee) > 100) {
+      toast.error(`Fee change too large: max ±100 BPS per update (current: ${currentFee})`);
+      return;
+    }
     set({ pendingAction: "fee" });
     try {
       toast.info("Please confirm in your wallet");
