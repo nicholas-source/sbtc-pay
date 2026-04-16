@@ -37,9 +37,9 @@ const API_URL = NETWORK === "testnet"
   ? "https://api.testnet.hiro.so"
   : "https://api.mainnet.hiro.so";
 
-// Contract identifier — payment-v5
+// Contract identifier — payment-v6
 const CONTRACT_ID = Deno.env.get("PAYMENT_CONTRACT_ID")
-  ?? "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v5";
+  ?? "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v6";
 const [CONTRACT_ADDRESS, CONTRACT_NAME] = CONTRACT_ID.split(".");
 
 // A valid sender address for read-only calls (doesn't need to own anything)
@@ -148,9 +148,12 @@ async function reconcilePlatformStats(
       total_merchants: chainStats["total-merchants"],
       total_invoices: chainStats["total-invoices"],
       total_subscriptions: chainStats["total-subscriptions"],
-      total_volume: chainStats["total-volume"],
-      total_fees_collected: chainStats["total-fees-collected"],
-      total_refunds: chainStats["total-refunds"],
+      total_volume_sbtc: chainStats["total-volume-sbtc"],
+      total_fees_sbtc: chainStats["total-fees-collected-sbtc"],
+      total_refunds_sbtc: chainStats["total-refunds-sbtc"],
+      total_volume_stx: chainStats["total-volume-stx"],
+      total_fees_stx: chainStats["total-fees-collected-stx"],
+      total_refunds_stx: chainStats["total-refunds-stx"],
     },
     { onConflict: "id" },
   );
@@ -165,7 +168,7 @@ async function reconcilePlatformStats(
 async function reconcileMerchants(): Promise<{ total: number; corrected: number }> {
   const { data: rows } = await supabase
     .from("merchants")
-    .select("id, principal, name, is_active, is_verified, total_received, total_refunded");
+    .select("id, principal, name, is_active, is_verified, total_received_sbtc, total_refunded_sbtc, total_received_stx, total_refunded_stx");
 
   if (!rows || rows.length === 0) return { total: 0, corrected: 0 };
 
@@ -191,10 +194,14 @@ async function reconcileMerchants(): Promise<{ total: number; corrected: number 
         if (chainActive !== row.is_active) updates.is_active = chainActive;
         if (chainVerified !== row.is_verified) updates.is_verified = chainVerified;
 
-        const chainReceived = Number(chain["total-received"] ?? 0);
-        const chainRefunded = Number(chain["total-refunded"] ?? 0);
-        if (chainReceived !== Number(row.total_received ?? 0)) updates.total_received = chainReceived;
-        if (chainRefunded !== Number(row.total_refunded ?? 0)) updates.total_refunded = chainRefunded;
+        const chainReceivedSbtc = Number(chain["total-received-sbtc"] ?? 0);
+        const chainRefundedSbtc = Number(chain["total-refunded-sbtc"] ?? 0);
+        const chainReceivedStx = Number(chain["total-received-stx"] ?? 0);
+        const chainRefundedStx = Number(chain["total-refunded-stx"] ?? 0);
+        if (chainReceivedSbtc !== Number(row.total_received_sbtc ?? 0)) updates.total_received_sbtc = chainReceivedSbtc;
+        if (chainRefundedSbtc !== Number(row.total_refunded_sbtc ?? 0)) updates.total_refunded_sbtc = chainRefundedSbtc;
+        if (chainReceivedStx !== Number(row.total_received_stx ?? 0)) updates.total_received_stx = chainReceivedStx;
+        if (chainRefundedStx !== Number(row.total_refunded_stx ?? 0)) updates.total_refunded_stx = chainRefundedStx;
 
         if (Object.keys(updates).length > 0) {
           const { error } = await supabase.from("merchants").update(updates).eq("id", row.id);
@@ -287,6 +294,7 @@ async function reconcileInvoices(
               allow_partial: Boolean(chain["allow-partial"]),
               created_at_block: Number(chain["created-at"] ?? 0),
               expires_at_block: expiresAt,
+              token_type: Number(chain["token-type"] ?? 0) === 1 ? "stx" : "sbtc",
             },
             { onConflict: "id" },
           );
@@ -374,6 +382,7 @@ async function reconcileSubscriptions(
               created_at_block: Number(chain["created-at"] ?? 0),
               next_payment_at_block: chainNextPayment,
               last_payment_at_block: chainLastPayment,
+              token_type: Number(chain["token-type"] ?? 0) === 1 ? "stx" : "sbtc",
             },
             { onConflict: "id" },
           );
