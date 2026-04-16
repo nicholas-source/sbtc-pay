@@ -23,8 +23,10 @@ export interface PlatformStats {
   totalMerchants: number;
   totalInvoices: number;
   totalSubscriptions: number;
-  totalVolume: number;
-  feesCollected: number;
+  totalVolumeSbtc: number;
+  totalVolumeStx: number;
+  feesCollectedSbtc: number;
+  feesCollectedStx: number;
   invoiceBreakdown: {
     paid: number;
     pending: number;
@@ -43,7 +45,8 @@ export interface MerchantEntry {
   isSuspended: boolean;
   registeredAt: Date;
   invoiceCount: number;
-  totalVolume: number;
+  totalVolumeSbtc: number;
+  totalVolumeStx: number;
 }
 
 interface AdminState {
@@ -90,8 +93,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
     totalMerchants: 0,
     totalInvoices: 0,
     totalSubscriptions: 0,
-    totalVolume: 0,
-    feesCollected: 0,
+    totalVolumeSbtc: 0,
+    totalVolumeStx: 0,
+    feesCollectedSbtc: 0,
+    feesCollectedStx: 0,
     invoiceBreakdown: { paid: 0, pending: 0, expired: 0, cancelled: 0, refunded: 0, partial: 0 },
   },
   isLoading: false,
@@ -110,8 +115,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
             totalMerchants: statsResult.value.totalMerchants,
             totalInvoices: statsResult.value.totalInvoices,
             totalSubscriptions: statsResult.value.totalSubscriptions,
-            totalVolume: Number(statsResult.value.totalVolume),
-            feesCollected: Number(statsResult.value.totalFeesCollected),
+            totalVolumeSbtc: Number(statsResult.value.totalVolumeSbtc),
+            totalVolumeStx: Number(statsResult.value.totalVolumeStx),
+            feesCollectedSbtc: Number(statsResult.value.totalFeesCollectedSbtc),
+            feesCollectedStx: Number(statsResult.value.totalFeesCollectedStx),
           }
         : get().stats;
 
@@ -131,7 +138,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         isSuspended: !(m.is_active ?? true),
         registeredAt: new Date(m.created_at),
         invoiceCount: m.invoice_count ?? 0,
-        totalVolume: m.total_received ?? 0,
+        totalVolumeSbtc: m.total_received_sbtc ?? 0,
+        totalVolumeStx: m.total_received_stx ?? 0,
       }));
 
       // Reconcile with on-chain data (source of truth for name, status, volume)
@@ -146,7 +154,8 @@ export const useAdminStore = create<AdminState>((set, get) => ({
                 isVerified: onChain.isVerified,
                 isSuspended: !onChain.isActive,
                 invoiceCount: onChain.invoiceCount,
-                totalVolume: Number(onChain.totalReceived),
+                totalVolumeSbtc: Number(onChain.totalReceivedSbtc),
+                totalVolumeStx: Number(onChain.totalReceivedStx),
               };
             }
             return m;
