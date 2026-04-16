@@ -1,7 +1,7 @@
 /**
  * Payment Contract Service
  * 
- * Provides methods to interact with the payment-v5 smart contract
+ * Provides methods to interact with the payment-v6 smart contract
  * using the latest @stacks/connect and @stacks/transactions APIs.
  */
 
@@ -14,6 +14,9 @@ import {
   SBTC_CONTRACT_ID,
   NETWORK_MODE,
   API_URL,
+  TOKEN_TYPE_UINT,
+  TOKEN_TYPE_MAP,
+  type TokenType,
 } from './config';
 
 // Type for contract identifier
@@ -30,8 +33,10 @@ export interface MerchantInfo {
   description: string | null;
   webhookUrl: string | null;
   logoUrl: string | null;
-  totalReceived: bigint;
-  totalRefunded: bigint;
+  totalReceivedSbtc: bigint;
+  totalRefundedSbtc: bigint;
+  totalReceivedStx: bigint;
+  totalRefundedStx: bigint;
   invoiceCount: number;
   subscriptionCount: number;
   registeredAt: number;
@@ -55,6 +60,7 @@ export interface InvoiceInfo {
   expiresAt: number;
   paidAt: number | null;
   refundedAt: number | null;
+  tokenType: TokenType;
 }
 
 export interface SubscriptionInfo {
@@ -70,15 +76,19 @@ export interface SubscriptionInfo {
   createdAt: number;
   lastPaymentAt: number;
   nextPaymentAt: number;
+  tokenType: TokenType;
 }
 
 export interface PlatformStats {
   totalMerchants: number;
   totalInvoices: number;
   totalSubscriptions: number;
-  totalVolume: bigint;
-  totalFeesCollected: bigint;
-  totalRefunds: bigint;
+  totalVolumeSbtc: bigint;
+  totalFeesCollectedSbtc: bigint;
+  totalRefundsSbtc: bigint;
+  totalVolumeStx: bigint;
+  totalFeesCollectedStx: bigint;
+  totalRefundsStx: bigint;
 }
 
 export interface ContractConfig {
@@ -122,8 +132,11 @@ export const CONTRACT_ERRORS: Record<number, string> = {
   3004: 'Invoice cancelled',
   3005: 'Invoice not payable',
   3006: 'Invalid amount',
-  3007: 'Amount too low (min 0.00001000 sBTC)',
+  3007: 'Amount too low (min 1000 base units)',
   3008: 'Amount too high',
+  3009: 'Cannot cancel invoice with payments',
+  3010: 'Invoice not expired',
+  3011: 'Token type mismatch',
   4001: 'Transfer failed',
   4002: 'Insufficient payment',
   4003: 'Overpayment not allowed',
@@ -198,8 +211,10 @@ export async function getMerchant(merchantAddress: string): Promise<MerchantInfo
       description: data['description'] ? String(data['description']) : null,
       webhookUrl: data['webhook-url'] ? String(data['webhook-url']) : null,
       logoUrl: data['logo-url'] ? String(data['logo-url']) : null,
-      totalReceived: BigInt(data['total-received'] as string),
-      totalRefunded: BigInt(data['total-refunded'] as string),
+      totalReceivedSbtc: BigInt(data['total-received-sbtc'] as string),
+      totalRefundedSbtc: BigInt(data['total-refunded-sbtc'] as string),
+      totalReceivedStx: BigInt(data['total-received-stx'] as string),
+      totalRefundedStx: BigInt(data['total-refunded-stx'] as string),
       invoiceCount: Number(data['invoice-count']),
       subscriptionCount: Number(data['subscription-count']),
       registeredAt: Number(data['registered-at']),
@@ -246,6 +261,7 @@ export async function getInvoice(invoiceId: number, senderAddress: string): Prom
       expiresAt: Number(data['expires-at']),
       paidAt: data['paid-at'] ? Number(data['paid-at']) : null,
       refundedAt: data['refunded-at'] ? Number(data['refunded-at']) : null,
+      tokenType: TOKEN_TYPE_MAP[Number(data['token-type'] ?? 0)] ?? 'sbtc',
     };
   } catch (error) {
     console.error('Failed to get invoice:', error);
@@ -284,6 +300,7 @@ export async function getSubscription(subscriptionId: number, senderAddress: str
       createdAt: Number(data['created-at']),
       lastPaymentAt: Number(data['last-payment-at']),
       nextPaymentAt: Number(data['next-payment-at']),
+      tokenType: TOKEN_TYPE_MAP[Number(data['token-type'] ?? 0)] ?? 'sbtc',
     };
   } catch (error) {
     console.error('Failed to get subscription:', error);
@@ -313,9 +330,12 @@ export async function getPlatformStats(senderAddress: string): Promise<PlatformS
       totalMerchants: Number(data['total-merchants']),
       totalInvoices: Number(data['total-invoices']),
       totalSubscriptions: Number(data['total-subscriptions']),
-      totalVolume: BigInt(data['total-volume'] as string),
-      totalFeesCollected: BigInt(data['total-fees-collected'] as string),
-      totalRefunds: BigInt(data['total-refunds'] as string),
+      totalVolumeSbtc: BigInt(data['total-volume-sbtc'] as string),
+      totalFeesCollectedSbtc: BigInt(data['total-fees-collected-sbtc'] as string),
+      totalRefundsSbtc: BigInt(data['total-refunds-sbtc'] as string),
+      totalVolumeStx: BigInt(data['total-volume-stx'] as string),
+      totalFeesCollectedStx: BigInt(data['total-fees-collected-stx'] as string),
+      totalRefundsStx: BigInt(data['total-refunds-stx'] as string),
     };
   } catch (error) {
     console.error('Failed to get platform stats:', error);
@@ -377,6 +397,12 @@ function validateStringLength(value: string, fieldName: string, maxLen: number):
   }
 }
 
+/** Extract txid from wallet response, throwing if the wallet didn't return one. */
+function requireTxId(response: { txid?: string }): string {
+  if (!response.txid) throw new Error('Wallet did not return a transaction ID');
+  return response.txid;
+}
+
 // ============================================
 // WRITE FUNCTIONS (require wallet signature)
 // ============================================
@@ -410,7 +436,7 @@ export async function registerMerchant(params: {
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid ?? '' };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -442,7 +468,7 @@ export async function updateMerchantProfile(params: {
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid ?? '' };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -455,10 +481,13 @@ export async function createInvoice(params: {
   expiresInBlocks: number;
   allowPartial: boolean;
   allowOverpay: boolean;
+  tokenType?: TokenType;
 }): Promise<{ txId: string }> {
   // Validate input lengths
   validateStringLength(params.memo, 'Memo', CONTRACT_LIMITS.MEMO);
   if (params.referenceId) validateStringLength(params.referenceId, 'Reference ID', CONTRACT_LIMITS.REFERENCE_ID);
+
+  const tokenTypeUint = TOKEN_TYPE_UINT[params.tokenType ?? 'sbtc'];
 
   const functionArgs = [
     Cl.uint(params.amount),
@@ -467,6 +496,7 @@ export async function createInvoice(params: {
     Cl.uint(params.expiresInBlocks),
     Cl.bool(params.allowPartial),
     Cl.bool(params.allowOverpay),
+    Cl.uint(tokenTypeUint),
   ];
 
   const response = await request('stx_callContract', {
@@ -476,7 +506,7 @@ export async function createInvoice(params: {
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -486,27 +516,32 @@ export async function payInvoice(params: {
   invoiceId: number;
   amount: bigint;
   payerAddress: string;
+  tokenType?: TokenType;
 }): Promise<{ txId: string }> {
+  const tt = params.tokenType ?? 'sbtc';
+
   const functionArgs = [
     Cl.uint(params.invoiceId),
     Cl.uint(params.amount),
   ];
 
-  // Create post-condition to protect user's sBTC
-  const postCondition = Pc.principal(params.payerAddress)
-    .willSendLte(params.amount)
-    .ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName);
+  // Post-conditions differ by token type
+  const postConditions = tt === 'stx'
+    ? [Pc.principal(params.payerAddress).willSendLte(params.amount).ustx()]
+    : [Pc.principal(params.payerAddress).willSendLte(params.amount).ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName)];
+
+  const functionName = tt === 'stx' ? 'pay-invoice-stx' : 'pay-invoice';
 
   const response = await request('stx_callContract', {
     contract: PAYMENT_CONTRACT_TYPED,
-    functionName: 'pay-invoice',
+    functionName,
     functionArgs,
     network: NETWORK_MODE,
-    postConditions: [postCondition],
+    postConditions,
     postConditionMode: 'deny',
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -517,8 +552,10 @@ export async function refundInvoice(params: {
   refundAmount: bigint;
   reason: string;
   merchantAddress: string;
+  tokenType?: TokenType;
 }): Promise<{ txId: string }> {
   validateStringLength(params.reason, 'Refund reason', CONTRACT_LIMITS.REASON);
+  const tt = params.tokenType ?? 'sbtc';
 
   const functionArgs = [
     Cl.uint(params.invoiceId),
@@ -526,21 +563,23 @@ export async function refundInvoice(params: {
     Cl.stringUtf8(params.reason),
   ];
 
-  // Post-condition: merchant will send sBTC for refund
-  const postCondition = Pc.principal(params.merchantAddress)
-    .willSendLte(params.refundAmount)
-    .ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName);
+  // Post-condition for refund (merchant sends tokens back)
+  const postConditions = tt === 'stx'
+    ? [Pc.principal(params.merchantAddress).willSendLte(params.refundAmount).ustx()]
+    : [Pc.principal(params.merchantAddress).willSendLte(params.refundAmount).ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName)];
+
+  const functionName = tt === 'stx' ? 'refund-invoice-stx' : 'refund-invoice';
 
   const response = await request('stx_callContract', {
     contract: PAYMENT_CONTRACT_TYPED,
-    functionName: 'refund-invoice',
+    functionName,
     functionArgs,
     network: NETWORK_MODE,
-    postConditions: [postCondition],
+    postConditions,
     postConditionMode: 'deny',
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -554,7 +593,7 @@ export async function cancelInvoice(invoiceId: number): Promise<{ txId: string }
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -565,8 +604,10 @@ export async function payMerchantDirect(params: {
   amount: bigint;
   memo: string;
   payerAddress: string;
+  tokenType?: TokenType;
 }): Promise<{ txId: string }> {
   validateStringLength(params.memo, 'Memo', CONTRACT_LIMITS.MEMO);
+  const tt = params.tokenType ?? 'sbtc';
 
   const functionArgs = [
     Cl.principal(params.merchantAddress),
@@ -574,20 +615,22 @@ export async function payMerchantDirect(params: {
     Cl.stringUtf8(params.memo),
   ];
 
-  const postCondition = Pc.principal(params.payerAddress)
-    .willSendLte(params.amount)
-    .ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName);
+  const postConditions = tt === 'stx'
+    ? [Pc.principal(params.payerAddress).willSendLte(params.amount).ustx()]
+    : [Pc.principal(params.payerAddress).willSendLte(params.amount).ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName)];
+
+  const functionName = tt === 'stx' ? 'pay-merchant-direct-stx' : 'pay-merchant-direct';
 
   const response = await request('stx_callContract', {
     contract: PAYMENT_CONTRACT_TYPED,
-    functionName: 'pay-merchant-direct',
+    functionName,
     functionArgs,
     network: NETWORK_MODE,
-    postConditions: [postCondition],
+    postConditions,
     postConditionMode: 'deny',
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -599,8 +642,10 @@ export async function createSubscription(params: {
   amount: bigint;
   intervalBlocks: number;
   subscriberAddress: string;
+  tokenType?: TokenType;
 }): Promise<{ txId: string }> {
   validateStringLength(params.name, 'Subscription name', CONTRACT_LIMITS.SUBSCRIPTION_NAME);
+  const tt = params.tokenType ?? 'sbtc';
 
   const functionArgs = [
     Cl.principal(params.merchantAddress),
@@ -609,21 +654,17 @@ export async function createSubscription(params: {
     Cl.uint(params.intervalBlocks),
   ];
 
-  // Post-condition for first payment
-  const postCondition = Pc.principal(params.subscriberAddress)
-    .willSendLte(params.amount)
-    .ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName);
+  // No first payment on create in v6 — just registers the subscription
+  const functionName = tt === 'stx' ? 'create-subscription-stx' : 'create-subscription';
 
   const response = await request('stx_callContract', {
     contract: PAYMENT_CONTRACT_TYPED,
-    functionName: 'create-subscription',
+    functionName,
     functionArgs,
     network: NETWORK_MODE,
-    postConditions: [postCondition],
-    postConditionMode: 'deny',
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -633,23 +674,27 @@ export async function processSubscriptionPayment(params: {
   subscriptionId: number;
   amount: bigint;
   subscriberAddress: string;
+  tokenType?: TokenType;
 }): Promise<{ txId: string }> {
+  const tt = params.tokenType ?? 'sbtc';
   const functionArgs = [Cl.uint(params.subscriptionId)];
 
-  const postCondition = Pc.principal(params.subscriberAddress)
-    .willSendLte(params.amount)
-    .ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName);
+  const postConditions = tt === 'stx'
+    ? [Pc.principal(params.subscriberAddress).willSendLte(params.amount).ustx()]
+    : [Pc.principal(params.subscriberAddress).willSendLte(params.amount).ft(SBTC_CONTRACT_TYPED, SBTC_TOKEN.assetName)];
+
+  const functionName = tt === 'stx' ? 'process-subscription-payment-stx' : 'process-subscription-payment';
 
   const response = await request('stx_callContract', {
     contract: PAYMENT_CONTRACT_TYPED,
-    functionName: 'process-subscription-payment',
+    functionName,
     functionArgs,
     network: NETWORK_MODE,
-    postConditions: [postCondition],
+    postConditions,
     postConditionMode: 'deny',
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -663,7 +708,7 @@ export async function pauseSubscription(subscriptionId: number): Promise<{ txId:
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -677,7 +722,7 @@ export async function resumeSubscription(subscriptionId: number): Promise<{ txId
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -691,7 +736,7 @@ export async function cancelSubscription(subscriptionId: number): Promise<{ txId
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 // ============================================
@@ -709,7 +754,7 @@ export async function pauseContract(): Promise<{ txId: string }> {
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -723,7 +768,7 @@ export async function unpauseContract(): Promise<{ txId: string }> {
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -737,7 +782,7 @@ export async function setPlatformFee(newFeeBps: number): Promise<{ txId: string 
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -751,7 +796,7 @@ export async function transferOwnership(newOwner: string): Promise<{ txId: strin
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -765,7 +810,7 @@ export async function acceptOwnership(): Promise<{ txId: string }> {
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -779,7 +824,7 @@ export async function cancelOwnershipTransfer(): Promise<{ txId: string }> {
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -793,7 +838,7 @@ export async function setFeeRecipient(newRecipient: string): Promise<{ txId: str
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -807,7 +852,7 @@ export async function verifyMerchant(merchantAddress: string): Promise<{ txId: s
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 /**
@@ -821,7 +866,7 @@ export async function suspendMerchant(merchantAddress: string): Promise<{ txId: 
     network: NETWORK_MODE,
   });
 
-  return { txId: response.txid };
+  return { txId: requireTxId(response) };
 }
 
 // ============================================
