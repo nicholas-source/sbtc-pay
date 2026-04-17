@@ -410,9 +410,9 @@ function PaymentPage() {
         </span>
       </div>
 
-      {/* QR Code */}
+      {/* QR Code — encodes the payment page URL so scanning opens this page */}
       <div className="flex justify-center">
-        <PaymentQRCode address={invoice.merchantAddress} />
+        <PaymentQRCode value={`${window.location.origin}/pay/${invoiceId}`} />
       </div>
 
       <Separator className="bg-border" />
