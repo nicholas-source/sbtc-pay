@@ -12,10 +12,10 @@ export const BTC_USD = 0.000975;
 export const SATS_PER_BTC = 100_000_000;
 export const MICRO_STX_PER_STX = 1_000_000;
 
-/** Mock BTC price in USD used across the platform */
+/** Initial BTC price fallback (USD) — live price fetched from Coinbase in wallet-store */
 export const BTC_USD_PRICE = 97_500;
 
-/** Mock STX price in USD used across the platform */
+/** Initial STX price fallback (USD) — live price fetched from Coinbase in wallet-store */
 export const STX_USD_PRICE = 0.35;
 
 /**
