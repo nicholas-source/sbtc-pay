@@ -7,11 +7,13 @@ import StatCard from "@/components/dashboard/StatCard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import { amountToUsd, formatAmount } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 function DashboardOverview() {
   const profile = useMerchantStore((s) => s.profile);
   const invoices = useInvoiceStore((s) => s.invoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
 
   if (!profile) {
     return <MerchantRegistration />;
@@ -23,13 +25,13 @@ function DashboardOverview() {
 
   const sbtcRevenue = sbtcInvoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
   const stxRevenue = stxInvoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
-  const totalRevenueUsd = (sbtcRevenue > 0 ? parseFloat(amountToUsd(sbtcRevenue, 'sbtc')) : 0)
-    + (stxRevenue > 0 ? parseFloat(amountToUsd(stxRevenue, 'stx')) : 0);
+  const totalRevenueUsd = (sbtcRevenue > 0 ? parseFloat(amountToUsd(sbtcRevenue, 'sbtc', btcPriceUsd, stxPriceUsd)) : 0)
+    + (stxRevenue > 0 ? parseFloat(amountToUsd(stxRevenue, 'stx', btcPriceUsd, stxPriceUsd)) : 0);
 
   const sbtcRefunds = sbtcInvoices.reduce((sum, inv) => sum + inv.refunds.reduce((s, r) => s + r.amount, 0), 0);
   const stxRefunds = stxInvoices.reduce((sum, inv) => sum + inv.refunds.reduce((s, r) => s + r.amount, 0), 0);
-  const totalRefundsUsd = (sbtcRefunds > 0 ? parseFloat(amountToUsd(sbtcRefunds, 'sbtc')) : 0)
-    + (stxRefunds > 0 ? parseFloat(amountToUsd(stxRefunds, 'stx')) : 0);
+  const totalRefundsUsd = (sbtcRefunds > 0 ? parseFloat(amountToUsd(sbtcRefunds, 'sbtc', btcPriceUsd, stxPriceUsd)) : 0)
+    + (stxRefunds > 0 ? parseFloat(amountToUsd(stxRefunds, 'stx', btcPriceUsd, stxPriceUsd)) : 0);
 
   // Build display string: show both tokens if both have volume
   const revenueDisplay = [
