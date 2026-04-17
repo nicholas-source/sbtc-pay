@@ -90,10 +90,13 @@ export const TOKEN_TYPE_UINT: Record<TokenType, number> = { sbtc: 0, stx: 1 };
 export const TOKEN_DISPLAY: Record<TokenType, string> = { sbtc: 'sBTC', stx: 'STX' };
 export const TOKEN_DECIMALS: Record<TokenType, number> = { sbtc: 8, stx: 6 };
 
-// Block time (approximately 10 minutes on mainnet)
-export const AVG_BLOCK_TIME_SECONDS = NETWORK_MODE === 'testnet' ? 120 : 600;
+// Average burn (Bitcoin) block time in seconds.
+// Post-Nakamoto, Stacks blocks are ~5s but the contract uses burn-block-height
+// (Bitcoin L1 blocks) for all timing: expiration, refund windows, subscriptions.
+// Bitcoin blocks average ~10 min on both testnet and mainnet.
+export const AVG_BLOCK_TIME_SECONDS = 600;
 
-// Expiration presets (in blocks)
+// Expiration presets (in burn/Bitcoin blocks, ~10 min each)
 export const EXPIRATION_PRESETS = [
   { label: '1 Hour', blocks: 6 },
   { label: '24 Hours', blocks: 144 },
