@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useSubscriptionStore, type SubscriberStatus } from "@/stores/subscription-store";
-import { useWalletStore } from "@/stores/wallet-store";
+import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
 import ReminderBanner from "@/components/subscription/ReminderBanner";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
@@ -26,6 +26,7 @@ const statusStyles: Record<SubscriberStatus, string> = {
 
 function CustomerSubscriptions() {
   const { address, isConnected } = useWalletStore();
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
   const pauseSub = useSubscriptionStore((s) => s.pauseSubscription);
@@ -91,7 +92,7 @@ function CustomerSubscriptions() {
               {activeSubs.map((sub) => {
                 const plan = getPlan(sub.planId);
                 if (!plan) return null;
-                const usd = amountToUsd(plan.amount, plan.tokenType);
+                const usd = amountToUsd(plan.amount, plan.tokenType, btcPriceUsd, stxPriceUsd);
 
                 return (
                   <Card key={sub.id}>
