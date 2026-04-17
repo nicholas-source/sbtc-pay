@@ -10,6 +10,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
+import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 
 // Map interval label → approximate block count (~10 min/block)
 const INTERVAL_BLOCKS: Record<string, number> = {
@@ -129,6 +130,7 @@ export default function SubscriptionWidget() {
               <p className="text-heading-sm text-foreground">{plan}</p>
               <p className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)}</p>
               <p className="text-caption text-muted-foreground">≈ ${amountToUsd(satsAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD per {interval}</p>
+              <PriceStatusBadge />
             </div>
 
             {errorMsg && (
