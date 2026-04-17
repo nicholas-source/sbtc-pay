@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
+import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
 
@@ -35,6 +35,7 @@ export default function SubscriptionWidget() {
 
   const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
   const satsToUsd = useSatsToUsd();
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [subState, setSubState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -99,7 +100,7 @@ export default function SubscriptionWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Subscribed!</p>
               <p className="text-body-sm text-muted-foreground">
-                {formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)} (≈ ${amountToUsd(satsAmount, tokenType)} USD) / {interval}
+                {formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)} (≈ ${amountToUsd(satsAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD) / {interval}
               </p>
               <a href={getExplorerTxUrl(txId)} target="_blank" rel="noopener noreferrer"
                 className="text-primary text-body-sm underline">
@@ -127,7 +128,7 @@ export default function SubscriptionWidget() {
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
               <p className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)}</p>
-              <p className="text-caption text-muted-foreground">≈ ${amountToUsd(satsAmount, tokenType)} USD per {interval}</p>
+              <p className="text-caption text-muted-foreground">≈ ${amountToUsd(satsAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD per {interval}</p>
             </div>
 
             {errorMsg && (
