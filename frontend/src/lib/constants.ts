@@ -1,27 +1,18 @@
 /**
  * Centralized constants for the sBTC Pay platform.
  *
- * BTC_USD_RATE: sats-to-USD conversion factor.
- *   1 sat = 1 / 100_000_000 BTC, so at $97,500/BTC → 1 sat ≈ $0.000975.
- *
- * In components that need a live rate, prefer `useWalletStore().usdRate`
- * (USD per whole BTC). This constant is for display-only estimates.
+ * All USD conversion uses live prices from wallet-store (Coinbase/CoinGecko).
+ * When prices haven't loaded yet, USD functions return "\u2014" (em-dash).
  */
-export const BTC_USD = 0.000975;
 
 export const SATS_PER_BTC = 100_000_000;
 export const MICRO_STX_PER_STX = 1_000_000;
 
-/** Initial BTC price fallback (USD) — live price fetched from Coinbase in wallet-store */
-export const BTC_USD_PRICE = 97_500;
-
-/** Initial STX price fallback (USD) — live price fetched from Coinbase in wallet-store */
-export const STX_USD_PRICE = 0.35;
-
 /**
- * Convert sats to an approximate USD string.
+ * Convert sats to an approximate USD string. Returns \"\u2014\" if rate is null.
  */
-export function satsToUsd(sats: number, rate = BTC_USD): string {
+export function satsToUsd(sats: number, rate: number | null): string {
+  if (rate === null) return '\u2014';
   return (sats * rate).toFixed(2);
 }
 
@@ -61,9 +52,10 @@ export function stxToMicroStx(stx: number): number {
 }
 
 /**
- * Convert microSTX to an approximate USD string.
+ * Convert microSTX to an approximate USD string. Returns \"\u2014\" if price is null.
  */
-export function microStxToUsd(microStx: number, stxPriceUsd = STX_USD_PRICE): string {
+export function microStxToUsd(microStx: number, stxPriceUsd: number | null): string {
+  if (stxPriceUsd === null) return '\u2014';
   return (microStxToStx(microStx) * stxPriceUsd).toFixed(2);
 }
 
@@ -173,15 +165,16 @@ export function formatAmountCompact(amount: number, tokenType: TokenType): strin
 
 /**
  * Convert amount to USD based on token type.
+ * Returns "—" when prices haven't loaded yet (null).
  */
 export function amountToUsd(
   amount: number,
   tokenType: TokenType,
-  btcPriceUsd = BTC_USD_PRICE,
-  stxPriceUsd = STX_USD_PRICE,
+  btcPriceUsd: number | null = null,
+  stxPriceUsd: number | null = null,
 ): string {
   if (tokenType === 'stx') return microStxToUsd(amount, stxPriceUsd);
-  return satsToUsd(amount, btcPriceUsd / SATS_PER_BTC);
+  return satsToUsd(amount, btcPriceUsd !== null ? btcPriceUsd / SATS_PER_BTC : null);
 }
 
 /**
