@@ -918,3 +918,53 @@ export async function getTransaction(txId: string): Promise<unknown> {
   const response = await fetch(`${API_URL}/extended/v1/tx/${cleanTxId}`);
   return response.json();
 }
+
+/**
+ * Fetch payment events for a specific invoice from the Stacks API.
+ * Falls back gracefully if the API is unreachable.
+ *
+ * Uses the contract events endpoint to find `invoice-paid` or `payment-received`
+ * print events that reference the given invoice ID.
+ */
+export async function fetchPaymentEventsForInvoice(
+  invoiceId: number
+): Promise<{ txId: string; timestamp: Date; amount: number }[]> {
+  try {
+    const res = await fetch(
+      `${API_URL}/extended/v1/contract/${PAYMENT_CONTRACT_ID}/events?limit=50&offset=0`
+    );
+    if (!res.ok) return [];
+    const data = await res.json();
+    const events: { txId: string; timestamp: Date; amount: number }[] = [];
+
+    for (const ev of data.events ?? []) {
+      // Look for print events from contract calls
+      if (ev.event_type !== 'smart_contract_log') continue;
+      const val = ev.contract_log?.value;
+      if (!val) continue;
+
+      // The print event repr contains the invoice-id — check for it
+      const repr = typeof val === 'string' ? val : val.repr ?? '';
+      if (!repr.includes(`invoice-id`) || !repr.includes(`u${invoiceId}`)) continue;
+
+      // Check it's a payment event (not a refund or cancellation)
+      if (!repr.includes('payment-received') && !repr.includes('invoice-paid')) continue;
+
+      // Extract amount from the repr if possible
+      const amountMatch = repr.match(/amount\s+u(\d+)/);
+      const amount = amountMatch ? Number(amountMatch[1]) : 0;
+
+      events.push({
+        txId: ev.tx_id || '',
+        timestamp: ev.block_time
+          ? new Date(ev.block_time * 1000)
+          : new Date(),
+        amount,
+      });
+    }
+
+    return events;
+  } catch {
+    return [];
+  }
+}

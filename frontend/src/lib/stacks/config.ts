@@ -120,6 +120,26 @@ export async function fetchBurnBlockHeight(): Promise<number> {
   return h;
 }
 
+/** Fetch the real timestamp for a burn (Bitcoin) block height from the Stacks API. */
+const _blockTimeCache = new Map<number, Date>();
+export async function fetchBurnBlockTimestamp(burnBlockHeight: number): Promise<Date | null> {
+  if (burnBlockHeight <= 0) return null;
+  const cached = _blockTimeCache.get(burnBlockHeight);
+  if (cached) return cached;
+  try {
+    const res = await fetch(`${API_URL}/extended/v2/burn-blocks/${burnBlockHeight}`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const ts = data.burn_block_time as number | undefined;
+    if (!ts) return null;
+    const date = new Date(ts * 1000);
+    _blockTimeCache.set(burnBlockHeight, date);
+    return date;
+  } catch {
+    return null;
+  }
+}
+
 // Utility functions
 export function getExplorerTxUrl(txId: string): string {
   const cleanTxId = txId.startsWith('0x') ? txId : `0x${txId}`;

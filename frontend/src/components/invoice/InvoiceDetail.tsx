@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { getExplorerTxUrl, truncateAddress } from "@/lib/stacks/config";
 import { useLivePrices } from "@/stores/wallet-store";
 
 interface Props {
@@ -172,9 +173,16 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                         <span className="text-xs text-muted-foreground">{format(p.timestamp, "MMM d, HH:mm")}</span>
                       </div>
                       {p.txId ? (
-                        <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{p.txId}</p>
+                        <a
+                          href={getExplorerTxUrl(p.txId)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
+                        >
+                          {truncateAddress(p.txId)}
+                        </a>
                       ) : (
-                        <p className="text-xs text-muted-foreground mt-0.5 italic">Confirmed on-chain</p>
+                        <p className="text-xs text-success mt-0.5 font-medium">\u2713 Confirmed</p>
                       )}
                     </div>
                   </div>
@@ -201,7 +209,18 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                           <span className="text-xs text-muted-foreground">{format(r.timestamp, "MMM d, HH:mm")}</span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{r.reason}</p>
-                        <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{r.txId}</p>
+                        {r.txId ? (
+                          <a
+                            href={getExplorerTxUrl(r.txId)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
+                          >
+                            {truncateAddress(r.txId)}
+                          </a>
+                        ) : (
+                          <p className="text-xs text-success mt-0.5 font-medium">\u2713 Confirmed</p>
+                        )}
                       </div>
                     </div>
                   ))}

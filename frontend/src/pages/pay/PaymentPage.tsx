@@ -15,8 +15,8 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
-import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
-import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, getExplorerTxUrl, type TokenType, TOKEN_DECIMALS } from "@/lib/stacks/config";
+import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRACT_ERRORS, waitForTransaction, fetchPaymentEventsForInvoice } from "@/lib/stacks/contract";
+import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, fetchBurnBlockTimestamp, getExplorerTxUrl, type TokenType, TOKEN_DECIMALS } from "@/lib/stacks/config";
 
 import { formatAmount, humanToBaseUnits, baseToHuman, tokenLabel, amountToUsd } from "@/lib/constants";
 import { useBtcPrice, useStxPrice } from "@/stores/wallet-store";
@@ -75,10 +75,57 @@ function PaymentPage() {
 
       // Fetch payments/refunds from Supabase (supplementary data)
       const db = address ? supabaseWithWallet(address) : supabase;
-      const [paymentsRes, refundsRes] = await Promise.all([
+      const [paymentsRes, refundsRes, invoiceRow] = await Promise.all([
         db.from("payments").select("*").eq("invoice_id", numericId),
         db.from("refunds").select("*").eq("invoice_id", numericId),
+        db.from("invoices").select("created_at, paid_at_block").eq("id", numericId).maybeSingle(),
       ]);
+
+      // Resolve real timestamps from burn block heights (on-chain source of truth)
+      const [chainCreatedAt, chainPaidAt] = await Promise.all([
+        onChain.createdAt > 0 ? fetchBurnBlockTimestamp(Number(onChain.createdAt)) : Promise.resolve(null),
+        onChain.paidAt && onChain.paidAt > 0 ? fetchBurnBlockTimestamp(Number(onChain.paidAt)) : Promise.resolve(null),
+      ]);
+
+      const dbCreatedAt = invoiceRow.data?.created_at
+        ? new Date(invoiceRow.data.created_at)
+        : null;
+      const dbPaidAtBlock = invoiceRow.data?.paid_at_block;
+      const dbPaidAt = dbPaidAtBlock
+        ? await fetchBurnBlockTimestamp(dbPaidAtBlock).catch(() => null)
+        : null;
+
+      // Prefer Supabase timestamps (wall-clock accurate from webhook),
+      // then blockchain burn-block timestamps (Bitcoin block headers can lag hours).
+      const resolvedCreatedAt = dbCreatedAt || chainCreatedAt || new Date();
+      const resolvedPaidAt = dbPaidAt || chainPaidAt || null;
+
+      // Build payments: prefer Supabase rows, fall back to blockchain events
+      let payments: Payment[] = (paymentsRes.data ?? []).map((p) => ({
+        timestamp: new Date(p.created_at),
+        amount: p.amount,
+        txId: p.tx_id || "",
+      }));
+
+      // Blockchain fallback: if Supabase has no payments but on-chain shows paid,
+      // query the Stacks API for contract events (source of truth)
+      if (payments.length === 0 && Number(onChain.amountPaid) > 0) {
+        const chainEvents = await fetchPaymentEventsForInvoice(numericId);
+        if (chainEvents.length > 0) {
+          payments = chainEvents.map((ev) => ({
+            timestamp: ev.timestamp,
+            amount: ev.amount || Number(onChain.amountPaid),
+            txId: ev.txId,
+          }));
+        } else {
+          // Last resort: synthesize from on-chain data with blockchain-resolved timestamp
+          payments = [{
+            timestamp: resolvedPaidAt || resolvedCreatedAt,
+            amount: Number(onChain.amountPaid),
+            txId: "",
+          }];
+        }
+      }
 
       setRemoteInvoice({
         id: `INV-${numericId}`,
@@ -92,13 +139,9 @@ function PaymentPage() {
         allowOverpay: onChain.allowOverpay,
         merchantAddress: onChain.merchant,
         payerAddress: onChain.payer || "",
-        createdAt: new Date(),
+        createdAt: resolvedCreatedAt,
         expiresAt: null,
-        payments: (paymentsRes.data ?? []).map((p) => ({
-          timestamp: new Date(p.created_at),
-          amount: p.amount,
-          txId: p.tx_id || "",
-        })),
+        payments,
         refunds: (refundsRes.data ?? []).map((r) => ({
           timestamp: new Date(r.created_at),
           amount: r.amount,
@@ -347,12 +390,21 @@ function PaymentPage() {
 
   // --- Already Paid (and not currently in our payment flow) ---
   if (invoice.status === "paid" && paymentState === "idle") {
+    const lastPayment = invoice.payments.length > 0
+      ? invoice.payments[invoice.payments.length - 1]
+      : null;
     return (
       <PageShell>
         <InvoiceHeader invoice={invoice} />
         <PaymentConfirmation
-          payment={invoice.payments[invoice.payments.length - 1] ?? null}
+          payment={lastPayment}
           amount={invoice.amountPaid}
+          tokenType={invoice.tokenType}
+          invoiceId={invoice.id}
+          merchantAddress={invoice.merchantAddress}
+          memo={invoice.memo}
+          btcPriceUsd={btcPriceUsd}
+          stxPriceUsd={stxPriceUsd}
         />
       </PageShell>
     );
@@ -367,6 +419,12 @@ function PaymentPage() {
           payment={completedPayment}
           amount={confirmedAmount.current}
           confirmed={paymentState === "confirmed"}
+          tokenType={invoice.tokenType}
+          invoiceId={invoice.id}
+          merchantAddress={invoice.merchantAddress}
+          memo={invoice.memo}
+          btcPriceUsd={btcPriceUsd}
+          stxPriceUsd={stxPriceUsd}
         />
       </PageShell>
     );
