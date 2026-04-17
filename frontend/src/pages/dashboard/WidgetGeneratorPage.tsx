@@ -10,11 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useWalletStore } from "@/stores/wallet-store";
 import { formatAmount, amountToUsd } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 type WidgetType = "direct" | "invoice" | "subscription";
 
 export default function WidgetGeneratorPage() {
   const walletAddress = useWalletStore((s) => s.address) || "";
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [widgetType, setWidgetType] = useState<WidgetType>("direct");
   const [merchantAddress, setMerchantAddress] = useState(walletAddress);
   const [amount, setAmount] = useState("100000");
@@ -107,7 +109,7 @@ export default function WidgetGeneratorPage() {
                   <label className="text-caption text-muted-foreground">Default Amount (sats)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
-                    <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc')} USD</p>
+                    <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc', btcPriceUsd, stxPriceUsd)} USD</p>
                   )}
                 </div>
                 <div className="space-y-1">
@@ -146,7 +148,7 @@ export default function WidgetGeneratorPage() {
                   <label className="text-caption text-muted-foreground">Amount (sats)</label>
                   <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
-                    <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc')} USD</p>
+                    <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc', btcPriceUsd, stxPriceUsd)} USD</p>
                   )}
                 </div>
                 <div className="space-y-1">
