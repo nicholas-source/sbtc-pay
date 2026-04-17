@@ -320,6 +320,38 @@ async function reconcileInvoices(
           if (error) console.error(`invoice ${invoiceId} update error:`, error);
           else corrected++;
         }
+
+        // Backfill missing payments rows: if on-chain amount_paid exceeds
+        // the sum of recorded payments, insert a catch-up payment row so the
+        // UI (and future fetches) always have a payment history entry.
+        if (chainAmountPaid > 0) {
+          const { data: paymentRows } = await supabase
+            .from("payments")
+            .select("amount")
+            .eq("invoice_id", invoiceId);
+          const supaPaymentSum = (paymentRows ?? []).reduce(
+            (sum: number, p: { amount: number }) => sum + p.amount, 0,
+          );
+          if (supaPaymentSum < chainAmountPaid) {
+            const gap = chainAmountPaid - supaPaymentSum;
+            const paymentIndex = (paymentRows ?? []).length;
+            const tokenType = Number(chain["token-type"] ?? 0) === 1 ? "stx" : "sbtc";
+            const { error: pErr } = await supabase.from("payments").insert({
+              invoice_id: invoiceId,
+              payment_index: paymentIndex,
+              payer: chainPayer ?? "",
+              merchant_principal: chainMerchant,
+              amount: gap,
+              fee: 0,
+              merchant_received: gap,
+              block_height: Number(chain["created-at"] ?? 0),
+              tx_id: null,
+              token_type: tokenType,
+            });
+            if (pErr) console.error(`invoice ${invoiceId} payment backfill error:`, pErr);
+            else console.info(`[reconcile] Invoice ${invoiceId}: backfilled missing payment row (${gap} ${tokenType})`);
+          }
+        }
       }),
     );
     results.forEach((r, idx) => {
