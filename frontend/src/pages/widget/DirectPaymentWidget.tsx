@@ -12,6 +12,7 @@ import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 import { payMerchantDirect, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
+import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 
 export default function DirectPaymentWidget() {
   const { merchantAddress } = useParams();
@@ -161,6 +162,7 @@ export default function DirectPaymentWidget() {
               {payAmount && Number(payAmount) > 0 && (
                 <p className="text-caption text-muted-foreground">{formatAmount(Number(payAmount), tokenType)} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">≈ ${amountToUsd(Number(payAmount), tokenType, btcPriceUsd, stxPriceUsd)} USD</span></p>
               )}
+              <PriceStatusBadge />
             </div>
 
             <div className="space-y-2">
