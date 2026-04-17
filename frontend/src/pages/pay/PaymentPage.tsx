@@ -20,6 +20,7 @@ import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, 
 
 import { formatAmount, humanToBaseUnits, baseToHuman, tokenLabel, amountToUsd } from "@/lib/constants";
 import { useBtcPrice, useStxPrice } from "@/stores/wallet-store";
+import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 
 function PaymentPage() {
   const { invoiceId } = useParams();
@@ -27,6 +28,7 @@ function PaymentPage() {
   const stxPriceUsd = useStxPrice();
   // Try local store first (merchant viewing their own invoice)
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
+  const addConfirmedPayment = useInvoiceStore((s) => s.addConfirmedPayment);
   const { isConnected, isConnecting, address, sbtcBalance, stxBalance, connect, connectionError, clearError, fetchBalances } = useWalletStore();
 
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
@@ -210,6 +212,19 @@ function PaymentPage() {
             setPaymentState("confirmed");
             toast.success("Payment confirmed on-chain!");
             fetchBalances();
+            // Optimistic: add payment to local store so Payment History shows immediately
+            if (blockchainInvoiceId !== null) {
+              addConfirmedPayment(blockchainInvoiceId, confirmedAmount.current, result.txId);
+            }
+            // Also update local remoteInvoice if that's what we're displaying
+            if (remoteInvoice) {
+              setRemoteInvoice((prev) => prev ? {
+                ...prev,
+                amountPaid: prev.amountPaid + confirmedAmount.current,
+                status: prev.amountPaid + confirmedAmount.current >= prev.amount ? "paid" : "partial",
+                payments: [...prev.payments, { timestamp: new Date(), amount: confirmedAmount.current, txId: result.txId }],
+              } : prev);
+            }
           } else if (txResult.status === 'failed') {
             // Parse error from tx result
             let failMsg = "Payment was rejected on-chain";
@@ -408,6 +423,7 @@ function PaymentPage() {
         <span className="text-body-sm text-muted-foreground">
           ~${usdAmount.toFixed(2)} USD
         </span>
+        <PriceStatusBadge />
       </div>
 
       {/* QR Code — encodes the payment page URL so scanning opens this page */}
