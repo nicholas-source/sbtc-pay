@@ -134,8 +134,8 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               <p className="text-xs text-muted-foreground">No payments yet</p>
             ) : (
               <div className="space-y-3">
-                {invoice.payments.map((p) => (
-                  <div key={p.txId} className="flex items-start gap-3 text-sm">
+                {invoice.payments.map((p, idx) => (
+                  <div key={p.txId || `synth-${idx}`} className="flex items-start gap-3 text-sm">
                     <div className="mt-0.5 rounded-full bg-success/10 p-1.5">
                       <ArrowDownLeft className="h-3 w-3 text-success" />
                     </div>
@@ -144,7 +144,11 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                         <span className="font-mono font-tabular">+{formatAmount(p.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
                         <span className="text-xs text-muted-foreground">{format(p.timestamp, "MMM d, HH:mm")}</span>
                       </div>
-                      <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{p.txId}</p>
+                      {p.txId ? (
+                        <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{p.txId}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-0.5 italic">Confirmed on-chain</p>
+                      )}
                     </div>
                   </div>
                 ))}
