@@ -8,6 +8,7 @@ import { useSubscriptionStore, type SubscriptionPlan } from "@/stores/subscripti
 import SubscriberTable from "./SubscriberTable";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 interface PlanCardProps {
   plan: SubscriptionPlan;
@@ -15,6 +16,7 @@ interface PlanCardProps {
 
 export default function PlanCard({ plan }: PlanCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const togglePlan = useSubscriptionStore((s) => s.togglePlan);
   const allSubscribers = useSubscriptionStore((s) => s.subscribers);
   const subscribers = useMemo(
@@ -25,7 +27,7 @@ export default function PlanCard({ plan }: PlanCardProps) {
     () => subscribers.filter((s) => s.status === "active").length,
     [subscribers]
   );
-  const usd = amountToUsd(plan.amount, plan.tokenType);
+  const usd = amountToUsd(plan.amount, plan.tokenType, btcPriceUsd, stxPriceUsd);
 
   return (
     <Card className="card-accent-secondary">
