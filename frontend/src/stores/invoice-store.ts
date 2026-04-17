@@ -167,6 +167,7 @@ function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtB
     : 6; // fallback ~12min on testnet, ~1hr on mainnet
   const msFromCreation = blockDelta * AVG_BLOCK_TIME_SECONDS * 1000;
   const createdTime = new Date(createdAt).getTime();
+  if (isNaN(createdTime)) return null;
   return new Date(createdTime + msFromCreation);
 }
 
@@ -188,7 +189,7 @@ async function reconcileWithChain(
     Promise.allSettled(
       chainable.map((inv) => getInvoiceOnChain(inv.dbId, merchantPrincipal)),
     ),
-    fetchBurnBlockHeight().catch(() => 0),
+    fetchBurnBlockHeight().catch(() => null as number | null),
   ]);
 
   // If ALL chain reads failed (API down), fall back to Supabase data
@@ -221,6 +222,7 @@ async function reconcileWithChain(
 
     // Client-side expiration: contract keeps status=pending even after expiry block
     if (
+      burnHeight !== null &&
       burnHeight > 0 &&
       chain.expiresAt > 0 &&
       burnHeight > chain.expiresAt &&
