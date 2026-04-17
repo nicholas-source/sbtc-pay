@@ -7,7 +7,7 @@ import {
   getLocalStorage,
 } from '@stacks/connect';
 import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
-import { BTC_USD_PRICE, STX_USD_PRICE } from '@/lib/constants';
+import { amountToUsd as amountToUsdFn } from '@/lib/constants';
 
 export type WalletProvider = 'leather' | 'xverse' | 'asigna' | null;
 export type Network = 'mainnet' | 'testnet';
@@ -102,8 +102,8 @@ interface WalletState {
   // Balances (in base units: microSTX and sats)
   stxBalance: bigint;
   sbtcBalance: bigint;
-  btcPriceUsd: number;
-  stxPriceUsd: number;
+  btcPriceUsd: number | null;
+  stxPriceUsd: number | null;
   priceLastUpdated: number | null; // epoch ms of last successful live fetch
 
   // Actions
@@ -145,8 +145,8 @@ export const useWalletStore = create<WalletState>()(
       connectionError: null,
       stxBalance: BigInt(0),
       sbtcBalance: BigInt(0),
-      btcPriceUsd: BTC_USD_PRICE, // Initial fallback until live fetch
-      stxPriceUsd: STX_USD_PRICE, // Initial fallback until live fetch
+      btcPriceUsd: null,
+      stxPriceUsd: null,
       priceLastUpdated: null,
 
       connect: async () => {
@@ -359,21 +359,31 @@ export function stopPricePolling() {
 
 // ── Utility hooks ──────────────────────────────────────────────────
 
-/** Live BTC price in USD (updates every 60 s). */
-export function useBtcPrice(): number {
+/** Live BTC price in USD (updates every 60 s). null = not yet fetched. */
+export function useBtcPrice(): number | null {
   return useWalletStore((s) => s.btcPriceUsd);
 }
 
-/** Live STX price in USD (updates every 60 s). */
-export function useStxPrice(): number {
+/** Live STX price in USD (updates every 60 s). null = not yet fetched. */
+export function useStxPrice(): number | null {
   return useWalletStore((s) => s.stxPriceUsd);
 }
 
-/** Both live prices as a tuple — for passing to amountToUsd(). */
-export function useLivePrices(): { btcPriceUsd: number; stxPriceUsd: number } {
+/** Both live prices — for passing to amountToUsd(). null = not yet fetched. */
+export function useLivePrices(): { btcPriceUsd: number | null; stxPriceUsd: number | null } {
   const btcPriceUsd = useWalletStore((s) => s.btcPriceUsd);
   const stxPriceUsd = useWalletStore((s) => s.stxPriceUsd);
   return { btcPriceUsd, stxPriceUsd };
+}
+
+/**
+ * Convenience hook: returns an amountToUsd function pre-bound to live prices.
+ * Usage: `const toUsd = useAmountToUsd(); toUsd(50000, 'sbtc')` → "$48.75" or "—"
+ */
+export function useAmountToUsd() {
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
+  return (amount: number, tokenType: import('@/lib/stacks/config').TokenType) =>
+    amountToUsdFn(amount, tokenType, btcPriceUsd, stxPriceUsd);
 }
 
 /**
@@ -388,11 +398,14 @@ export function usePriceStale(): boolean {
 
 /**
  * Returns a function that converts sats → USD string using the live price.
- * Usage: `const satsToUsd = useSatsToUsd(); satsToUsd(50000)` → "48.75"
+ * Returns "—" if price hasn't loaded yet.
  */
 export function useSatsToUsd(): (sats: number) => string {
   const btcPriceUsd = useWalletStore((s) => s.btcPriceUsd);
-  return (sats: number) => ((sats / 100_000_000) * btcPriceUsd).toFixed(2);
+  return (sats: number) => {
+    if (btcPriceUsd === null) return '—';
+    return ((sats / 100_000_000) * btcPriceUsd).toFixed(2);
+  };
 }
 
 export function useFormattedStxBalance(): string {
@@ -415,6 +428,7 @@ export function useSbtcBalanceInBtc(): string {
 export function useSbtcBalanceInUsd(): string {
   const sbtcBalance = useWalletStore((s) => s.sbtcBalance);
   const btcPriceUsd = useWalletStore((s) => s.btcPriceUsd);
+  if (btcPriceUsd === null) return '—';
   const btc = Number(sbtcBalance) / 100_000_000;
   return (btc * btcPriceUsd).toFixed(2);
 }
