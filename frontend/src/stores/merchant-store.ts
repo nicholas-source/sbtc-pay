@@ -64,6 +64,7 @@ interface MerchantState {
   profile: MerchantProfile | null;
   isRegistering: boolean;
   isLoading: boolean;
+  isUpdating: boolean;
   setProfile: (profile: MerchantProfile) => void;
   clearProfile: () => void;
   setRegistering: (v: boolean) => void;
@@ -77,6 +78,7 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
   profile: null,
   isRegistering: false,
   isLoading: false,
+  isUpdating: false,
   setProfile: (profile) => set({ profile }),
   clearProfile: () => set({ profile: null }),
   setRegistering: (isRegistering) => set({ isRegistering }),
@@ -165,7 +167,10 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
   updateProfile: async (data) => {
     const current = get().profile;
     if (!current) return;
+    if (get().isUpdating) return; // prevent double-submit
+    set({ isUpdating: true });
 
+    try {
     const updated = { ...current, ...data };
 
     toast.info("Please confirm the transaction in your wallet");
@@ -239,6 +244,9 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
         }
       }
     });
+    } finally {
+      set({ isUpdating: false });
+    }
   },
 
   updateNotifications: async (settings) => {

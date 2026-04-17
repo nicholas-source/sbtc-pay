@@ -18,6 +18,7 @@ import {
 } from "@/lib/stacks/contract";
 import { supabase } from "@/lib/supabase/client";
 import { fetchBurnBlockHeight } from "@/lib/stacks/config";
+import { isValidStacksAddress } from "@/lib/validators";
 
 export interface PlatformStats {
   totalMerchants: number;
@@ -256,6 +257,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       toast.error("Invalid fee value");
       return;
     }
+    if (!Number.isInteger(bps)) {
+      toast.error("Fee must be a whole number (no decimals)");
+      return;
+    }
     if (bps > 500) {
       toast.error("Maximum fee is 500 BPS (5%)");
       return;
@@ -279,11 +284,16 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   updateFeeRecipient: async (addr) => {
+    const trimmed = addr.trim();
+    if (!isValidStacksAddress(trimmed)) {
+      toast.error("Invalid Stacks address", { description: "Must start with SP, SM, ST, or SN" });
+      return;
+    }
     set({ pendingAction: "recipient" });
     try {
       toast.info("Please confirm in your wallet");
-      await setRecipientOnChain(addr);
-      set({ feeRecipient: addr });
+      await setRecipientOnChain(trimmed);
+      set({ feeRecipient: trimmed });
       toast.success("Fee recipient updated");
     } catch (err) {
       toast.error(contractErrorMsg(err));
@@ -293,11 +303,16 @@ export const useAdminStore = create<AdminState>((set, get) => ({
   },
 
   initiateOwnershipTransfer: async (newOwner) => {
+    const trimmed = newOwner.trim();
+    if (!isValidStacksAddress(trimmed)) {
+      toast.error("Invalid Stacks address", { description: "Must start with SP, SM, ST, or SN" });
+      return;
+    }
     set({ pendingAction: "transfer" });
     try {
       toast.info("Please confirm in your wallet");
-      await transferOnChain(newOwner);
-      set({ pendingOwner: newOwner });
+      await transferOnChain(trimmed);
+      set({ pendingOwner: trimmed });
       toast.success("Ownership transfer initiated");
     } catch (err) {
       toast.error(contractErrorMsg(err));
