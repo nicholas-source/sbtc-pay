@@ -1,15 +1,16 @@
 import { QRCodeSVG } from "qrcode.react";
 
 interface Props {
-  address: string;
+  /** The URL or value the QR code should encode */
+  value: string;
 }
 
-export function PaymentQRCode({ address }: Props) {
+export function PaymentQRCode({ value }: Props) {
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="rounded-lg bg-white p-2.5 sm:p-3">
         <QRCodeSVG
-          value={address}
+          value={value}
           size={140}
           level="M"
           bgColor="#ffffff"
