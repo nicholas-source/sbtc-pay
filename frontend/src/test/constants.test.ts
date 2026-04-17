@@ -6,7 +6,6 @@ import {
   formatSbtc,
   formatSbtcCompact,
   satsToUsd,
-  BTC_USD,
 } from "@/lib/constants";
 
 describe("satsToSbtc", () => {
@@ -99,13 +98,19 @@ describe("formatSbtcCompact", () => {
 });
 
 describe("satsToUsd", () => {
-  it("converts sats to USD using default rate", () => {
-    const result = satsToUsd(100_000, BTC_USD);
+  const TEST_RATE = 97_500 / SATS_PER_BTC; // $97,500/BTC as sats rate
+
+  it("converts sats to USD using a rate", () => {
+    const result = satsToUsd(100_000, TEST_RATE);
     expect(parseFloat(result)).toBeGreaterThan(0);
   });
 
   it("returns '0.00' for 0 sats", () => {
-    expect(satsToUsd(0)).toBe("0.00");
+    expect(satsToUsd(0, TEST_RATE)).toBe("0.00");
+  });
+
+  it("returns '—' when rate is null", () => {
+    expect(satsToUsd(100_000, null)).toBe("—");
   });
 
   it("accepts custom rate", () => {
