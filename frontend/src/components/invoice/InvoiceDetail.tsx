@@ -12,6 +12,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Separator } from "@/components/ui/separator";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 interface Props {
   invoice: Invoice | null;
@@ -23,6 +24,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const liveInvoice = useInvoiceStore((s) => invoiceProp ? s.invoices.find((i) => i.id === invoiceProp.id) : undefined);
   const [refundOpen, setRefundOpen] = useState(false);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
 
   const invoice = liveInvoice ?? invoiceProp;
   if (!invoice) return null;
@@ -74,7 +76,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           <div className="rounded-lg border p-4">
             <p className="text-xs text-muted-foreground mb-1">Total Amount</p>
             <p className="text-2xl font-mono font-bold font-tabular">{formatAmount(invoice.amount, invoice.tokenType)} <span className="text-sm text-muted-foreground">{tokenLabel(invoice.tokenType)}</span></p>
-            <p className="text-sm text-muted-foreground">${amountToUsd(invoice.amount, invoice.tokenType)} USD</p>
+            <p className="text-sm text-muted-foreground">${amountToUsd(invoice.amount, invoice.tokenType, btcPriceUsd, stxPriceUsd)} USD</p>
           </div>
 
           {/* Partial progress */}

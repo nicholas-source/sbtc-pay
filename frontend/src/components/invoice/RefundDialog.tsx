@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 import { formatAmount, baseToHuman, humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 
 const REASON_PRESETS = [
   "Customer request",
@@ -35,6 +35,7 @@ interface Props {
 
 export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   const satsToUsd = useSatsToUsd();
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const refundInvoice = useInvoiceStore((s) => s.refundInvoice);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [refundType, setRefundType] = useState<"full" | "partial">("full");
@@ -61,7 +62,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
 
   const amount = form.watch("amount");
   const amountInBaseUnits = humanToBaseUnits(amount, tt);
-  const usd = amountToUsd(amountInBaseUnits, tt);
+  const usd = amountToUsd(amountInBaseUnits, tt, btcPriceUsd, stxPriceUsd);
 
   function handleTypeChange(type: "full" | "partial") {
     setRefundType(type);
@@ -111,7 +112,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
               <RotateCcw className="h-4 w-4" /> Refund {invoice.id}
             </DialogTitle>
             <DialogDescription>
-              Available: {formatAmount(invoice.amountPaid, tt)} {tokenLabel(tt)} (${amountToUsd(invoice.amountPaid, tt)})
+              Available: {formatAmount(invoice.amountPaid, tt)} {tokenLabel(tt)} (${amountToUsd(invoice.amountPaid, tt, btcPriceUsd, stxPriceUsd)})
             </DialogDescription>
           </DialogHeader>
 

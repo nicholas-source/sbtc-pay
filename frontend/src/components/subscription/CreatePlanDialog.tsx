@@ -30,9 +30,11 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 import { amountToUsd } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 export default function CreatePlanDialog() {
   const [open, setOpen] = useState(false);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const createPlan = useSubscriptionStore((s) => s.createPlan);
 
   const form = useForm<FormValues>({
@@ -41,7 +43,7 @@ export default function CreatePlanDialog() {
   });
 
   const amount = form.watch("amount");
-  const usdEstimate = amount ? amountToUsd(amount, 'sbtc') : "0.00";
+  const usdEstimate = amount ? amountToUsd(amount, 'sbtc', btcPriceUsd, stxPriceUsd) : "0.00";
 
   function onSubmit(data: FormValues) {
     try {

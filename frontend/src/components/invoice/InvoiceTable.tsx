@@ -16,6 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 type SortKey = "id" | "amount" | "createdAt" | "expiresAt" | "status";
 type SortDir = "asc" | "desc";
@@ -28,6 +29,7 @@ interface Props {
 
 export default function InvoiceTable({ onSelect }: Props) {
   const invoices = useInvoiceStore((s) => s.invoices);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -208,7 +210,7 @@ export default function InvoiceTable({ onSelect }: Props) {
                     </TableCell>
                     <TableCell className="text-right font-mono font-tabular">
                       <div>{formatAmount(inv.amount, inv.tokenType)} <span className="text-muted-foreground text-micro">{tokenLabel(inv.tokenType)}</span></div>
-                      <div className="text-micro text-muted-foreground">${amountToUsd(inv.amount, inv.tokenType)}</div>
+                      <div className="text-micro text-muted-foreground">${amountToUsd(inv.amount, inv.tokenType, btcPriceUsd, stxPriceUsd)}</div>
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
                       {inv.status === "paid" ? (

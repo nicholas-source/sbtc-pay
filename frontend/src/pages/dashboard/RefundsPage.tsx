@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { exportToCSV } from "@/lib/export-csv";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 interface FlatRefund {
   invoiceId: string;
@@ -23,6 +24,7 @@ interface FlatRefund {
 
 function RefundsPage() {
   const invoices = useInvoiceStore((s) => s.invoices);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<"date" | "amount">("date");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -60,15 +62,15 @@ function RefundsPage() {
   const stats = useMemo(() => {
     const sbtcAmount = flatRefunds.filter((f) => f.invoice.tokenType !== 'stx').reduce((s, f) => s + f.refund.amount, 0);
     const stxAmount = flatRefunds.filter((f) => f.invoice.tokenType === 'stx').reduce((s, f) => s + f.refund.amount, 0);
-    const totalUsd = (sbtcAmount > 0 ? parseFloat(amountToUsd(sbtcAmount, 'sbtc')) : 0)
-      + (stxAmount > 0 ? parseFloat(amountToUsd(stxAmount, 'stx')) : 0);
+    const totalUsd = (sbtcAmount > 0 ? parseFloat(amountToUsd(sbtcAmount, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+      + (stxAmount > 0 ? parseFloat(amountToUsd(stxAmount, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0);
     const totalDisplay = [
       sbtcAmount > 0 ? `${formatAmount(sbtcAmount, 'sbtc')} sBTC` : '',
       stxAmount > 0 ? `${formatAmount(stxAmount, 'stx')} STX` : '',
     ].filter(Boolean).join(' + ') || '0';
     const uniqueInvoices = new Set(flatRefunds.map((f) => f.invoiceId)).size;
     return { count: flatRefunds.length, totalDisplay, totalUsd, uniqueInvoices };
-  }, [flatRefunds]);
+  }, [flatRefunds, btcPriceUsd, stxPriceUsd]);
 
   const handleExport = useCallback(() => {
     const rows = flatRefunds.map((f) => ({
@@ -158,7 +160,7 @@ function RefundsPage() {
                           <div className="font-mono font-tabular text-sm">
                             {formatAmount(f.refund.amount, f.invoice.tokenType)} <span className="text-muted-foreground text-xs">{tokenLabel(f.invoice.tokenType)}</span>
                           </div>
-                          <div className="text-xs text-muted-foreground">${amountToUsd(f.refund.amount, f.invoice.tokenType)}</div>
+                          <div className="text-xs text-muted-foreground">${amountToUsd(f.refund.amount, f.invoice.tokenType, btcPriceUsd, stxPriceUsd)}</div>
                         </TableCell>
                         <TableCell className="hidden sm:table-cell text-sm max-w-[140px] md:max-w-[200px] truncate">{f.refund.reason}</TableCell>
                         <TableCell className="hidden md:table-cell text-sm text-muted-foreground">

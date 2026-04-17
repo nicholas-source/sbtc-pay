@@ -21,7 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 import { humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useSatsToUsd } from "@/stores/wallet-store";
+import { useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 import type { TokenType } from "@/lib/stacks/config";
 
 const MIN_AMOUNT = 0.00001;
@@ -71,6 +71,7 @@ function presetToBlocks(preset: string, customDate?: Date): number {
 
 export default function CreateInvoiceDialog() {
   const satsToUsd = useSatsToUsd();
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expirationPreset, setExpirationPreset] = useState("7d");
@@ -88,7 +89,7 @@ export default function CreateInvoiceDialog() {
 
   const watchAmount = form.watch("amount");
   const baseAmount = watchAmount && watchAmount > 0 ? humanToBaseUnits(watchAmount, tokenType) : 0;
-  const usdValue = baseAmount > 0 ? amountToUsd(baseAmount, tokenType) : null;
+  const usdValue = baseAmount > 0 ? amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd) : null;
 
   async function onSubmit(data: FormValues) {
     if (!walletAddress) {

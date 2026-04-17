@@ -11,7 +11,7 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useWalletStore, useSatsToUsd } from "@/stores/wallet-store";
+import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, fetchBurnBlockHeight } from "@/lib/stacks/config";
 
@@ -21,6 +21,7 @@ export default function InvoicePaymentWidget() {
 
   const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
   const satsToUsd = useSatsToUsd();
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
   const [payState, setPayState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
@@ -167,7 +168,7 @@ export default function InvoicePaymentWidget() {
       <WidgetShell>
         <p className="text-center text-heading-sm text-success">✓ Paid</p>
         <p className="text-center text-sats text-primary font-tabular">{formatAmount(invoice.amountPaid, tt)} {tokenLabel(tt)}</p>
-        <p className="text-center text-caption text-muted-foreground">≈ ${amountToUsd(invoice.amountPaid, tt)} USD</p>
+        <p className="text-center text-caption text-muted-foreground">≈ ${amountToUsd(invoice.amountPaid, tt, btcPriceUsd, stxPriceUsd)} USD</p>
       </WidgetShell>
     );
   }
@@ -196,7 +197,7 @@ export default function InvoicePaymentWidget() {
 
       <div className="text-center">
         <span className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(remaining, tt)} {tokenLabel(tt)}</span>
-        <p className="text-caption text-muted-foreground">≈ ${amountToUsd(remaining, tt)} USD</p>
+        <p className="text-caption text-muted-foreground">≈ ${amountToUsd(remaining, tt, btcPriceUsd, stxPriceUsd)} USD</p>
       </div>
 
       {invoice.amountPaid > 0 && <Progress value={paidPct} className="h-2" />}

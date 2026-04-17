@@ -11,9 +11,11 @@ import { Button } from "@/components/ui/button";
 import { exportToCSV } from "@/lib/export-csv";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 function InvoicesPage() {
   const invoices = useInvoiceStore((s) => s.invoices);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
 
@@ -27,10 +29,10 @@ function InvoicesPage() {
     const paidSbtc = paid.filter((i) => i.tokenType !== 'stx').reduce((s, i) => s + i.amountPaid, 0);
     const paidStx = paid.filter((i) => i.tokenType === 'stx').reduce((s, i) => s + i.amountPaid, 0);
 
-    const pendingUsd = (pendingSbtc > 0 ? parseFloat(amountToUsd(pendingSbtc, 'sbtc')) : 0)
-      + (pendingStx > 0 ? parseFloat(amountToUsd(pendingStx, 'stx')) : 0);
-    const paidUsd = (paidSbtc > 0 ? parseFloat(amountToUsd(paidSbtc, 'sbtc')) : 0)
-      + (paidStx > 0 ? parseFloat(amountToUsd(paidStx, 'stx')) : 0);
+    const pendingUsd = (pendingSbtc > 0 ? parseFloat(amountToUsd(pendingSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+      + (pendingStx > 0 ? parseFloat(amountToUsd(pendingStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0);
+    const paidUsd = (paidSbtc > 0 ? parseFloat(amountToUsd(paidSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+      + (paidStx > 0 ? parseFloat(amountToUsd(paidStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0);
 
     const pendingDisplay = [
       pendingSbtc > 0 ? `${formatAmount(pendingSbtc, 'sbtc')} sBTC` : '',
@@ -42,7 +44,7 @@ function InvoicesPage() {
     ].filter(Boolean).join(' + ') || '0';
 
     return { total: invoices.length, pendingDisplay, pendingUsd, paidDisplay, paidUsd };
-  }, [invoices]);
+  }, [invoices, btcPriceUsd, stxPriceUsd]);
 
   const handleExport = useCallback(() => {
     const rows = invoices.map((inv) => ({
