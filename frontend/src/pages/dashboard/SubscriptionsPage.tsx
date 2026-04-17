@@ -11,10 +11,12 @@ import { exportToCSV } from "@/lib/export-csv";
 import EmptyState from "@/components/dashboard/EmptyState";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 function SubscriptionsPage() {
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
 
   const stats = useMemo(() => {
     const activeSubs = subscribers.filter((s) => s.status === "active");
@@ -35,8 +37,8 @@ function SubscriptionsPage() {
 
     sbtcRevenue = Math.round(sbtcRevenue);
     stxRevenue = Math.round(stxRevenue);
-    const revenueUsd = (sbtcRevenue > 0 ? parseFloat(amountToUsd(sbtcRevenue, 'sbtc')) : 0)
-      + (stxRevenue > 0 ? parseFloat(amountToUsd(stxRevenue, 'stx')) : 0);
+    const revenueUsd = (sbtcRevenue > 0 ? parseFloat(amountToUsd(sbtcRevenue, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+      + (stxRevenue > 0 ? parseFloat(amountToUsd(stxRevenue, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0);
     const revenueDisplay = [
       sbtcRevenue > 0 ? `${formatAmount(sbtcRevenue, 'sbtc')} sBTC` : '',
       stxRevenue > 0 ? `${formatAmount(stxRevenue, 'stx')} STX` : '',
@@ -48,7 +50,7 @@ function SubscriptionsPage() {
       revenueDisplay,
       revenueUsd,
     };
-  }, [plans, subscribers]);
+  }, [plans, subscribers, btcPriceUsd, stxPriceUsd]);
 
   const handleExport = useCallback(() => {
     const rows: Record<string, string | number>[] = [];
