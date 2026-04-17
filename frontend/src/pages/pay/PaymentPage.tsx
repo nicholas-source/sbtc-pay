@@ -19,11 +19,12 @@ import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRAC
 import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, type TokenType, TOKEN_DECIMALS } from "@/lib/stacks/config";
 
 import { formatAmount, humanToBaseUnits, baseToHuman, tokenLabel, amountToUsd } from "@/lib/constants";
-import { useBtcPrice } from "@/stores/wallet-store";
+import { useBtcPrice, useStxPrice } from "@/stores/wallet-store";
 
 function PaymentPage() {
   const { invoiceId } = useParams();
   const btcPriceUsd = useBtcPrice();
+  const stxPriceUsd = useStxPrice();
   // Try local store first (merchant viewing their own invoice)
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
   const { isConnected, isConnecting, address, sbtcBalance, stxBalance, connect, connectionError, clearError, fetchBalances } = useWalletStore();
@@ -383,7 +384,7 @@ function PaymentPage() {
   // --- Awaiting Payment ---
   const paidPercent = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
   const tt = invoice.tokenType;
-  const usdAmount = parseFloat(amountToUsd(remaining, tt, btcPriceUsd));
+  const usdAmount = parseFloat(amountToUsd(remaining, tt, btcPriceUsd, stxPriceUsd));
   // Match contract's calculate-fee: floor division, min 1 unit when amount > 0
   const feeSats = remaining > 0
     ? Math.max(Math.floor(remaining * feeBps / 10000), feeBps > 0 ? 1 : 0)
