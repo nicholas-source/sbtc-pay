@@ -11,6 +11,7 @@ import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useWalletStore } from "@/stores/wallet-store";
 
 import { formatAmount, amountToUsd, tokenLabel, type TokenType } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 
 interface PaymentRow {
   id: string;
@@ -27,6 +28,7 @@ export default function CustomerPayments() {
   const invoices = useInvoiceStore((s) => s.invoices);
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
 
   const allPayments = useMemo(() => {
     const rows: PaymentRow[] = [];
@@ -112,7 +114,7 @@ export default function CustomerPayments() {
                       </TableCell>
                       <TableCell className="text-right font-mono font-tabular">
                         <div>{formatAmount(p.amount, p.tokenType)} <span className="text-muted-foreground text-micro">{tokenLabel(p.tokenType)}</span></div>
-                        <div className="text-micro text-muted-foreground">${amountToUsd(p.amount, p.tokenType)}</div>
+                        <div className="text-micro text-muted-foreground">${amountToUsd(p.amount, p.tokenType, btcPriceUsd, stxPriceUsd)}</div>
                       </TableCell>
                       <TableCell className="hidden md:table-cell font-mono text-caption text-muted-foreground">
                         {p.txId.slice(0, 10)}…
