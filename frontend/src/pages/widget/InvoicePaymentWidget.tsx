@@ -13,6 +13,7 @@ import { PageTransition } from "@/components/layout/PageTransition";
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS } from "@/lib/stacks/contract";
+import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, fetchBurnBlockHeight } from "@/lib/stacks/config";
 
 export default function InvoicePaymentWidget() {
@@ -198,6 +199,7 @@ export default function InvoicePaymentWidget() {
       <div className="text-center">
         <span className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(remaining, tt)} {tokenLabel(tt)}</span>
         <p className="text-caption text-muted-foreground">≈ ${amountToUsd(remaining, tt, btcPriceUsd, stxPriceUsd)} USD</p>
+        <PriceStatusBadge />
       </div>
 
       {invoice.amountPaid > 0 && <Progress value={paidPct} className="h-2" />}
