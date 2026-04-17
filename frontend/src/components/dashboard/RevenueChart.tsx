@@ -14,10 +14,11 @@ import { format, subDays, subWeeks, subMonths, startOfDay, startOfWeek, startOfM
 import { useIsMobile } from "@/hooks/use-mobile";
 import { amountToUsd } from "@/lib/constants";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
+import { useLivePrices } from "@/stores/wallet-store";
 
 type Period = "daily" | "weekly" | "monthly";
 
-function buildRevenueData(invoices: Invoice[], period: Period) {
+function buildRevenueData(invoices: Invoice[], period: Period, btcPriceUsd: number, stxPriceUsd: number) {
   const now = new Date();
 
   // Build time buckets
@@ -57,7 +58,7 @@ function buildRevenueData(invoices: Invoice[], period: Period) {
       else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
       else key = format(d, "yyyy-MM");
       if (usdMap.has(key)) {
-        usdMap.set(key, usdMap.get(key)! + parseFloat(amountToUsd(p.amount, tt)));
+        usdMap.set(key, usdMap.get(key)! + parseFloat(amountToUsd(p.amount, tt, btcPriceUsd, stxPriceUsd)));
       }
     }
   }
@@ -84,7 +85,8 @@ export default function RevenueChart() {
   const [period, setPeriod] = useState<Period>("daily");
   const isMobile = useIsMobile();
   const invoices = useInvoiceStore((s) => s.invoices);
-  const data = useMemo(() => buildRevenueData(invoices, period), [invoices, period]);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
+  const data = useMemo(() => buildRevenueData(invoices, period, btcPriceUsd, stxPriceUsd), [invoices, period, btcPriceUsd, stxPriceUsd]);
   const hasRevenue = data.some((d) => d.usd > 0);
 
   return (
