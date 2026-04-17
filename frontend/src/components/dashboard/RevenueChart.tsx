@@ -18,7 +18,7 @@ import { useLivePrices } from "@/stores/wallet-store";
 
 type Period = "daily" | "weekly" | "monthly";
 
-function buildRevenueData(invoices: Invoice[], period: Period, btcPriceUsd: number, stxPriceUsd: number) {
+function buildRevenueData(invoices: Invoice[], period: Period, btcPriceUsd: number | null, stxPriceUsd: number | null) {
   const now = new Date();
 
   // Build time buckets
@@ -58,7 +58,7 @@ function buildRevenueData(invoices: Invoice[], period: Period, btcPriceUsd: numb
       else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
       else key = format(d, "yyyy-MM");
       if (usdMap.has(key)) {
-        usdMap.set(key, usdMap.get(key)! + parseFloat(amountToUsd(p.amount, tt, btcPriceUsd, stxPriceUsd)));
+        usdMap.set(key, usdMap.get(key)! + (parseFloat(amountToUsd(p.amount, tt, btcPriceUsd, stxPriceUsd)) || 0));
       }
     }
   }
