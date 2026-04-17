@@ -99,10 +99,36 @@ function SettingsPage() {
   };
 
   const handleSaveNotifications = async () => {
+    // Validate email if provided
+    const trimmedEmail = notifEmail.trim();
+    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      toast.error("Invalid email address");
+      return;
+    }
+    // Validate webhook URL if provided
+    const trimmedWebhook = notifWebhook.trim();
+    if (trimmedWebhook) {
+      try {
+        const url = new URL(trimmedWebhook);
+        if (!['http:', 'https:'].includes(url.protocol)) {
+          toast.error("Webhook URL must use http or https");
+          return;
+        }
+      } catch {
+        toast.error("Invalid webhook URL");
+        return;
+      }
+    }
     setSavingNotif(true);
-    await updateNotifications({ email: notifEmail, webhookUrl: notifWebhook, events: notifEvents });
-    setSavingNotif(false);
-    toast.success("Notification settings saved");
+    try {
+      await updateNotifications({ email: trimmedEmail, webhookUrl: trimmedWebhook, events: notifEvents });
+      toast.success("Notification settings saved");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save notification settings";
+      toast.error(message);
+    } finally {
+      setSavingNotif(false);
+    }
   };
 
   const toggleEvent = (key: keyof NotificationEvents) => {
@@ -258,7 +284,7 @@ function SettingsPage() {
                   <p className="text-sm font-medium text-foreground">{label}</p>
                   <p className="text-caption text-muted-foreground">{description}</p>
                 </div>
-                <Switch checked={notifEvents[key]} onCheckedChange={() => toggleEvent(key)} />
+                <Switch checked={notifEvents[key]} onCheckedChange={() => toggleEvent(key)} disabled={savingNotif} />
               </div>
             ))}
           </div>

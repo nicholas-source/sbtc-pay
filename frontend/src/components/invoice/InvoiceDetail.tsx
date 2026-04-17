@@ -10,6 +10,11 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
@@ -114,9 +119,31 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               <Copy className="mr-2 h-3.5 w-3.5" />{invoice.dbId === 0 ? "Pending…" : "Copy link"}
             </Button>
             {invoice.status === "pending" && invoice.dbId > 0 && (
-              <Button variant="destructive" size="sm" onClick={handleCancel} className="flex-1" aria-label={`Cancel invoice ${invoice.id}`}>
-                <XCircle className="mr-2 h-3.5 w-3.5" />Cancel Invoice
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="destructive" size="sm" className="flex-1" aria-label={`Cancel invoice ${invoice.id}`}>
+                    <XCircle className="mr-2 h-3.5 w-3.5" />Cancel Invoice
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Invoice {invoice.id}?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will cancel the invoice for {formatAmount(invoice.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}.
+                      This action requires an on-chain transaction and cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Keep Invoice</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={handleCancel}
+                    >
+                      Cancel Invoice
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
             {invoice.amountPaid > 0 && (invoice.status === "paid" || invoice.status === "partial" || invoice.status === "expired") && (
               <Button variant="outline" size="sm" onClick={() => setRefundOpen(true)} className="flex-1">

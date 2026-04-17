@@ -93,7 +93,7 @@ export default function AdminPage() {
 
   const filteredMerchants = merchants.filter((m) => {
     if (!merchantSearch) return true;
-    const q = merchantSearch.toLowerCase();
+    const q = merchantSearch.trim().toLowerCase();
     return m.name.toLowerCase().includes(q) || m.address.toLowerCase().includes(q);
   });
 
@@ -225,10 +225,11 @@ export default function AdminPage() {
                     type="number"
                     min={0}
                     max={500}
+                    step={1}
                     value={newFeeBps}
                     onChange={(e) => setNewFeeBps(e.target.value)}
                     className="w-24 font-mono"
-                    disabled={!isContractOwner}
+                    disabled={!isContractOwner || !!pendingAction}
                   />
                   <span className="text-caption text-muted-foreground">BPS ({(parseInt(newFeeBps) / 100 || 0).toFixed(2)}%)</span>
                   <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction} onClick={() => updateFeeBps(parseInt(newFeeBps))}>
@@ -241,7 +242,7 @@ export default function AdminPage() {
               <div className="space-y-2">
                 <p className="text-body font-medium text-foreground">Fee Recipient</p>
                 <div className="flex items-center gap-2">
-                  <Input value={newFeeRecipient} onChange={(e) => setNewFeeRecipient(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner} />
+                  <Input value={newFeeRecipient} onChange={(e) => setNewFeeRecipient(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner || !!pendingAction} />
                   <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction} onClick={() => updateFeeRecipient(newFeeRecipient)}>
                     {pendingAction === "recipient" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
                   </Button>
@@ -273,7 +274,7 @@ export default function AdminPage() {
                 ) : (
                   <>
                     <div className="flex items-center gap-2">
-                      <Input placeholder="New owner address" value={transferAddress} onChange={(e) => setTransferAddress(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner} />
+                      <Input placeholder="New owner address" value={transferAddress} onChange={(e) => setTransferAddress(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner || !!pendingAction} />
                       <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction || !transferAddress} onClick={() => { initiateOwnershipTransfer(transferAddress); setTransferAddress(""); }}>
                         {pendingAction === "transfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer</>}
                       </Button>
@@ -413,25 +414,44 @@ export default function AdminPage() {
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
                         {!m.isVerified && !m.isSuspended && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
-                                disabled={!isContractOwner || !!pendingAction}
-                                onClick={() => verifyMerchant(m.id)}
-                              >
-                                {pendingAction === `verify-${m.id}` ? (
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                ) : (
-                                  <BadgeCheck className="h-3.5 w-3.5" />
-                                )}
-                                <span className="hidden lg:inline">Verify</span>
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">Mark merchant as verified</TooltipContent>
-                          </Tooltip>
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
+                                    disabled={!isContractOwner || !!pendingAction}
+                                    aria-label={`Verify ${m.name}`}
+                                  >
+                                    {pendingAction === `verify-${m.id}` ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <BadgeCheck className="h-3.5 w-3.5" />
+                                    )}
+                                    <span className="hidden lg:inline">Verify</span>
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Mark merchant as verified</TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Verify {m.name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will mark <span className="font-mono text-foreground">{m.address.slice(0, 8)}…{m.address.slice(-6)}</span> as a verified merchant.
+                                  This action requires an on-chain transaction.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => verifyMerchant(m.id)}>
+                                  Verify Merchant
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                         {!m.isSuspended && (
                           <AlertDialog>
@@ -443,6 +463,7 @@ export default function AdminPage() {
                                     variant="outline"
                                     className="h-8 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 transition-colors"
                                     disabled={!isContractOwner || !!pendingAction}
+                                    aria-label={`Suspend ${m.name}`}
                                   >
                                     {pendingAction === `suspend-${m.id}` ? (
                                       <Loader2 className="h-3.5 w-3.5 animate-spin" />

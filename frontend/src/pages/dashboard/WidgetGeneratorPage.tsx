@@ -11,6 +11,7 @@ import { toast } from "sonner";
 import { useWalletStore } from "@/stores/wallet-store";
 import { formatAmount, amountToUsd } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
+import { isValidStacksAddress } from "@/lib/validators";
 
 type WidgetType = "direct" | "invoice" | "subscription";
 
@@ -38,6 +39,8 @@ export default function WidgetGeneratorPage() {
       setMerchantAddress(walletAddress);
     }
   }, [walletAddress]);
+
+  const addressError = merchantAddress && !isValidStacksAddress(merchantAddress.trim()) ? "Invalid Stacks address" : "";
 
   const previewUrl = useMemo(() => {
     const base = window.location.origin;
@@ -104,10 +107,11 @@ export default function WidgetGeneratorPage() {
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Merchant Address</label>
                   <Input value={merchantAddress} onChange={(e) => setMerchantAddress(e.target.value)} className="font-mono text-caption" />
+                  {addressError && <p className="text-xs text-destructive">{addressError}</p>}
                 </div>
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Default Amount (sats)</label>
-                  <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
+                  <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
                     <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc', btcPriceUsd, stxPriceUsd)} USD</p>
                   )}
@@ -139,6 +143,7 @@ export default function WidgetGeneratorPage() {
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Merchant Address</label>
                   <Input value={merchantAddress} onChange={(e) => setMerchantAddress(e.target.value)} className="font-mono text-caption" />
+                  {addressError && <p className="text-xs text-destructive">{addressError}</p>}
                 </div>
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Plan Name</label>
@@ -146,7 +151,7 @@ export default function WidgetGeneratorPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Amount (sats)</label>
-                  <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
+                  <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
                     <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc', btcPriceUsd, stxPriceUsd)} USD</p>
                   )}

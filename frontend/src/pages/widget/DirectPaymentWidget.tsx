@@ -21,7 +21,8 @@ export default function DirectPaymentWidget() {
   const memo = params.get("memo") || "";
   const theme = params.get("theme") || "dark";
   const color = params.get("color") || "orange";
-  const tokenType = (params.get("token") as TokenType) || 'sbtc';
+  const rawToken = params.get("token") || 'sbtc';
+  const tokenType: TokenType = (rawToken === 'stx' ? 'stx' : 'sbtc');
 
   const [payAmount, setPayAmount] = useState(amount);
   const [payMemo, setPayMemo] = useState(memo);

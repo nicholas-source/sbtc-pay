@@ -28,7 +28,8 @@ export default function SubscriptionWidget() {
   const plan = params.get("plan") || "Standard Plan";
   const amount = params.get("amount") || "100000";
   const interval = params.get("interval") || "monthly";
-  const tokenType = (params.get("token") as TokenType) || 'sbtc';
+  const rawToken = params.get("token") || 'sbtc';
+  const tokenType: TokenType = (rawToken === 'stx' ? 'stx' : 'sbtc');
 
   const addr = merchantAddress || "";
   const satsAmount = parseInt(amount) || 100000;
