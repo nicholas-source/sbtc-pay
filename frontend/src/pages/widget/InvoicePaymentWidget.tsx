@@ -191,7 +191,7 @@ export default function InvoicePaymentWidget() {
 
       <div className="flex justify-center">
         <div className="rounded-lg bg-white p-3">
-          <QRCodeSVG value={invoice.merchantAddress} size={120} level="M" />
+          <QRCodeSVG value={`${window.location.origin}/pay/${invoiceId}`} size={120} level="M" />
         </div>
       </div>
 
