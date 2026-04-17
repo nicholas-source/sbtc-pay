@@ -7,7 +7,7 @@ import {
   getLocalStorage,
 } from '@stacks/connect';
 import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
-import { BTC_USD_PRICE } from '@/lib/constants';
+import { BTC_USD_PRICE, STX_USD_PRICE } from '@/lib/constants';
 
 export type WalletProvider = 'leather' | 'xverse' | 'asigna' | null;
 export type Network = 'mainnet' | 'testnet';
@@ -18,6 +18,64 @@ export type WalletError =
   | { type: 'no_address'; message: string }
   | { type: 'connection_failed'; message: string }
   | null;
+
+// ── Multi-source price fetching ────────────────────────────────────
+// Coinbase (primary): CORS-friendly, no API key, supports BTC + STX
+// CoinGecko (fallback): may be CORS-blocked from browsers but try anyway
+
+const PRICE_STALE_MS = 5 * 60 * 1000; // 5 minutes
+
+async function fetchPriceFromCoinbase(pair: string): Promise<number | null> {
+  try {
+    const res = await fetch(`https://api.coinbase.com/v2/prices/${pair}/spot`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const price = parseFloat(data?.data?.amount);
+    return isFinite(price) && price > 0 ? price : null;
+  } catch {
+    return null;
+  }
+}
+
+async function fetchPricesFromCoinGecko(): Promise<{ btc: number | null; stx: number | null }> {
+  try {
+    const res = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,blockstack&vs_currencies=usd'
+    );
+    if (!res.ok) return { btc: null, stx: null };
+    const data = await res.json();
+    const btc = data?.bitcoin?.usd ?? null;
+    const stx = data?.blockstack?.usd ?? null;
+    return { btc, stx };
+  } catch {
+    return { btc: null, stx: null };
+  }
+}
+
+/**
+ * Fetch BTC/USD and STX/USD prices.
+ * Strategy: Coinbase first (CORS-friendly), CoinGecko fallback.
+ * Returns null for any price that couldn't be fetched from any source.
+ */
+async function fetchLivePrices(): Promise<{ btcUsd: number | null; stxUsd: number | null }> {
+  // Try Coinbase for both in parallel
+  const [cbBtc, cbStx] = await Promise.all([
+    fetchPriceFromCoinbase('BTC-USD'),
+    fetchPriceFromCoinbase('STX-USD'),
+  ]);
+
+  let btcUsd = cbBtc;
+  let stxUsd = cbStx;
+
+  // If either failed, try CoinGecko as fallback
+  if (btcUsd === null || stxUsd === null) {
+    const cg = await fetchPricesFromCoinGecko();
+    if (btcUsd === null) btcUsd = cg.btc;
+    if (stxUsd === null) stxUsd = cg.stx;
+  }
+
+  return { btcUsd, stxUsd };
+}
 
 // Helper to detect network from address
 function detectNetworkFromAddress(address: string): Network {
@@ -45,13 +103,15 @@ interface WalletState {
   stxBalance: bigint;
   sbtcBalance: bigint;
   btcPriceUsd: number;
+  stxPriceUsd: number;
+  priceLastUpdated: number | null; // epoch ms of last successful live fetch
 
   // Actions
   connect: () => Promise<void>;
   disconnect: () => void;
   checkConnection: () => void;
   fetchBalances: () => Promise<void>;
-  fetchBtcPrice: () => Promise<void>;
+  fetchPrices: () => Promise<void>;
   setNetwork: (network: Network) => void;
   clearError: () => void;
 }
@@ -85,7 +145,9 @@ export const useWalletStore = create<WalletState>()(
       connectionError: null,
       stxBalance: BigInt(0),
       sbtcBalance: BigInt(0),
-      btcPriceUsd: BTC_USD_PRICE, // Default BTC price
+      btcPriceUsd: BTC_USD_PRICE, // Initial fallback until live fetch
+      stxPriceUsd: STX_USD_PRICE, // Initial fallback until live fetch
+      priceLastUpdated: null,
 
       connect: async () => {
         set({ isConnecting: true, connectionError: null });
@@ -129,7 +191,7 @@ export const useWalletStore = create<WalletState>()(
 
               // Fetch balances after connecting
               get().fetchBalances();
-              get().fetchBtcPrice();
+              get().fetchPrices();
             } else {
               set({
                 isConnected: false,
@@ -214,7 +276,7 @@ export const useWalletStore = create<WalletState>()(
             });
             // Refresh balances
             get().fetchBalances();
-            get().fetchBtcPrice();
+            get().fetchPrices();
           }
         }
       },
@@ -249,17 +311,15 @@ export const useWalletStore = create<WalletState>()(
         }
       },
 
-      fetchBtcPrice: async () => {
-        try {
-          const response = await fetch(
-            'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd'
-          );
-          const data = await response.json();
-          const btcPriceUsd = data.bitcoin?.usd || BTC_USD_PRICE;
-          set({ btcPriceUsd });
-        } catch {
-          // CoinGecko may block CORS from browser — silently use fallback
+      fetchPrices: async () => {
+        const { btcUsd, stxUsd } = await fetchLivePrices();
+        const updates: Partial<WalletState> = {};
+        if (btcUsd !== null) updates.btcPriceUsd = btcUsd;
+        if (stxUsd !== null) updates.stxPriceUsd = stxUsd;
+        if (btcUsd !== null || stxUsd !== null) {
+          updates.priceLastUpdated = Date.now();
         }
+        set(updates);
       },
 
       setNetwork: (network) => set({ network }),
@@ -270,6 +330,8 @@ export const useWalletStore = create<WalletState>()(
         // Only persist non-sensitive data
         network: state.network,
         btcPriceUsd: state.btcPriceUsd,
+        stxPriceUsd: state.stxPriceUsd,
+        priceLastUpdated: state.priceLastUpdated,
       }),
     }
   )
@@ -278,13 +340,13 @@ export const useWalletStore = create<WalletState>()(
 // ── Price polling ───────────────────────────────────────────────────
 let _priceInterval: ReturnType<typeof setInterval> | null = null;
 
-/** Start polling CoinGecko every 60 s. Safe to call multiple times. */
+/** Start polling Coinbase/CoinGecko every 60 s. Safe to call multiple times. */
 export function startPricePolling() {
   if (_priceInterval) return;
   // Fetch immediately on init
-  useWalletStore.getState().fetchBtcPrice();
+  useWalletStore.getState().fetchPrices();
   _priceInterval = setInterval(() => {
-    useWalletStore.getState().fetchBtcPrice();
+    useWalletStore.getState().fetchPrices();
   }, 60_000);
 }
 
@@ -300,6 +362,28 @@ export function stopPricePolling() {
 /** Live BTC price in USD (updates every 60 s). */
 export function useBtcPrice(): number {
   return useWalletStore((s) => s.btcPriceUsd);
+}
+
+/** Live STX price in USD (updates every 60 s). */
+export function useStxPrice(): number {
+  return useWalletStore((s) => s.stxPriceUsd);
+}
+
+/** Both live prices as a tuple — for passing to amountToUsd(). */
+export function useLivePrices(): { btcPriceUsd: number; stxPriceUsd: number } {
+  const btcPriceUsd = useWalletStore((s) => s.btcPriceUsd);
+  const stxPriceUsd = useWalletStore((s) => s.stxPriceUsd);
+  return { btcPriceUsd, stxPriceUsd };
+}
+
+/**
+ * Returns true when the cached price is older than 5 minutes (or never fetched).
+ * Use this to show a "prices may be outdated" indicator.
+ */
+export function usePriceStale(): boolean {
+  const lastUpdated = useWalletStore((s) => s.priceLastUpdated);
+  if (lastUpdated === null) return true;
+  return Date.now() - lastUpdated > PRICE_STALE_MS;
 }
 
 /**
