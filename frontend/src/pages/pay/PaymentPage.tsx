@@ -16,7 +16,7 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
 import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRACT_ERRORS, waitForTransaction } from "@/lib/stacks/contract";
-import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, type TokenType, TOKEN_DECIMALS } from "@/lib/stacks/config";
+import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, getExplorerTxUrl, type TokenType, TOKEN_DECIMALS } from "@/lib/stacks/config";
 
 import { formatAmount, humanToBaseUnits, baseToHuman, tokenLabel, amountToUsd } from "@/lib/constants";
 import { useBtcPrice, useStxPrice } from "@/stores/wallet-store";
@@ -119,6 +119,7 @@ function PaymentPage() {
   const [copiedAddress, setCopiedAddress] = useState(false);
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [invoiceExpired, setInvoiceExpired] = useState(false);
   const confirmedAmount = useRef<number>(0);
   const mountedRef = useRef(true);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -150,7 +151,7 @@ function PaymentPage() {
   }, [invoice, payAmount, remaining]);
 
   const handlePay = useCallback(async () => {
-    if (!invoice || effectivePayAmount <= 0 || paymentState !== "idle") return;
+    if (!invoice || effectivePayAmount <= 0 || paymentState !== "idle" || invoiceExpired) return;
     // Guard: don't allow paying already-paid/expired/cancelled invoices
     if (invoice.status === "paid" || invoice.status === "expired" || invoice.status === "cancelled" || invoice.status === "refunded") {
       toast.error(`This invoice is ${invoice.status} and cannot be paid.`);
@@ -284,7 +285,7 @@ function PaymentPage() {
       setPaymentState("error");
       toast.error(message);
     }
-  }, [invoice, effectivePayAmount, paymentState, isBlockchainInvoice, blockchainInvoiceId, address, fetchBalances]);
+  }, [invoice, effectivePayAmount, paymentState, invoiceExpired, isBlockchainInvoice, blockchainInvoiceId, address, fetchBalances]);
 
   // --- Loading ---
   if (invoiceLoading) {
@@ -387,10 +388,21 @@ function PaymentPage() {
             onClick={() => {
               setPaymentState("idle");
               setErrorMessage(null);
+              setCompletedPayment(null);
             }}
           >
             Try Again
           </Button>
+          {txId && (
+            <a
+              href={getExplorerTxUrl(txId)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary text-body-sm underline"
+            >
+              Check transaction on explorer →
+            </a>
+          )}
         </div>
       </PageShell>
     );
@@ -473,7 +485,7 @@ function PaymentPage() {
         {invoice.expiresAt && (
           <div className="flex justify-between items-center text-body-sm">
             <span className="text-muted-foreground">Expires in</span>
-            <ExpirationCountdown expiresAt={invoice.expiresAt} />
+            <ExpirationCountdown expiresAt={invoice.expiresAt} onExpired={() => setInvoiceExpired(true)} />
           </div>
         )}
 
@@ -503,6 +515,7 @@ function PaymentPage() {
               placeholder={formatAmount(remaining, tt)}
               value={payAmount}
               onChange={(e) => setPayAmount(e.target.value)}
+              disabled={paymentState !== "idle"}
               className="font-tabular [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
@@ -556,6 +569,7 @@ function PaymentPage() {
           <Button
             className="w-full h-12 text-body font-semibold gap-2"
             onClick={handlePay}
+            disabled={paymentState !== "idle" || !hasSufficient || invoiceExpired}
           >
             <Bitcoin className="h-5 w-5" />Pay {formatAmount(effectivePayAmount, tt)} {tokenLabel(tt)}
           </Button>

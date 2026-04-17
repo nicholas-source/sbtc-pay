@@ -32,8 +32,8 @@ const schema = z.object({
     .positive("Amount must be greater than 0")
     .min(MIN_AMOUNT, `Minimum amount is ${MIN_AMOUNT}`)
     .max(MAX_AMOUNT, `Maximum amount is ${MAX_AMOUNT}`),
-  memo: z.string().max(CONTRACT_LIMITS.MEMO, `Max ${CONTRACT_LIMITS.MEMO} characters`).optional().default(""),
-  referenceId: z.string().max(CONTRACT_LIMITS.REFERENCE_ID, `Max ${CONTRACT_LIMITS.REFERENCE_ID} characters`).optional().default(""),
+  memo: z.string().transform((v) => v.trim()).pipe(z.string().max(CONTRACT_LIMITS.MEMO, `Max ${CONTRACT_LIMITS.MEMO} characters`)).optional().default(""),
+  referenceId: z.string().transform((v) => v.trim()).pipe(z.string().max(CONTRACT_LIMITS.REFERENCE_ID, `Max ${CONTRACT_LIMITS.REFERENCE_ID} characters`)).optional().default(""),
   allowPartial: z.boolean().default(false),
   allowOverpay: z.boolean().default(false),
 });
@@ -94,6 +94,11 @@ export default function CreateInvoiceDialog() {
   async function onSubmit(data: FormValues) {
     if (!walletAddress) {
       toast.error("Wallet not connected");
+      return;
+    }
+
+    if (expirationPreset === "custom" && !customDate) {
+      toast.error("Please select an expiration date");
       return;
     }
 

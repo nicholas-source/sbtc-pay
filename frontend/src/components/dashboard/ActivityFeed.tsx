@@ -60,7 +60,7 @@ export default function ActivityFeed() {
       });
 
       // Payments on this invoice
-      for (const p of inv.payments) {
+      for (const p of inv.payments ?? []) {
         items.push({
           id: `pay-${inv.id}-${p.txId}`,
           type: "payment",
@@ -72,7 +72,7 @@ export default function ActivityFeed() {
       }
 
       // Refunds on this invoice
-      for (const r of inv.refunds) {
+      for (const r of inv.refunds ?? []) {
         items.push({
           id: `ref-${inv.id}-${r.txId}`,
           type: "refund",

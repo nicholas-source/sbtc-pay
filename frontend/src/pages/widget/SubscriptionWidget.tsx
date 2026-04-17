@@ -42,7 +42,7 @@ export default function SubscriptionWidget() {
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const handleSubscribe = useCallback(async () => {
-    if (!addr || subState !== "idle") return;
+    if (!addr || (subState !== "idle" && subState !== "error")) return;
 
     if (!isConnected || !address) {
       toast.info("Connect your wallet first");
@@ -149,6 +149,8 @@ export default function SubscriptionWidget() {
               >
                 {subState === "confirming" ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
+                ) : subState === "error" ? (
+                  <><Wallet className="h-4 w-4" /> Try Again</>
                 ) : (
                   <><Wallet className="h-4 w-4" /> Subscribe Now</>
                 )}

@@ -35,7 +35,7 @@ export default function DirectPaymentWidget() {
   const addr = merchantAddress || "";
 
   const handlePay = useCallback(async () => {
-    if (!addr || payState !== "idle") return;
+    if (!addr || (payState !== "idle" && payState !== "error")) return;
     const sats = Number(payAmount);
     if (!sats || sats <= 0) { toast.error("Enter a valid amount"); return; }
 
@@ -172,6 +172,7 @@ export default function DirectPaymentWidget() {
                 value={payMemo}
                 onChange={(e) => setPayMemo(e.target.value)}
                 disabled={payState === "confirming"}
+                maxLength={200}
               />
             </div>
 

@@ -40,13 +40,17 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [refundType, setRefundType] = useState<"full" | "partial">("full");
   const [reasonPreset, setReasonPreset] = useState<string>("Customer request");
+  const [isRefunding, setIsRefunding] = useState(false);
   const tt = invoice.tokenType;
+
+  const totalRefunded = (invoice.refunds ?? []).reduce((sum, r) => sum + r.amount, 0);
+  const refundableAmount = invoice.amountPaid - totalRefunded;
 
   const schema = z.object({
     amount: z.coerce
       .number()
       .positive("Amount must be positive")
-      .max(baseToHuman(invoice.amountPaid, tt), `Cannot exceed ${formatAmount(invoice.amountPaid, tt)} ${tokenLabel(tt)}`),
+      .max(baseToHuman(refundableAmount, tt), `Cannot exceed ${formatAmount(refundableAmount, tt)} ${tokenLabel(tt)}`),
     reason: z.string().trim().min(1, "Reason is required").max(CONTRACT_LIMITS.REASON, `Max ${CONTRACT_LIMITS.REASON} characters`),
   });
 
@@ -55,7 +59,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
-      amount: baseToHuman(invoice.amountPaid, tt),
+      amount: baseToHuman(refundableAmount, tt),
       reason: "Customer request",
     },
   });
@@ -67,7 +71,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   function handleTypeChange(type: "full" | "partial") {
     setRefundType(type);
     if (type === "full") {
-      form.setValue("amount", baseToHuman(invoice.amountPaid, tt));
+      form.setValue("amount", baseToHuman(refundableAmount, tt));
     }
   }
 
@@ -87,6 +91,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
   async function handleConfirm() {
     const values = form.getValues();
     const refundBaseUnits = humanToBaseUnits(values.amount, tt);
+    setIsRefunding(true);
     try {
       const success = await refundInvoice(invoice.id, refundBaseUnits, values.reason);
       if (success) {
@@ -100,6 +105,8 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Refund failed");
       setConfirmOpen(false);
+    } finally {
+      setIsRefunding(false);
     }
   }
 
@@ -112,7 +119,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
               <RotateCcw className="h-4 w-4" /> Refund {invoice.id}
             </DialogTitle>
             <DialogDescription>
-              Available: {formatAmount(invoice.amountPaid, tt)} {tokenLabel(tt)} (${amountToUsd(invoice.amountPaid, tt, btcPriceUsd, stxPriceUsd)})
+              Refundable: {formatAmount(refundableAmount, tt)} {tokenLabel(tt)} (${amountToUsd(refundableAmount, tt, btcPriceUsd, stxPriceUsd)})
             </DialogDescription>
           </DialogHeader>
 
@@ -205,9 +212,9 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Go Back</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Process Refund
+            <AlertDialogCancel disabled={isRefunding}>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm} disabled={isRefunding} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {isRefunding ? "Processing…" : "Process Refund"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
