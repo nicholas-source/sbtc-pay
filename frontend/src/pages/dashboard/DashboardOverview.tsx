@@ -8,6 +8,7 @@ import RevenueChart from "@/components/dashboard/RevenueChart";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import { amountToUsd, formatAmount } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
+import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 
 function DashboardOverview() {
   const profile = useMerchantStore((s) => s.profile);
@@ -59,6 +60,7 @@ function DashboardOverview() {
       <div>
         <h1 className="text-heading-lg text-foreground">Dashboard</h1>
         <p className="text-body-sm text-muted-foreground mt-1">Overview of your payment activity.</p>
+        <PriceStatusBadge />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
