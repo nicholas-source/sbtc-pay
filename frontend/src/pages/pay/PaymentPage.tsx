@@ -384,7 +384,7 @@ function PaymentPage() {
   // --- Awaiting Payment ---
   const paidPercent = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
   const tt = invoice.tokenType;
-  const usdAmount = parseFloat(amountToUsd(remaining, tt, btcPriceUsd, stxPriceUsd));
+  const usdAmount = parseFloat(amountToUsd(remaining, tt, btcPriceUsd, stxPriceUsd)) || 0;
   // Match contract's calculate-fee: floor division, min 1 unit when amount > 0
   const feeSats = remaining > 0
     ? Math.max(Math.floor(remaining * feeBps / 10000), feeBps > 0 ? 1 : 0)
