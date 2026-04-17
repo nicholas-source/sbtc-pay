@@ -102,6 +102,8 @@ interface InvoiceStore {
   refundInvoice: (id: string, amount: number, reason: string) => Promise<boolean>;
   getInvoice: (id: string) => Invoice | undefined;
   simulatePayment: (id: string, amount: number) => Payment | null;
+  /** Record a confirmed on-chain payment locally (optimistic update before webhook/fetch). */
+  addConfirmedPayment: (invoiceDbId: number, amount: number, txId: string) => void;
   /** Backfill an optimistic invoice from on-chain tx data into Supabase */
   backfillFromChain: (txId: string, optimisticId: string, merchantPrincipal: string) => Promise<void>;
 }
@@ -265,6 +267,20 @@ async function reconcileWithChain(
         `[reconcile] Invoice ${inv.id}: payment history mismatch — ` +
         `Supabase sum=${supaPaymentSum}, on-chain amountPaid=${chainAmountPaid}`,
       );
+      // Synthesize a catch-up payment so the UI shows *something* instead of
+      // "No payments yet" when the webhook failed to insert the payment row
+      // but the on-chain state is ahead of Supabase.
+      if (chainAmountPaid > supaPaymentSum) {
+        const gap = chainAmountPaid - supaPaymentSum;
+        inv.payments = [
+          ...inv.payments,
+          {
+            timestamp: inv.createdAt, // best approximation
+            amount: gap,
+            txId: "", // unknown — webhook didn't record it
+          },
+        ];
+      }
     }
     if (chain.amountRefunded !== undefined) {
       const chainRefunded = Number(chain.amountRefunded);
@@ -523,6 +539,34 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
     }));
 
     return payment;
+  },
+
+  addConfirmedPayment: (invoiceDbId, amount, txId) => {
+    const invoiceKey = `INV-${invoiceDbId}`;
+    const invoice = get().invoices.find((inv) => inv.id === invoiceKey);
+    if (!invoice || amount <= 0) return;
+    // Don't double-add if a payment with this txId already exists
+    if (invoice.payments.some((p) => p.txId === txId)) return;
+
+    const payment: Payment = {
+      timestamp: new Date(),
+      amount,
+      txId,
+    };
+
+    set((state) => ({
+      invoices: state.invoices.map((inv) => {
+        if (inv.id !== invoiceKey) return inv;
+        const newPaid = inv.amountPaid + amount;
+        const newStatus: InvoiceStatus = newPaid >= inv.amount ? "paid" : "partial";
+        return {
+          ...inv,
+          amountPaid: newPaid,
+          status: newStatus,
+          payments: [...inv.payments, payment],
+        };
+      }),
+    }));
   },
 
   backfillFromChain: async (txId, optimisticId, merchantPrincipal) => {
