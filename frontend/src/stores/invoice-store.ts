@@ -153,7 +153,8 @@ function mapDbInvoice(
 /**
  * Convert a block-height-based expiration to a Date.
  * Returns null if the invoice never expires (expires_at_block <= created_at_block or 0).
- * Uses AVG_BLOCK_TIME_SECONDS (testnet=120s, mainnet=600s) and anchors to the invoice creation timestamp.
+ * Uses AVG_BLOCK_TIME_SECONDS (600s = ~10 min, Bitcoin burn block time) and anchors to the invoice creation timestamp.
+ * Post-Nakamoto: Stacks blocks are ~5s, but the contract uses burn-block-height (Bitcoin L1 blocks).
  */
 function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtBlock: number): Date | null {
   if (!expiresAtBlock) return null;
