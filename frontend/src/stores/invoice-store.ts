@@ -240,17 +240,19 @@ async function reconcileWithChain(
       inv.amount !== chainAmount ||
       inv.amountPaid !== chainAmountPaid ||
       inv.status !== chainStatus ||
-      inv.memo !== chain.memo
+      inv.memo !== chain.memo ||
+      inv.tokenType !== chain.tokenType
     ) {
       console.info(
         `[reconcile] Invoice ${inv.id}: correcting stale data ` +
-        `(amount ${inv.amount}→${chainAmount}, status ${inv.status}→${chainStatus})`,
+        `(amount ${inv.amount}→${chainAmount}, status ${inv.status}→${chainStatus}, token ${inv.tokenType}→${chain.tokenType})`,
       );
       inv.amount = chainAmount;
       inv.amountPaid = chainAmountPaid;
       inv.status = chainStatus;
       inv.memo = chain.memo;
       inv.payerAddress = chain.payer || "";
+      inv.tokenType = chain.tokenType;
 
       fixes.push({
         id: inv.dbId,
@@ -260,6 +262,7 @@ async function reconcileWithChain(
           status: chain.status,
           memo: chain.memo,
           payer: chain.payer,
+          token_type: chain.tokenType,
         },
       });
     }

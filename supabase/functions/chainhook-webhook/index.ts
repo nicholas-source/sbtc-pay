@@ -563,6 +563,72 @@ async function handleDirectPayment(
   });
 }
 
+async function handleInvoiceUpdated(
+  data: Record<string, unknown>,
+  _txId: string,
+  _blockHeight: number,
+) {
+  const invoiceId = data["invoice-id"] as number;
+  const updates: Record<string, unknown> = {};
+
+  if (data["new-amount"] !== undefined) updates.amount = data["new-amount"];
+  if (data["new-memo"] !== undefined) updates.memo = data["new-memo"];
+
+  // The contract recomputes expires_at from burn-block-height + new-expires-in-blocks,
+  // but the event only emits invoice-id, new-amount, new-memo. Read on-chain for
+  // the authoritative expires_at value.
+  try {
+    // Look up the merchant for this invoice to call read-only
+    const { data: invoiceRow } = await supabase
+      .from("invoices")
+      .select("merchant_principal")
+      .eq("id", invoiceId)
+      .single();
+
+    if (invoiceRow?.merchant_principal) {
+      const result = await fetchCallReadOnlyFunction({
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: CONTRACT_NAME,
+        functionName: "get-invoice",
+        functionArgs: [Cl.uint(invoiceId)],
+        network: "testnet",
+        senderAddress: invoiceRow.merchant_principal,
+      });
+      const json = cvToJSON(result);
+      const flat = flattenCvJson(json) as Record<string, unknown> | null;
+      if (flat && flat["expires-at"] !== undefined) {
+        updates.expires_at_block = flat["expires-at"];
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to read on-chain invoice for update:", e);
+  }
+
+  if (Object.keys(updates).length > 0) {
+    const { error } = await supabase
+      .from("invoices")
+      .update(updates)
+      .eq("id", invoiceId);
+    if (error) console.error("invoice update error:", error);
+  }
+}
+
+async function handleInvoiceExpired(
+  data: Record<string, unknown>,
+  _txId: string,
+  blockHeight: number,
+) {
+  const invoiceId = data["invoice-id"] as number;
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      status: 3, // STATUS_EXPIRED
+      expired_at_block: data["block-height"] ?? blockHeight,
+    })
+    .eq("id", invoiceId);
+  if (error) console.error("invoice expire error:", error);
+}
+
 async function handleInvoiceCancelled(data: Record<string, unknown>) {
   await supabase
     .from("invoices")
@@ -801,6 +867,8 @@ const EVENT_HANDLERS: Record<
   "merchant-verified": handleMerchantVerified,
   "merchant-suspended": handleMerchantSuspended,
   "invoice-created": handleInvoiceCreated,
+  "invoice-updated": handleInvoiceUpdated,
+  "invoice-expired": handleInvoiceExpired,
   "invoice-cancelled": handleInvoiceCancelled,
   "payment-received": handlePaymentReceived,
   "direct-payment": handleDirectPayment,
@@ -932,18 +1000,83 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    // Handle rollbacks (mark events as rolled back)
+    // Handle rollbacks — delete events and associated data at rolled-back blocks
     for (const block of rollbackBlocks) {
       const blockHeight = block.block_identifier.index;
       console.warn(`Rollback detected at block ${blockHeight}`);
-      // For now, log it. Full rollback support can be added later.
+
+      // Find all events that were applied at this block height
+      const { data: rolledBackEvents } = await supabase
+        .from("events")
+        .select("event_type, tx_id, payload")
+        .eq("block_height", blockHeight);
+
+      if (rolledBackEvents && rolledBackEvents.length > 0) {
+        console.warn(`Rolling back ${rolledBackEvents.length} events at block ${blockHeight}`);
+
+        for (const evt of rolledBackEvents) {
+          const payload = evt.payload as Record<string, unknown> | null;
+          const eventType = evt.event_type;
+
+          // Revert data based on event type
+          try {
+            if (eventType === "payment-received" && evt.tx_id) {
+              // Delete payment record and revert invoice amount_paid
+              await supabase.from("payments").delete().eq("tx_id", evt.tx_id);
+              // Re-read invoice to recompute amount_paid from remaining payments
+              const invoiceId = payload?.["invoice-id"] as number | undefined;
+              if (invoiceId) {
+                const { data: remaining } = await supabase
+                  .from("payments")
+                  .select("amount")
+                  .eq("invoice_id", invoiceId);
+                const totalPaid = (remaining ?? []).reduce((s, p) => s + (p.amount ?? 0), 0);
+                await supabase.from("invoices").update({
+                  amount_paid: totalPaid,
+                  status: totalPaid === 0 ? 0 : 1, // pending or partial
+                  paid_at_block: null,
+                }).eq("id", invoiceId);
+              }
+            } else if (eventType === "direct-payment" && evt.tx_id) {
+              await supabase.from("direct_payments").delete().eq("tx_id", evt.tx_id);
+            } else if (eventType === "refund-processed" && payload?.["refund-id"]) {
+              await supabase.from("refunds").delete().eq("id", payload["refund-id"]);
+              // Re-read invoice to recompute amount_refunded
+              const invoiceId = payload?.["invoice-id"] as number | undefined;
+              if (invoiceId) {
+                const { data: remaining } = await supabase
+                  .from("refunds")
+                  .select("amount")
+                  .eq("invoice_id", invoiceId);
+                const totalRefunded = (remaining ?? []).reduce((s, r) => s + (r.amount ?? 0), 0);
+                await supabase.from("invoices").update({
+                  amount_refunded: totalRefunded,
+                }).eq("id", invoiceId);
+              }
+            } else if (eventType === "invoice-created" && payload?.["invoice-id"]) {
+              await supabase.from("invoices").delete().eq("id", payload["invoice-id"]);
+            } else if (eventType === "subscription-payment" && evt.tx_id) {
+              await supabase.from("subscription_payments").delete().eq("tx_id", evt.tx_id);
+            } else if (eventType === "subscription-created" && payload?.["subscription-id"]) {
+              await supabase.from("subscriptions").delete().eq("id", payload["subscription-id"]);
+            }
+          } catch (rollbackErr) {
+            console.error(`Rollback revert error for ${eventType}:`, rollbackErr);
+          }
+        }
+
+        // Delete the rolled-back event records
+        await supabase.from("events").delete().eq("block_height", blockHeight);
+      }
+
+      // Log rollback occurrence
       await supabase.from("events").insert({
         event_type: "rollback",
-        tx_id: "rollback",
+        tx_id: `rollback-${blockHeight}`,
         block_height: blockHeight,
         block_hash: block.block_identifier.hash,
         contract_identifier: CONTRACT_ID,
-        payload: { type: "rollback", block_height: blockHeight },
+        payload: { type: "rollback", block_height: blockHeight, reverted_count: rolledBackEvents?.length ?? 0 },
       });
     }
 
