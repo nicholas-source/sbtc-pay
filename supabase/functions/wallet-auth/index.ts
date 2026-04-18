@@ -20,8 +20,8 @@ const MAX_MESSAGE_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_EXPIRY = "24h";
 
 // ── Stacks message hashing (matches @stacks/encryption hashMessage) ─────────
-// Prefix: 0x17 byte + "Stacks Signed Message:\n"
-const CHAIN_PREFIX = "\x17Stacks Signed Message:\n";
+// Prefix: 0x18 byte + "Stacks Signed Message:\n" (same as @stacks/encryption)
+const CHAIN_PREFIX = "\x18Stacks Signed Message:\n";
 
 function hashStacksMessage(message: string): Uint8Array {
   const prefixBytes = utf8ToBytes(CHAIN_PREFIX);
@@ -37,12 +37,15 @@ function verifySignature(
   expectedPubKeyHex: string,
 ): boolean {
   const hash = hashStacksMessage(message);
-  const sigBytes = hexToBytes(signatureHex);
+  // Strip optional 0x prefix
+  const cleanHex = signatureHex.startsWith("0x") ? signatureHex.slice(2) : signatureHex;
+  const sigBytes = hexToBytes(cleanHex);
   if (sigBytes.length !== 65) return false;
 
-  const r = BigInt("0x" + bytesToHex(sigBytes.slice(0, 32)));
-  const s = BigInt("0x" + bytesToHex(sigBytes.slice(32, 64)));
-  const v = sigBytes[64];
+  // Stacks VRS format: [recovery_id (1 byte)][r (32 bytes)][s (32 bytes)]
+  const v = sigBytes[0];
+  const r = BigInt("0x" + bytesToHex(sigBytes.slice(1, 33)));
+  const s = BigInt("0x" + bytesToHex(sigBytes.slice(33, 65)));
   if (v > 3) return false;
 
   try {
