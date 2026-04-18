@@ -1,6 +1,3 @@
-[project]
-id = "oggvlwdptcpwipxahhjn"
-
 # Chainhook webhook receives requests from Hiro Platform with its own
 # consumer-secret auth (checked inside the function). Supabase JWT
 # verification must be disabled so Hiro's Authorization header isn't
