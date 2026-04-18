@@ -21,92 +21,134 @@ const TOKEN_EXPIRY = "24h";
 
 // ── Stacks message hashing ──────────────────────────────────────────────────
 // Exact replica of @stacks/encryption encodeMessage + hashMessage.
-// Uses byte length (not string length) to match the SDK.
+// Source: https://github.com/hirosystems/stacks.js/blob/main/packages/encryption/src/messageSignature.ts
+// Key details:
+//   1. Prefix byte is \x17 (23) = length of "Stacks Signed Message:\n"
+//   2. Message length is Bitcoin-style varint (single byte for len < 253)
+//   3. Byte concatenation (not string concatenation)
 
-function stacksHashMessage(message: string): Uint8Array {
-  const encoded = utf8ToBytes(message);
-  const prefix = utf8ToBytes(`\x18Stacks Signed Message:\n${encoded.length}`);
-  return sha256(concatBytes(prefix, encoded));
+function varintEncode(n: number): Uint8Array {
+  if (n < 0xfd) return new Uint8Array([n]);
+  if (n <= 0xffff) {
+    const buf = new Uint8Array(3);
+    buf[0] = 0xfd;
+    buf[1] = n & 0xff;
+    buf[2] = (n >> 8) & 0xff;
+    return buf;
+  }
+  const buf = new Uint8Array(5);
+  buf[0] = 0xfe;
+  buf[1] = n & 0xff;
+  buf[2] = (n >> 8) & 0xff;
+  buf[3] = (n >> 16) & 0xff;
+  buf[4] = (n >> 24) & 0xff;
+  return buf;
 }
 
-// ── Signature verification ──────────────────────────────────────────────────
-// Uses direct secp256k1.verify() (no recovery byte needed) which matches
-// the @stacks/transactions verifyMessageSignatureRsv implementation.
+function stacksHashMessage(message: string): Uint8Array {
+  const prefix = utf8ToBytes("\x17Stacks Signed Message:\n");
+  const messageBytes = utf8ToBytes(message);
+  const encodedLength = varintEncode(messageBytes.length);
+  return sha256(concatBytes(prefix, encodedLength, messageBytes));
+}
+
+// ── Address-based signature verification ────────────────────────────────────
+// Instead of trusting the client-sent publicKey (which may differ from the
+// wallet's signing key), we RECOVER the public key from the signature,
+// derive its STX address, and verify it matches the claimed address.
+// This is more secure and eliminates key-mismatch issues.
+
 interface VerifyResult {
   valid: boolean;
+  recoveredPubKey?: string;
   debug?: string;
 }
 
-function verifySignature(
+function verifySignatureForAddress(
   message: string,
   signatureHex: string,
-  expectedPubKeyHex: string,
+  claimedAddress: string,
 ): VerifyResult {
   const cleanSig = signatureHex.startsWith("0x") ? signatureHex.slice(2) : signatureHex;
-  const cleanPub = expectedPubKeyHex.startsWith("0x") ? expectedPubKeyHex.slice(2) : expectedPubKeyHex;
 
   if (cleanSig.length !== 130) {
     return { valid: false, debug: `bad sig hex length: ${cleanSig.length} (expected 130)` };
   }
 
-  const hash = stacksHashMessage(message);
-  const hashHex = bytesToHex(hash);
+  const isTestnet = claimedAddress.startsWith("ST");
 
-  // RSV format (Stacks standard): r(32 bytes) + s(32 bytes) + v(1 byte)
-  const rHex = cleanSig.slice(0, 64);
-  const sHex = cleanSig.slice(64, 128);
-  const vByte = parseInt(cleanSig.slice(128, 130), 16);
-
-  // 1. Direct verification — does not need recovery byte at all
-  try {
-    const sig = new secp256k1.Signature(BigInt("0x" + rHex), BigInt("0x" + sHex));
-    const valid = secp256k1.verify(sig, hash, cleanPub);
-    if (valid) {
-      return { valid: true, debug: "direct-verify-RSV" };
-    }
-  } catch (e) {
-    // Fall through to recovery-based check
-  }
-
-  // 2. Recovery-based check (for diagnostics) — try RSV and VRS byte orders
-  const attempts: string[] = [];
-  const orders = [
-    { name: "RSV", r: rHex, s: sHex, v: vByte },
-    {
-      name: "VRS",
-      r: cleanSig.slice(2, 66),
-      s: cleanSig.slice(66, 130),
-      v: parseInt(cleanSig.slice(0, 2), 16),
-    },
+  // Try both hash strategies: string-length (SDK standard) and byte-length (fallback)
+  const msgBytes = utf8ToBytes(message);
+  const hashes = [
+    { name: "strLen", hash: stacksHashMessage(message) },
+    ...(message.length !== msgBytes.length
+      ? [{
+          name: "byteLen",
+          hash: sha256(concatBytes(
+            utf8ToBytes(`\x18Stacks Signed Message:\n${msgBytes.length}`),
+            msgBytes,
+          )),
+        }]
+      : []),
   ];
 
-  for (const fmt of orders) {
-    const recoveryId = fmt.v >= 27 ? fmt.v - 27 : fmt.v;
-    if (recoveryId > 3) {
-      attempts.push(`${fmt.name}: v=${fmt.v} (skip, recId=${recoveryId})`);
-      continue;
-    }
-    try {
-      const sig = new secp256k1.Signature(
-        BigInt("0x" + fmt.r),
-        BigInt("0x" + fmt.s),
-      ).addRecoveryBit(recoveryId);
-      const recovered = sig.recoverPublicKey(hash).toHex(true);
-      if (recovered === cleanPub) {
-        return { valid: true, debug: `recovery-${fmt.name}` };
+  // Try both byte orders: RSV (Stacks standard) and VRS (some wallets)
+  const attempts: string[] = [];
+
+  for (const { name: hashName, hash } of hashes) {
+    const orders = [
+      {
+        name: "RSV",
+        r: cleanSig.slice(0, 64),
+        s: cleanSig.slice(64, 128),
+        v: parseInt(cleanSig.slice(128, 130), 16),
+      },
+      {
+        name: "VRS",
+        r: cleanSig.slice(2, 66),
+        s: cleanSig.slice(66, 130),
+        v: parseInt(cleanSig.slice(0, 2), 16),
+      },
+    ];
+
+    for (const fmt of orders) {
+      // Try both raw recovery ID and BIP-137 offset (v-27)
+      const candidates = [fmt.v];
+      if (fmt.v >= 27 && fmt.v <= 30) candidates.push(fmt.v - 27);
+      if (fmt.v >= 31 && fmt.v <= 34) candidates.push(fmt.v - 31);
+
+      for (const recId of candidates) {
+        if (recId < 0 || recId > 3) continue;
+        try {
+          const sig = new secp256k1.Signature(
+            BigInt("0x" + fmt.r),
+            BigInt("0x" + fmt.s),
+          ).addRecoveryBit(recId);
+          const recovered = sig.recoverPublicKey(hash);
+          const recoveredHex = recovered.toHex(true); // compressed
+          const derivedAddr = pubKeyToStxAddress(recoveredHex, isTestnet);
+
+          if (derivedAddr === claimedAddress) {
+            return {
+              valid: true,
+              recoveredPubKey: recoveredHex,
+              debug: `${fmt.name}+${hashName} recId=${recId}`,
+            };
+          }
+          attempts.push(`${fmt.name}+${hashName}(v=${fmt.v},rec=${recId}): ${derivedAddr.slice(0, 8)}≠${claimedAddress.slice(0, 8)}`);
+        } catch {
+          // Invalid recovery — skip
+        }
       }
-      attempts.push(`${fmt.name}: v=${fmt.v} got=${recovered.slice(0, 16)}`);
-    } catch (e) {
-      attempts.push(`${fmt.name}: v=${fmt.v} err=${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
   return {
     valid: false,
     debug: [
-      `pub=${cleanPub.slice(0, 16)}`,
-      `sig=${cleanSig.slice(0, 16)}…${cleanSig.slice(-4)}`,
-      `hash=${hashHex.slice(0, 16)}`,
+      `addr=${claimedAddress.slice(0, 12)}`,
+      `sig=${cleanSig.slice(0, 12)}…${cleanSig.slice(-4)}`,
+      `hashHex=${bytesToHex(hashes[0].hash).slice(0, 12)}`,
       ...attempts,
     ].join(" | "),
   };
@@ -143,9 +185,9 @@ Deno.serve(async (req) => {
       address?: string;
     };
 
-    if (!message || !signature || !publicKey || !address) {
+    if (!message || !signature || !address) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: message, signature, publicKey, address" }),
+        JSON.stringify({ error: "Missing required fields: message, signature, address" }),
         { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
@@ -166,8 +208,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Verify the signature was produced by the claimed public key
-    const result = verifySignature(message, signature, publicKey);
+    // 2. Verify the signature was produced by a key that derives to the claimed address
+    const result = verifySignatureForAddress(message, signature, address);
     if (!result.valid) {
       console.warn("[wallet-auth] Verification failed:", result.debug);
       return new Response(
@@ -176,20 +218,11 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Verify the public key derives to the claimed address
-    const isTestnet = address.startsWith("ST");
-    const derivedAddress = pubKeyToStxAddress(publicKey, isTestnet);
-    if (derivedAddress !== address) {
-      return new Response(
-        JSON.stringify({ error: "Public key does not match claimed address" }),
-        { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
-    }
-
-    // 4. Issue Supabase-compatible JWT
-    const jwtSecret = Deno.env.get("SUPABASE_JWT_SECRET");
+    // 3. Issue Supabase-compatible JWT (no separate address derivation needed —
+    //    verifySignatureForAddress already proved the signer owns the address)
+    const jwtSecret = Deno.env.get("JWT_SIGNING_SECRET");
     if (!jwtSecret) {
-      console.error("[wallet-auth] SUPABASE_JWT_SECRET not configured");
+      console.error("[wallet-auth] JWT_SIGNING_SECRET not configured");
       return new Response(
         JSON.stringify({ error: "Server configuration error" }),
         { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
