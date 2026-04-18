@@ -19,42 +19,72 @@ const CORS_HEADERS: Record<string, string> = {
 const MAX_MESSAGE_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_EXPIRY = "24h";
 
-// ── Stacks message hashing (matches @stacks/encryption hashMessage) ─────────
-// Prefix: 0x18 byte + "Stacks Signed Message:\n" (same as @stacks/encryption)
-const CHAIN_PREFIX = "\x18Stacks Signed Message:\n";
+// ── Stacks message hashing ──────────────────────────────────────────────────
+// Two known prefix bytes used across wallet implementations
+const PREFIXES = [
+  "\x18Stacks Signed Message:\n",  // @stacks/encryption standard
+  "\x17Stacks Signed Message:\n",  // alternate
+];
 
-function hashStacksMessage(message: string): Uint8Array {
-  const prefixBytes = utf8ToBytes(CHAIN_PREFIX);
+function hashWithPrefix(prefix: string, message: string): Uint8Array {
+  const prefixBytes = utf8ToBytes(prefix);
   const messageBytes = utf8ToBytes(message);
-  const lengthBytes = utf8ToBytes(String(messageBytes.length));
+  // Use JS string length (matches @stacks/encryption's message.length)
+  const lengthBytes = utf8ToBytes(String(message.length));
   return sha256(concatBytes(prefixBytes, lengthBytes, messageBytes));
 }
 
 // ── Signature verification ──────────────────────────────────────────────────
+interface VerifyResult {
+  valid: boolean;
+  debug?: string;
+}
+
 function verifySignature(
   message: string,
   signatureHex: string,
   expectedPubKeyHex: string,
-): boolean {
-  const hash = hashStacksMessage(message);
-  // Strip optional 0x prefix
+): VerifyResult {
   const cleanHex = signatureHex.startsWith("0x") ? signatureHex.slice(2) : signatureHex;
   const sigBytes = hexToBytes(cleanHex);
-  if (sigBytes.length !== 65) return false;
 
-  // Stacks VRS format: [recovery_id (1 byte)][r (32 bytes)][s (32 bytes)]
-  const v = sigBytes[0];
-  const r = BigInt("0x" + bytesToHex(sigBytes.slice(1, 33)));
-  const s = BigInt("0x" + bytesToHex(sigBytes.slice(33, 65)));
-  if (v > 3) return false;
-
-  try {
-    const sig = new secp256k1.Signature(r, s).addRecoveryBit(v);
-    const recovered = sig.recoverPublicKey(hash);
-    return recovered.toHex(true) === expectedPubKeyHex;
-  } catch {
-    return false;
+  if (sigBytes.length !== 65) {
+    return { valid: false, debug: `bad sig length: ${sigBytes.length}` };
   }
+
+  // Two possible byte orders: VRS [v(1)+r(32)+s(32)] and RSV [r(32)+s(32)+v(1)]
+  const formats = [
+    { name: "VRS", v: sigBytes[0], r: sigBytes.slice(1, 33), s: sigBytes.slice(33, 65) },
+    { name: "RSV", v: sigBytes[64], r: sigBytes.slice(0, 32), s: sigBytes.slice(32, 64) },
+  ];
+
+  const attempts: string[] = [];
+
+  for (const prefix of PREFIXES) {
+    const hash = hashWithPrefix(prefix, message);
+    for (const fmt of formats) {
+      const recoveryId = fmt.v > 27 ? fmt.v - 27 : fmt.v; // handle Ethereum-style v=27/28
+      if (recoveryId > 3) {
+        attempts.push(`${fmt.name}+0x${prefix.charCodeAt(0).toString(16)}: v=${fmt.v} (skip, too large)`);
+        continue;
+      }
+      try {
+        const r = BigInt("0x" + bytesToHex(fmt.r));
+        const s = BigInt("0x" + bytesToHex(fmt.s));
+        const sig = new secp256k1.Signature(r, s).addRecoveryBit(recoveryId);
+        const recovered = sig.recoverPublicKey(hash);
+        const recoveredHex = recovered.toHex(true);
+        if (recoveredHex === expectedPubKeyHex) {
+          return { valid: true, debug: `${fmt.name}+0x${prefix.charCodeAt(0).toString(16)}` };
+        }
+        attempts.push(`${fmt.name}+0x${prefix.charCodeAt(0).toString(16)}: v=${fmt.v} recovered=${recoveredHex.slice(0, 10)}… expected=${expectedPubKeyHex.slice(0, 10)}…`);
+      } catch (e) {
+        attempts.push(`${fmt.name}+0x${prefix.charCodeAt(0).toString(16)}: v=${fmt.v} error=${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+  }
+
+  return { valid: false, debug: attempts.join(" | ") };
 }
 
 // ── Address derivation from compressed public key ───────────────────────────
@@ -112,9 +142,11 @@ Deno.serve(async (req) => {
     }
 
     // 2. Verify the signature was produced by the claimed public key
-    if (!verifySignature(message, signature, publicKey)) {
+    const result = verifySignature(message, signature, publicKey);
+    if (!result.valid) {
+      console.warn("[wallet-auth] Verification failed:", result.debug);
       return new Response(
-        JSON.stringify({ error: "Invalid signature" }),
+        JSON.stringify({ error: "Invalid signature", debug: result.debug }),
         { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
       );
     }
