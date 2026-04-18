@@ -683,6 +683,8 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       const expiresInBlocks = parseInt((args["expires-in-blocks"] || "u0").replace("u", ""), 10);
       const allowPartial = args["allow-partial"] === "true";
       const allowOverpay = args["allow-overpay"] === "true";
+      const tokenTypeArg = parseInt((args["token-type"] || "u0").replace("u", ""), 10);
+      const tokenType: TokenType = tokenTypeArg === 1 ? 'stx' : 'sbtc';
 
       const db = supabaseWithWallet(merchantPrincipal);
 
@@ -738,7 +740,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
             allow_overpay: allowOverpay,
             created_at_block: blockHeight,
             expires_at_block: expiresInBlocks > 0 ? blockHeight + expiresInBlocks : blockHeight + 52560,
-            token_type: 'sbtc', // backfill defaults to sbtc; webhook will correct if stx
+            token_type: tokenType,
           }, { onConflict: "id" });
           if (error) console.error("backfill invoice upsert failed:", error.message);
         } else {
@@ -751,7 +753,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       set((state) => {
         const updated = state.invoices.map((inv) => {
           if (inv.id !== optimisticId) return inv;
-          return { ...inv, id: `INV-${onchainId}`, dbId: onchainId, txId: undefined };
+          return { ...inv, id: `INV-${onchainId}`, dbId: onchainId, txId: undefined, tokenType };
         });
         saveOptimisticToStorage(updated);
         return { invoices: updated };
