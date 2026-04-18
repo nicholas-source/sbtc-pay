@@ -5,9 +5,11 @@ import {
   disconnect as stacksDisconnect,
   isConnected as stacksIsConnected,
   getLocalStorage,
+  request as stacksRequest,
 } from '@stacks/connect';
 import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
 import { amountToUsd as amountToUsdFn } from '@/lib/constants';
+import { setAuthToken } from '@/lib/supabase/client';
 
 export type WalletProvider = 'leather' | 'xverse' | 'asigna' | null;
 export type Network = 'mainnet' | 'testnet';
@@ -98,6 +100,7 @@ interface WalletState {
   publicKey: string | null;
   network: Network;
   connectionError: WalletError;
+  authToken: string | null;
 
   // Balances (in base units: microSTX and sats)
   stxBalance: bigint;
@@ -110,6 +113,7 @@ interface WalletState {
   connect: () => Promise<void>;
   disconnect: () => void;
   checkConnection: () => void;
+  authenticate: () => Promise<void>;
   fetchBalances: () => Promise<void>;
   fetchPrices: () => Promise<void>;
   setNetwork: (network: Network) => void;
@@ -143,6 +147,7 @@ export const useWalletStore = create<WalletState>()(
       publicKey: null,
       network: NETWORK_MODE,
       connectionError: null,
+      authToken: null,
       stxBalance: BigInt(0),
       sbtcBalance: BigInt(0),
       btcPriceUsd: null,
@@ -189,6 +194,8 @@ export const useWalletStore = create<WalletState>()(
                 connectionError: null,
               });
 
+              // Authenticate with wallet signature → JWT
+              get().authenticate();
               // Fetch balances after connecting
               get().fetchBalances();
               get().fetchPrices();
@@ -229,12 +236,14 @@ export const useWalletStore = create<WalletState>()(
 
       disconnect: () => {
         stacksDisconnect();
+        setAuthToken(null);
         set({
           isConnected: false,
           isConnecting: false,
           provider: null,
           address: null,
           publicKey: null,
+          authToken: null,
           stxBalance: BigInt(0),
           sbtcBalance: BigInt(0),
           connectionError: null,
@@ -274,10 +283,52 @@ export const useWalletStore = create<WalletState>()(
               publicKey: (stxAddr as { publicKey?: string }).publicKey || null,
               connectionError: null,
             });
+            // Authenticate if no token yet
+            if (!get().authToken) {
+              get().authenticate();
+            }
             // Refresh balances
             get().fetchBalances();
             get().fetchPrices();
           }
+        }
+      },
+
+      authenticate: async () => {
+        const { address, publicKey } = get();
+        if (!address || !publicKey) return;
+
+        try {
+          // Build a timestamped message for signing
+          const message = `Sign in to sBTC Pay\nAddress: ${address}\nTimestamp: ${Date.now()}`;
+
+          // Request wallet signature
+          const { signature } = await stacksRequest('stx_signMessage', { message });
+
+          // Exchange for JWT via wallet-auth edge function
+          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+          const res = await fetch(`${supabaseUrl}/functions/v1/wallet-auth`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+            },
+            body: JSON.stringify({ message, signature, publicKey, address }),
+          });
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({ error: 'Auth request failed' }));
+            console.warn('[wallet-auth] Token exchange failed:', data.error);
+            return; // Graceful degradation — falls back to x-wallet-address header
+          }
+
+          const { token } = await res.json();
+          set({ authToken: token });
+          setAuthToken(token);
+        } catch (err) {
+          // User may have declined the signature request — that's OK,
+          // we fall back to x-wallet-address header auth.
+          console.warn('[wallet-auth] Authentication skipped:', err instanceof Error ? err.message : err);
         }
       },
 

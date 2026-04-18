@@ -91,11 +91,16 @@ interface CreateInvoiceData {
   txId?: string;
 }
 
+const PAGE_SIZE = 50;
+
 interface InvoiceStore {
   invoices: Invoice[];
   isLoading: boolean;
+  isFetchingMore: boolean;
+  hasMore: boolean;
   error: string | null;
   fetchInvoices: (merchantPrincipal: string) => Promise<void>;
+  fetchMoreInvoices: (merchantPrincipal: string) => Promise<void>;
   createInvoice: (data: CreateInvoiceData) => Invoice;
   updateInvoice: (id: string, data: Partial<Pick<Invoice, "memo" | "amount" | "referenceId">>) => void;
   cancelInvoice: (id: string) => Promise<void>;
@@ -338,6 +343,8 @@ function randomTxId(): string {
 export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
   invoices: loadOptimisticFromStorage(),
   isLoading: false,
+  isFetchingMore: false,
+  hasMore: false,
   error: null,
 
   fetchInvoices: async (merchantPrincipal) => {
@@ -349,14 +356,15 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
         .from("invoices")
         .select("*")
         .eq("merchant_principal", merchantPrincipal)
-        .order("id", { ascending: false });
+        .order("id", { ascending: false })
+        .range(0, PAGE_SIZE - 1);
 
       if (invErr) throw invErr;
       if (!invoiceRows || invoiceRows.length === 0) {
         // Keep all pending invoices (optimistic or backfilled-but-not-indexed)
         const pending = get().invoices.filter((inv) => inv.txId);
         saveOptimisticToStorage(pending);
-        set({ invoices: pending, isLoading: false });
+        set({ invoices: pending, isLoading: false, hasMore: false });
         return;
       }
 
@@ -410,10 +418,72 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       });
 
       saveOptimisticToStorage(pending);
-      set({ invoices: [...pending, ...invoices], isLoading: false });
+      set({ invoices: [...pending, ...invoices], isLoading: false, hasMore: invoiceRows.length === PAGE_SIZE });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to fetch invoices";
       set({ error: message, isLoading: false });
+    }
+  },
+
+  fetchMoreInvoices: async (merchantPrincipal) => {
+    const { invoices: current, isFetchingMore, hasMore } = get();
+    if (isFetchingMore || !hasMore) return;
+    set({ isFetchingMore: true });
+    try {
+      const db = supabaseWithWallet(merchantPrincipal);
+      // Offset = number of Supabase-sourced invoices (exclude optimistic dbId===0)
+      const offset = current.filter((inv) => inv.dbId > 0).length;
+      const { data: invoiceRows, error: invErr } = await db
+        .from("invoices")
+        .select("*")
+        .eq("merchant_principal", merchantPrincipal)
+        .order("id", { ascending: false })
+        .range(offset, offset + PAGE_SIZE - 1);
+
+      if (invErr) throw invErr;
+      if (!invoiceRows || invoiceRows.length === 0) {
+        set({ isFetchingMore: false, hasMore: false });
+        return;
+      }
+
+      const invoiceIds = invoiceRows.map((r) => r.id);
+      const [paymentsRes, refundsRes] = await Promise.all([
+        db.from("payments").select("*").in("invoice_id", invoiceIds),
+        db.from("refunds").select("*").in("invoice_id", invoiceIds),
+      ]);
+
+      const paymentsByInvoice = new Map<number, Tables<"payments">[]>();
+      for (const p of paymentsRes.data ?? []) {
+        const arr = paymentsByInvoice.get(p.invoice_id) ?? [];
+        arr.push(p);
+        paymentsByInvoice.set(p.invoice_id, arr);
+      }
+
+      const refundsByInvoice = new Map<number, Tables<"refunds">[]>();
+      for (const r of refundsRes.data ?? []) {
+        const arr = refundsByInvoice.get(r.invoice_id) ?? [];
+        arr.push(r);
+        refundsByInvoice.set(r.invoice_id, arr);
+      }
+
+      const newInvoices = invoiceRows.map((row) =>
+        mapDbInvoice(row, paymentsByInvoice.get(row.id) ?? [], refundsByInvoice.get(row.id) ?? []),
+      );
+
+      const reconciled = await reconcileWithChain(newInvoices, merchantPrincipal, db);
+
+      // Deduplicate against existing invoices
+      const existingIds = new Set(current.map((inv) => inv.dbId));
+      const unique = reconciled.filter((inv) => !existingIds.has(inv.dbId));
+
+      set({
+        invoices: [...current, ...unique],
+        isFetchingMore: false,
+        hasMore: invoiceRows.length === PAGE_SIZE,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to load more invoices";
+      set({ error: message, isFetchingMore: false });
     }
   },
 

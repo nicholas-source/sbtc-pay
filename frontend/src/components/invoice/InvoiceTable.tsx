@@ -16,7 +16,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useLivePrices } from "@/stores/wallet-store";
+import { useLivePrices, useWalletStore } from "@/stores/wallet-store";
+import { Loader2 } from "lucide-react";
 
 type SortKey = "id" | "amount" | "createdAt" | "expiresAt" | "status";
 type SortDir = "asc" | "desc";
@@ -29,6 +30,10 @@ interface Props {
 
 export default function InvoiceTable({ onSelect }: Props) {
   const invoices = useInvoiceStore((s) => s.invoices);
+  const hasMore = useInvoiceStore((s) => s.hasMore);
+  const isFetchingMore = useInvoiceStore((s) => s.isFetchingMore);
+  const fetchMoreInvoices = useInvoiceStore((s) => s.fetchMoreInvoices);
+  const walletAddress = useWalletStore((s) => s.address);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const [search, setSearch] = useState("");
@@ -256,6 +261,20 @@ export default function InvoiceTable({ onSelect }: Props) {
             </TableBody>
           </Table>
         </ScrollableTable>
+      )}
+
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isFetchingMore}
+            onClick={() => walletAddress && fetchMoreInvoices(walletAddress)}
+          >
+            {isFetchingMore ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            {isFetchingMore ? "Loading…" : "Load more invoices"}
+          </Button>
+        </div>
       )}
     </div>
   );
