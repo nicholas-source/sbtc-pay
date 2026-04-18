@@ -22,7 +22,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 
 import { humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
-import type { TokenType } from "@/lib/stacks/config";
+import { BURN_BLOCKS_PER_HOUR, type TokenType } from "@/lib/stacks/config";
 
 const TOKEN_LIMITS: Record<TokenType, { min: number; max: number; placeholder: string; step: string }> = {
   sbtc: { min: 0.00001, max: 21, placeholder: '0.001', step: '0.00000001' },
@@ -55,20 +55,19 @@ const expirationPresets = [
   { label: "Never", value: "never" },
 ];
 
-/** Convert expiration preset to approximate Stacks blocks (~10 min/block on testnet) */
+/** Convert expiration preset to burn (Bitcoin) blocks */
 function presetToBlocks(preset: string, customDate?: Date): number {
-  const BLOCKS_PER_HOUR = 6; // ~10 min/block
   switch (preset) {
-    case "1h": return BLOCKS_PER_HOUR;
-    case "24h": return BLOCKS_PER_HOUR * 24;
-    case "7d": return BLOCKS_PER_HOUR * 24 * 7;
-    case "30d": return BLOCKS_PER_HOUR * 24 * 30;
-    case "365d": return BLOCKS_PER_HOUR * 24 * 365;
+    case "1h": return BURN_BLOCKS_PER_HOUR;
+    case "24h": return BURN_BLOCKS_PER_HOUR * 24;
+    case "7d": return BURN_BLOCKS_PER_HOUR * 24 * 7;
+    case "30d": return BURN_BLOCKS_PER_HOUR * 24 * 30;
+    case "365d": return BURN_BLOCKS_PER_HOUR * 24 * 365;
     case "never": return 0;
     case "custom": {
       if (!customDate) return 0;
       const hoursUntil = Math.max(1, (customDate.getTime() - Date.now()) / (1000 * 60 * 60));
-      return Math.ceil(hoursUntil * BLOCKS_PER_HOUR);
+      return Math.ceil(hoursUntil * BURN_BLOCKS_PER_HOUR);
     }
     default: return 0;
   }

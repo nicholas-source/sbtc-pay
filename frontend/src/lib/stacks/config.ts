@@ -93,16 +93,19 @@ export const TOKEN_DECIMALS: Record<TokenType, number> = { sbtc: 8, stx: 6 };
 // Average burn (Bitcoin) block time in seconds.
 // Post-Nakamoto, Stacks blocks are ~5s but the contract uses burn-block-height
 // (Bitcoin L1 blocks) for all timing: expiration, refund windows, subscriptions.
-// Bitcoin blocks average ~10 min on both testnet and mainnet.
-export const AVG_BLOCK_TIME_SECONDS = 600;
+// Mainnet Bitcoin blocks average ~10 min; testnet regtest blocks are faster (~5 min).
+export const AVG_BLOCK_TIME_SECONDS = NETWORK_MODE === 'mainnet' ? 600 : 300;
 
-// Expiration presets (in burn/Bitcoin blocks, ~10 min each)
+// Burn blocks per hour, derived from the average block time
+export const BURN_BLOCKS_PER_HOUR = Math.round(3600 / AVG_BLOCK_TIME_SECONDS);
+
+// Expiration presets (in burn/Bitcoin blocks)
 export const EXPIRATION_PRESETS = [
-  { label: '1 Hour', blocks: 6 },
-  { label: '24 Hours', blocks: 144 },
-  { label: '7 Days', blocks: 1008 },
-  { label: '30 Days', blocks: 4320 },
-  { label: '1 Year', blocks: 52560 },
+  { label: '1 Hour', blocks: BURN_BLOCKS_PER_HOUR },
+  { label: '24 Hours', blocks: BURN_BLOCKS_PER_HOUR * 24 },
+  { label: '7 Days', blocks: BURN_BLOCKS_PER_HOUR * 24 * 7 },
+  { label: '30 Days', blocks: BURN_BLOCKS_PER_HOUR * 24 * 30 },
+  { label: '1 Year', blocks: BURN_BLOCKS_PER_HOUR * 24 * 365 },
 ] as const;
 
 /** Fetch the current burn (Bitcoin) block height from the Stacks API. */

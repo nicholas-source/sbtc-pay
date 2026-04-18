@@ -77,7 +77,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           </div>
           <div className="flex gap-4 text-xs text-muted-foreground mt-1">
             <span>Created {formatDistanceToNow(invoice.createdAt, { addSuffix: true })}</span>
-            <span>{invoice.expiresAt ? `Expires ${formatDistanceToNow(invoice.expiresAt, { addSuffix: true })}` : "No expiration"}</span>
+            <span>{invoice.status === "expired" ? "Expired" : invoice.expiresAt ? `Expires ${formatDistanceToNow(invoice.expiresAt, { addSuffix: true })}` : "No expiration"}</span>
           </div>
         </SheetHeader>
 

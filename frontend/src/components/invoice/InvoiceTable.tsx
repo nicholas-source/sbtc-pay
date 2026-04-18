@@ -231,7 +231,7 @@ export default function InvoiceTable({ onSelect }: Props) {
                       {formatDistanceToNow(inv.createdAt, { addSuffix: true })}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
-                      {inv.expiresAt ? formatDistanceToNow(inv.expiresAt, { addSuffix: true }) : "Never"}
+                      {inv.status === "expired" ? "Expired" : inv.expiresAt ? formatDistanceToNow(inv.expiresAt, { addSuffix: true }) : "Never"}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
