@@ -25,32 +25,33 @@ async function captureReceiptAsPdf(element: HTMLElement, filename: string) {
   const html2canvas = (await import("html2canvas-pro")).default;
   const { jsPDF } = await import("jspdf");
 
-  // Force light-mode colors on the receipt for a clean PDF regardless of theme
+  // Force dark-mode colors for a polished receipt PDF on all devices
   const style = document.createElement("style");
   style.textContent = `
     .receipt-capture, .receipt-capture * {
-      color-scheme: light !important;
+      color-scheme: dark !important;
     }
     .receipt-capture {
-      background: #ffffff !important;
-      color: #1a1a1a !important;
-      border-color: #e5e7eb !important;
+      background: #0f1419 !important;
+      color: #f0f0f0 !important;
+      border-color: #2a3040 !important;
+      border-radius: 16px !important;
     }
     .receipt-capture .receipt-header {
-      background: #ecfdf5 !important;
+      background: #0d2a1a !important;
     }
-    .receipt-capture .receipt-success { color: #16a34a !important; }
+    .receipt-capture .receipt-success { color: #34d399 !important; }
     .receipt-capture .receipt-primary { color: #f97316 !important; }
-    .receipt-capture .receipt-muted { color: #6b7280 !important; }
-    .receipt-capture .receipt-fg { color: #1a1a1a !important; }
+    .receipt-capture .receipt-muted { color: #9ca3af !important; }
+    .receipt-capture .receipt-fg { color: #f0f0f0 !important; }
     .receipt-capture .receipt-footer {
-      background: #f3f4f6 !important;
+      background: #141a22 !important;
       color: #6b7280 !important;
     }
     .receipt-capture a { color: #f97316 !important; }
     .receipt-capture hr, .receipt-capture [data-slot="separator"] {
-      border-color: #e5e7eb !important;
-      background: #e5e7eb !important;
+      border-color: #2a3040 !important;
+      background: #2a3040 !important;
     }
   `;
   document.head.appendChild(style);
@@ -58,8 +59,8 @@ async function captureReceiptAsPdf(element: HTMLElement, filename: string) {
 
   try {
     const canvas = await html2canvas(element, {
-      scale: 2,
-      backgroundColor: "#ffffff",
+      scale: 3,
+      backgroundColor: "#0f1419",
       useCORS: true,
     });
 
@@ -67,13 +68,16 @@ async function captureReceiptAsPdf(element: HTMLElement, filename: string) {
     const imgWidth = canvas.width;
     const imgHeight = canvas.height;
 
-    // Size PDF to content with margins
+    // Size PDF to content with margins — dark page background
     const pdfWidth = 210; // mm (A4)
     const pdfImgWidth = pdfWidth - 20; // 10mm margins
     const pdfImgHeight = (imgHeight * pdfImgWidth) / imgWidth;
     const pdfHeight = Math.max(pdfImgHeight + 20, 100);
 
     const pdf = new jsPDF({ unit: "mm", format: [pdfWidth, pdfHeight] });
+    // Dark page background
+    pdf.setFillColor(15, 20, 25); // #0f1419
+    pdf.rect(0, 0, pdfWidth, pdfHeight, "F");
     pdf.addImage(imgData, "PNG", 10, 10, pdfImgWidth, pdfImgHeight);
     pdf.save(filename);
   } finally {
