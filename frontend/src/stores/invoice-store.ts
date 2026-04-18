@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
-import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain, fetchPaymentEventsForInvoice } from "@/lib/stacks/contract";
+import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, updateInvoice as updateInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain, fetchPaymentEventsForInvoice } from "@/lib/stacks/contract";
 import { API_URL, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight, type TokenType } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
@@ -102,7 +102,7 @@ interface InvoiceStore {
   fetchInvoices: (merchantPrincipal: string) => Promise<void>;
   fetchMoreInvoices: (merchantPrincipal: string) => Promise<void>;
   createInvoice: (data: CreateInvoiceData) => Invoice;
-  updateInvoice: (id: string, data: Partial<Pick<Invoice, "memo" | "amount" | "referenceId">>) => void;
+  updateInvoice: (id: string, data: { amount: number; memo: string; expiresInBlocks: number }) => Promise<void>;
   cancelInvoice: (id: string) => Promise<void>;
   refundInvoice: (id: string, amount: number, reason: string) => Promise<boolean>;
   getInvoice: (id: string) => Invoice | undefined;
@@ -518,9 +518,31 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
     return invoice;
   },
 
-  updateInvoice: (id, data) => {
+  updateInvoice: async (id, data) => {
+    const invoice = get().invoices.find((inv) => inv.id === id);
+    if (!invoice) return;
+
+    if (invoice.dbId > 0) {
+      try {
+        toast.info("Please confirm the update in your wallet");
+        await updateInvoiceOnChain({
+          invoiceId: invoice.dbId,
+          newAmount: BigInt(data.amount),
+          newMemo: data.memo,
+          newExpiresInBlocks: data.expiresInBlocks,
+        });
+        toast.success("Invoice update submitted!", { description: "Will update once confirmed." });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Update failed";
+        toast.error("Invoice update failed", { description: message });
+        return;
+      }
+    }
+    // Optimistic local update
     set((state) => ({
-      invoices: state.invoices.map((inv) => (inv.id === id ? { ...inv, ...data } : inv)),
+      invoices: state.invoices.map((inv) =>
+        inv.id === id ? { ...inv, amount: data.amount, memo: data.memo } : inv
+      ),
     }));
   },
 
