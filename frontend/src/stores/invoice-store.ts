@@ -770,12 +770,13 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
         }
       }
 
-      // Update the optimistic invoice in the local store with the real dbId
-      // Clear txId so it's no longer treated as optimistic/pending
+      // Update the optimistic invoice in the local store with the real dbId.
+      // Keep txId so the invoice persists in localStorage until fetchInvoices
+      // confirms it exists in Supabase (the dedup logic clears it then).
       set((state) => {
         const updated = state.invoices.map((inv) => {
           if (inv.id !== optimisticId) return inv;
-          return { ...inv, id: `INV-${onchainId}`, dbId: onchainId, txId: undefined, tokenType };
+          return { ...inv, id: `INV-${onchainId}`, dbId: onchainId, tokenType };
         });
         saveOptimisticToStorage(updated);
         return { invoices: updated };
