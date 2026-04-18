@@ -75,7 +75,7 @@ function RefundsPage() {
   const handleExport = useCallback(() => {
     const rows = flatRefunds.map((f) => ({
       "Invoice ID": f.invoiceId,
-      "Refund Amount (sats)": f.refund.amount,
+      "Refund Amount": f.refund.amount,
       Reason: f.refund.reason,
       Date: format(f.refund.timestamp, "yyyy-MM-dd HH:mm"),
       "TX ID": f.refund.txId,

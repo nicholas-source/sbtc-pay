@@ -11,17 +11,18 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
+import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
 import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, fetchBurnBlockHeight } from "@/lib/stacks/config";
 
 export default function InvoicePaymentWidget() {
-  const { invoiceId } = useParams();
-  const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
+  const { invoiceId: rawInvoiceId } = useParams();
+  // Accept both "10" and "INV-10" formats
+  const invoiceId = rawInvoiceId?.replace(/^INV-/i, "").trim();
+  const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === rawInvoiceId || i.id === `INV-${invoiceId}` || i.dbId.toString() === invoiceId));
 
   const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
-  const satsToUsd = useSatsToUsd();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
@@ -88,6 +89,11 @@ export default function InvoicePaymentWidget() {
 
     if (address === PAYMENT_CONTRACT.address) {
       toast.error("Fee-recipient wallet cannot make payments");
+      return;
+    }
+
+    if (invoice.merchantAddress && address.toLowerCase() === invoice.merchantAddress.toLowerCase()) {
+      toast.error("You cannot pay your own invoice");
       return;
     }
 

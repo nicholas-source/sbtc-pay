@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { useWalletStore } from "@/stores/wallet-store";
-import { formatAmount, amountToUsd } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel, humanToBaseUnits } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
 import { isValidStacksAddress } from "@/lib/validators";
+import type { TokenType } from "@/lib/stacks/config";
 
 type WidgetType = "direct" | "invoice" | "subscription";
 
@@ -20,12 +21,13 @@ export default function WidgetGeneratorPage() {
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [widgetType, setWidgetType] = useState<WidgetType>("direct");
   const [merchantAddress, setMerchantAddress] = useState(walletAddress);
-  const [amount, setAmount] = useState("100000");
+  const [amount, setAmount] = useState("0.001");
   const [memo, setMemo] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
   const [planName, setPlanName] = useState("Standard Plan");
   const [interval, setInterval] = useState("monthly");
   const [theme, setTheme] = useState("dark");
+  const [tokenType, setTokenType] = useState<TokenType>("sbtc");
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
@@ -47,22 +49,26 @@ export default function WidgetGeneratorPage() {
     switch (widgetType) {
       case "direct": {
         const params = new URLSearchParams();
-        if (amount) params.set("amount", amount);
+        if (amount) params.set("amount", String(humanToBaseUnits(Number(amount), tokenType)));
         if (memo) params.set("memo", memo);
         if (theme) params.set("theme", theme);
+        if (tokenType !== "sbtc") params.set("token", tokenType);
         return `${base}/widget/${merchantAddress}?${params.toString()}`;
       }
-      case "invoice":
-        return `${base}/widget/invoice/${invoiceId || "INV-XXXX"}`;
+      case "invoice": {
+        const id = invoiceId.replace(/^INV-/i, "").trim();
+        return `${base}/widget/invoice/${id || "0"}`;
+      }
       case "subscription": {
         const params = new URLSearchParams();
         if (planName) params.set("plan", planName);
-        if (amount) params.set("amount", amount);
+        if (amount) params.set("amount", String(humanToBaseUnits(Number(amount), tokenType)));
         if (interval) params.set("interval", interval);
+        if (tokenType !== "sbtc") params.set("token", tokenType);
         return `${base}/widget/subscribe/${merchantAddress}?${params.toString()}`;
       }
     }
-  }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme]);
+  }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme, tokenType]);
 
   const embedCode = `<iframe src="${previewUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:420px;" allow="clipboard-write"></iframe>`;
 
@@ -110,10 +116,20 @@ export default function WidgetGeneratorPage() {
                   {addressError && <p className="text-xs text-destructive">{addressError}</p>}
                 </div>
                 <div className="space-y-1">
-                  <label className="text-caption text-muted-foreground">Default Amount (sats)</label>
-                  <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
+                  <label className="text-caption text-muted-foreground">Token</label>
+                  <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sbtc">sBTC</SelectItem>
+                      <SelectItem value="stx">STX</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-caption text-muted-foreground">Default Amount ({tokenLabel(tokenType)})</label>
+                  <Input type="number" min={0} step={tokenType === 'stx' ? '0.000001' : '0.00000001'} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={tokenType === 'stx' ? '50' : '0.001'} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
-                    <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc', btcPriceUsd, stxPriceUsd)} USD</p>
+                    <p className="text-caption text-muted-foreground">{Number(amount)} {tokenLabel(tokenType)} ≈ ${amountToUsd(humanToBaseUnits(Number(amount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD</p>
                   )}
                 </div>
                 <div className="space-y-1">
@@ -135,7 +151,18 @@ export default function WidgetGeneratorPage() {
               <TabsContent value="invoice" className="space-y-3 mt-4">
                 <div className="space-y-1">
                   <label className="text-caption text-muted-foreground">Invoice ID</label>
-                  <Input value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)} placeholder="INV-XXXX" className="font-mono" />
+                  <Input
+                    value={invoiceId}
+                    onChange={(e) => setInvoiceId(e.target.value)}
+                    placeholder="e.g. 10 or INV-10"
+                    className="font-mono"
+                  />
+                  <p className="text-caption text-muted-foreground">
+                    Enter the numeric invoice ID (or INV-XX format). The widget will fetch invoice details from the blockchain and let customers pay.
+                  </p>
+                  {invoiceId && !/^\d+$/.test(invoiceId.replace(/^INV-/i, "").trim()) && (
+                    <p className="text-xs text-destructive">Invoice ID must be a number (e.g. 10 or INV-10)</p>
+                  )}
                 </div>
               </TabsContent>
 
@@ -150,10 +177,20 @@ export default function WidgetGeneratorPage() {
                   <Input value={planName} onChange={(e) => setPlanName(e.target.value)} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-caption text-muted-foreground">Amount (sats)</label>
-                  <Input type="number" min={1} value={amount} onChange={(e) => setAmount(e.target.value)} className="font-tabular" />
+                  <label className="text-caption text-muted-foreground">Token</label>
+                  <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sbtc">sBTC</SelectItem>
+                      <SelectItem value="stx">STX</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-caption text-muted-foreground">Amount ({tokenLabel(tokenType)})</label>
+                  <Input type="number" min={0} step={tokenType === 'stx' ? '0.000001' : '0.00000001'} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={tokenType === 'stx' ? '50' : '0.001'} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
-                    <p className="text-caption text-muted-foreground">{formatAmount(Number(amount), 'sbtc')} sBTC ≈ ${amountToUsd(Number(amount), 'sbtc', btcPriceUsd, stxPriceUsd)} USD</p>
+                    <p className="text-caption text-muted-foreground">{Number(amount)} {tokenLabel(tokenType)} ≈ ${amountToUsd(humanToBaseUnits(Number(amount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD</p>
                   )}
                 </div>
                 <div className="space-y-1">

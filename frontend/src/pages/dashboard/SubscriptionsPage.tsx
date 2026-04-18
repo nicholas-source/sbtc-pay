@@ -58,20 +58,21 @@ function SubscriptionsPage() {
       const plan = plans.find((p) => p.id === sub.planId);
       const base = {
         "Plan Name": plan?.name ?? "",
-        "Plan Amount (sBTC)": plan?.amount ?? "",
+        "Plan Amount": plan?.amount ?? "",
+        "Token": plan?.tokenType ?? "sbtc",
         Interval: plan?.interval ?? "",
         "Subscriber Address": sub.payerAddress,
         Status: sub.status,
         "Started At": format(sub.startedAt, "yyyy-MM-dd"),
       };
       if (sub.payments.length === 0) {
-        rows.push({ ...base, "Payment Date": "", "Payment Amount (sBTC)": "", "TX ID": "" });
+        rows.push({ ...base, "Payment Date": "", "Payment Amount": "", "TX ID": "" });
       } else {
         for (const p of sub.payments) {
           rows.push({
             ...base,
             "Payment Date": format(p.timestamp, "yyyy-MM-dd"),
-            "Payment Amount (sBTC)": p.amount,
+            "Payment Amount": p.amount,
             "TX ID": p.txId,
           });
         }
@@ -103,7 +104,7 @@ function SubscriptionsPage() {
         <EmptyState
           icon={Layers}
           title="No subscription plans"
-          description="Create your first recurring payment plan to start collecting sBTC subscriptions."
+          description="Create your first recurring payment plan to start collecting recurring payments."
           action={<CreatePlanDialog />}
         />
       ) : (

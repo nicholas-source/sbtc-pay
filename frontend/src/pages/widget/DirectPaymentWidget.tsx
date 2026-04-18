@@ -8,8 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd, tokenLabel, baseToHuman, humanToBaseUnits } from "@/lib/constants";
+import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
 import { payMerchantDirect, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
@@ -24,21 +24,23 @@ export default function DirectPaymentWidget() {
   const rawToken = params.get("token") || 'sbtc';
   const tokenType: TokenType = (rawToken === 'stx' ? 'stx' : 'sbtc');
 
-  const [payAmount, setPayAmount] = useState(amount);
+  // URL carries base units — convert to human-readable for display
+  const initialHuman = amount ? String(baseToHuman(Number(amount), tokenType)) : "";
+  const [payAmount, setPayAmount] = useState(initialHuman);
   const [payMemo, setPayMemo] = useState(memo);
   const [payState, setPayState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
-  const satsToUsd = useSatsToUsd();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const addr = merchantAddress || "";
 
   const handlePay = useCallback(async () => {
     if (!addr || (payState !== "idle" && payState !== "error")) return;
-    const sats = Number(payAmount);
-    if (!sats || sats <= 0) { toast.error("Enter a valid amount"); return; }
+    const humanAmt = Number(payAmount);
+    if (!humanAmt || humanAmt <= 0) { toast.error("Enter a valid amount"); return; }
+    const baseUnits = humanToBaseUnits(humanAmt, tokenType);
 
     if (!isConnected || !address) {
       toast.info("Connect your wallet first");
@@ -51,11 +53,16 @@ export default function DirectPaymentWidget() {
       return;
     }
 
+    if (address.toLowerCase() === addr.toLowerCase()) {
+      toast.error("You cannot pay yourself");
+      return;
+    }
+
     // Guard: check wallet balance before attempting payment
     const walletBalance = tokenType === 'stx' ? stxBalance : sbtcBalance;
-    if (walletBalance < BigInt(sats)) {
+    if (walletBalance < BigInt(baseUnits)) {
       const label = tokenLabel(tokenType);
-      toast.error(`Insufficient ${label} balance: need ${formatAmount(sats, tokenType)} but wallet has ${formatAmount(Number(walletBalance), tokenType)}`);
+      toast.error(`Insufficient ${label} balance: need ${humanAmt} but wallet has ${baseToHuman(Number(walletBalance), tokenType)}`);
       return;
     }
 
@@ -66,7 +73,7 @@ export default function DirectPaymentWidget() {
       toast.info("Please confirm the transaction in your wallet");
       const result = await payMerchantDirect({
         merchantAddress: addr,
-        amount: BigInt(sats),
+        amount: BigInt(baseUnits),
         memo: payMemo || "",
         payerAddress: address,
         tokenType,
@@ -115,7 +122,7 @@ export default function DirectPaymentWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Payment Submitted</p>
               <p className="text-body-sm text-muted-foreground">
-                {formatAmount(Number(payAmount), tokenType)} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">(≈ ${amountToUsd(Number(payAmount), tokenType, btcPriceUsd, stxPriceUsd)} USD)</span> sent to merchant
+                {payAmount} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">(≈ ${amountToUsd(humanToBaseUnits(Number(payAmount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD)</span> sent to merchant
               </p>
               <a
                 href={getExplorerTxUrl(txId)}
@@ -125,6 +132,13 @@ export default function DirectPaymentWidget() {
               >
                 View transaction →
               </a>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setPayState("idle"); setTxId(null); setPayAmount(initialHuman); setPayMemo(memo); }}
+              >
+                Pay Again
+              </Button>
             </CardContent>
           </Card>
         </div>
@@ -153,15 +167,16 @@ export default function DirectPaymentWidget() {
               <label className="text-caption text-muted-foreground">Amount ({tokenLabel(tokenType)})</label>
               <Input
                 type="number"
-                min={1}
-                placeholder="Enter amount in sats"
+                min={0}
+                step={tokenType === 'stx' ? '0.000001' : '0.00000001'}
+                placeholder={tokenType === 'stx' ? 'e.g. 50' : 'e.g. 0.001'}
                 value={payAmount}
                 onChange={(e) => setPayAmount(e.target.value)}
                 className="font-tabular"
                 disabled={payState === "confirming"}
               />
               {payAmount && Number(payAmount) > 0 && (
-                <p className="text-caption text-muted-foreground">{formatAmount(Number(payAmount), tokenType)} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">≈ ${amountToUsd(Number(payAmount), tokenType, btcPriceUsd, stxPriceUsd)} USD</span></p>
+                <p className="text-caption text-muted-foreground">{Number(payAmount)} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">≈ ${amountToUsd(humanToBaseUnits(Number(payAmount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD</span></p>
               )}
               <PriceStatusBadge />
             </div>
@@ -194,7 +209,7 @@ export default function DirectPaymentWidget() {
                 {payState === "confirming" ? (
                   <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
                 ) : (
-                  <><Wallet className="h-4 w-4" /> Pay {payAmount ? `${formatAmount(Number(payAmount), tokenType)} ${tokenLabel(tokenType)}` : ""}</>
+                  <><Wallet className="h-4 w-4" /> Pay {payAmount ? `${Number(payAmount)} ${tokenLabel(tokenType)}` : ""}</>
                 )}
               </Button>
             )}

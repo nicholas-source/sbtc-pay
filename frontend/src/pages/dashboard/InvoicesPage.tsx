@@ -49,8 +49,9 @@ function InvoicesPage() {
   const handleExport = useCallback(() => {
     const rows = invoices.map((inv) => ({
       "Invoice ID": inv.id,
-      "Amount (sats)": inv.amount,
-      "Amount Paid (sats)": inv.amountPaid,
+      "Amount": inv.amount,
+      "Amount Paid": inv.amountPaid,
+      "Token": inv.tokenType ?? "sbtc",
       Status: inv.status,
       Memo: inv.memo ?? "",
       Created: format(new Date(inv.createdAt), "yyyy-MM-dd HH:mm"),

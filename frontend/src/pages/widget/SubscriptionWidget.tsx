@@ -5,9 +5,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel, baseToHuman, humanToBaseUnits } from "@/lib/constants";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { useWalletStore, useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
+import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
@@ -32,11 +32,11 @@ export default function SubscriptionWidget() {
   const tokenType: TokenType = (rawToken === 'stx' ? 'stx' : 'sbtc');
 
   const addr = merchantAddress || "";
-  const satsAmount = parseInt(amount) || 100000;
+  const baseAmount = parseInt(amount) || 100000;
+  const humanAmount = baseToHuman(baseAmount, tokenType);
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
 
   const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
-  const satsToUsd = useSatsToUsd();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [subState, setSubState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
   const [txId, setTxId] = useState<string | null>(null);
@@ -56,11 +56,16 @@ export default function SubscriptionWidget() {
       return;
     }
 
+    if (address.toLowerCase() === addr.toLowerCase()) {
+      toast.error("You cannot subscribe to yourself");
+      return;
+    }
+
     // Guard: check wallet balance before attempting subscription
     const walletBalance = tokenType === 'stx' ? stxBalance : sbtcBalance;
-    if (walletBalance < BigInt(satsAmount)) {
+    if (walletBalance < BigInt(baseAmount)) {
       const label = tokenLabel(tokenType);
-      toast.error(`Insufficient ${label} balance: need ${formatAmount(satsAmount, tokenType)} but wallet has ${formatAmount(Number(walletBalance), tokenType)}`);
+      toast.error(`Insufficient ${label} balance: need ${humanAmount} but wallet has ${baseToHuman(Number(walletBalance), tokenType)}`);
       return;
     }
 
@@ -72,7 +77,7 @@ export default function SubscriptionWidget() {
       const result = await createSubscription({
         merchantAddress: addr,
         name: plan,
-        amount: BigInt(satsAmount),
+        amount: BigInt(baseAmount),
         intervalBlocks,
         subscriberAddress: address,
         tokenType,
@@ -91,7 +96,7 @@ export default function SubscriptionWidget() {
       setSubState("error");
       toast.error(readable || msg);
     }
-  }, [addr, plan, satsAmount, intervalBlocks, subState, isConnected, address, connect]);
+  }, [addr, plan, baseAmount, intervalBlocks, subState, isConnected, address, connect]);
 
   if (subState === "confirmed" && txId) {
     return (
@@ -102,7 +107,7 @@ export default function SubscriptionWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Subscribed!</p>
               <p className="text-body-sm text-muted-foreground">
-                {formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)} (≈ ${amountToUsd(satsAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD) / {interval}
+                {humanAmount} {tokenLabel(tokenType)} (≈ ${amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD) / {interval}
               </p>
               <a href={getExplorerTxUrl(txId)} target="_blank" rel="noopener noreferrer"
                 className="text-primary text-body-sm underline">
@@ -129,8 +134,8 @@ export default function SubscriptionWidget() {
             <div className="text-center space-y-1">
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
-              <p className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(satsAmount, tokenType)} {tokenLabel(tokenType)}</p>
-              <p className="text-caption text-muted-foreground">≈ ${amountToUsd(satsAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD per {interval}</p>
+              <p className="text-2xl sm:text-sats text-primary font-tabular">{humanAmount} {tokenLabel(tokenType)}</p>
+              <p className="text-caption text-muted-foreground">≈ ${amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD per {interval}</p>
               <PriceStatusBadge />
             </div>
 
