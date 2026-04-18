@@ -25,25 +25,61 @@ async function captureReceiptAsPdf(element: HTMLElement, filename: string) {
   const html2canvas = (await import("html2canvas-pro")).default;
   const { jsPDF } = await import("jspdf");
 
-  const canvas = await html2canvas(element, {
-    scale: 2,
-    backgroundColor: "#ffffff",
-    useCORS: true,
-  });
+  // Force light-mode colors on the receipt for a clean PDF regardless of theme
+  const style = document.createElement("style");
+  style.textContent = `
+    .receipt-capture, .receipt-capture * {
+      color-scheme: light !important;
+    }
+    .receipt-capture {
+      background: #ffffff !important;
+      color: #1a1a1a !important;
+      border-color: #e5e7eb !important;
+    }
+    .receipt-capture .receipt-header {
+      background: #ecfdf5 !important;
+    }
+    .receipt-capture .receipt-success { color: #16a34a !important; }
+    .receipt-capture .receipt-primary { color: #f97316 !important; }
+    .receipt-capture .receipt-muted { color: #6b7280 !important; }
+    .receipt-capture .receipt-fg { color: #1a1a1a !important; }
+    .receipt-capture .receipt-footer {
+      background: #f3f4f6 !important;
+      color: #6b7280 !important;
+    }
+    .receipt-capture a { color: #f97316 !important; }
+    .receipt-capture hr, .receipt-capture [data-slot="separator"] {
+      border-color: #e5e7eb !important;
+      background: #e5e7eb !important;
+    }
+  `;
+  document.head.appendChild(style);
+  element.classList.add("receipt-capture");
 
-  const imgData = canvas.toDataURL("image/png");
-  const imgWidth = canvas.width;
-  const imgHeight = canvas.height;
+  try {
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      backgroundColor: "#ffffff",
+      useCORS: true,
+    });
 
-  // A4 width in points = 595.28, but we size to content
-  const pdfWidth = 210; // mm (A4)
-  const pdfImgWidth = pdfWidth - 20; // 10mm margins
-  const pdfImgHeight = (imgHeight * pdfImgWidth) / imgWidth;
-  const pdfHeight = Math.max(pdfImgHeight + 20, 100);
+    const imgData = canvas.toDataURL("image/png");
+    const imgWidth = canvas.width;
+    const imgHeight = canvas.height;
 
-  const pdf = new jsPDF({ unit: "mm", format: [pdfWidth, pdfHeight] });
-  pdf.addImage(imgData, "PNG", 10, 10, pdfImgWidth, pdfImgHeight);
-  pdf.save(filename);
+    // Size PDF to content with margins
+    const pdfWidth = 210; // mm (A4)
+    const pdfImgWidth = pdfWidth - 20; // 10mm margins
+    const pdfImgHeight = (imgHeight * pdfImgWidth) / imgWidth;
+    const pdfHeight = Math.max(pdfImgHeight + 20, 100);
+
+    const pdf = new jsPDF({ unit: "mm", format: [pdfWidth, pdfHeight] });
+    pdf.addImage(imgData, "PNG", 10, 10, pdfImgWidth, pdfImgHeight);
+    pdf.save(filename);
+  } finally {
+    element.classList.remove("receipt-capture");
+    document.head.removeChild(style);
+  }
 }
 
 export function PaymentConfirmation({
@@ -137,7 +173,7 @@ export function PaymentConfirmation({
         className="w-full rounded-xl border border-border bg-card shadow-sm overflow-hidden"
       >
         {/* Header */}
-        <div className="bg-success/10 px-5 py-4 text-center">
+        <div className="receipt-header bg-success/10 px-5 py-4 text-center">
           {confirmed ? (
             <motion.div
               initial={{ scale: 0, rotate: -180 }}
@@ -153,14 +189,14 @@ export function PaymentConfirmation({
           ) : (
             <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto mb-2" />
           )}
-          <p className={`text-heading-sm ${confirmed ? "text-success" : "text-primary"}`}>
+          <p className={`text-heading-sm ${confirmed ? "text-success receipt-success" : "text-primary receipt-primary"}`}>
             {confirmed ? "Payment Confirmed" : "Transaction Submitted"}
           </p>
-          <p className="text-2xl font-bold text-foreground mt-1 font-tabular">
+          <p className="text-2xl font-bold text-foreground receipt-fg mt-1 font-tabular">
             {formatAmount(amount, tokenType)} {tokenLabel(tokenType)}
           </p>
           {usdValue !== "—" && (
-            <p className="text-body-sm text-muted-foreground mt-0.5">≈ ${usdValue} USD</p>
+            <p className="text-body-sm text-muted-foreground receipt-muted mt-0.5">≈ ${usdValue} USD</p>
           )}
         </div>
 
@@ -168,15 +204,15 @@ export function PaymentConfirmation({
         <div className="px-5 py-4 space-y-3 text-body-sm">
           {invoiceId && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Invoice</span>
-              <span className="text-foreground font-medium">{invoiceId}</span>
+              <span className="text-muted-foreground receipt-muted">Invoice</span>
+              <span className="text-foreground receipt-fg font-medium">{invoiceId}</span>
             </div>
           )}
 
           {merchantAddress && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Merchant</span>
-              <span className="text-foreground font-mono text-caption" title={merchantAddress}>
+              <span className="text-muted-foreground receipt-muted">Merchant</span>
+              <span className="text-foreground receipt-fg font-mono text-caption" title={merchantAddress}>
                 {truncateAddress(merchantAddress)}
               </span>
             </div>
@@ -184,29 +220,29 @@ export function PaymentConfirmation({
 
           {memo && (
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Memo</span>
-              <span className="text-foreground truncate max-w-[180px]" title={memo}>{memo}</span>
+              <span className="text-muted-foreground receipt-muted">Memo</span>
+              <span className="text-foreground receipt-fg truncate max-w-[180px]" title={memo}>{memo}</span>
             </div>
           )}
 
           <Separator className="my-1" />
 
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Status</span>
-            <span className={confirmed ? "text-success font-medium" : "text-primary font-medium"}>
+            <span className="text-muted-foreground receipt-muted">Status</span>
+            <span className={confirmed ? "text-success receipt-success font-medium" : "text-primary receipt-primary font-medium"}>
               {confirmed ? "✓ Confirmed on-chain" : "Pending…"}
             </span>
           </div>
 
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Network</span>
-            <span className="text-foreground">{networkLabel}</span>
+            <span className="text-muted-foreground receipt-muted">Network</span>
+            <span className="text-foreground receipt-fg">{networkLabel}</span>
           </div>
 
           {payment && (
             <>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Transaction</span>
+                <span className="text-muted-foreground receipt-muted">Transaction</span>
                 {hasTxId ? (
                   <a
                     href={explorerUrl!}
@@ -224,8 +260,8 @@ export function PaymentConfirmation({
               </div>
 
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Date</span>
-                <span className="text-foreground">
+                <span className="text-muted-foreground receipt-muted">Date</span>
+                <span className="text-foreground receipt-fg">
                   {format(payment.timestamp, "MMM d, yyyy 'at' HH:mm")}
                 </span>
               </div>
@@ -235,16 +271,16 @@ export function PaymentConfirmation({
           <Separator className="my-1" />
 
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Amount Paid</span>
-            <span className="text-foreground font-semibold font-tabular">
+            <span className="text-muted-foreground receipt-muted">Amount Paid</span>
+            <span className="text-foreground receipt-fg font-semibold font-tabular">
               {formatAmount(amount, tokenType)} {tokenLabel(tokenType)}
             </span>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="bg-muted/40 px-5 py-2.5 text-center">
-          <p className="text-caption text-muted-foreground">
+        <div className="receipt-footer bg-muted/40 px-5 py-2.5 text-center">
+          <p className="text-caption text-muted-foreground receipt-muted">
             sBTC Pay • Blockchain-verified receipt
           </p>
         </div>
