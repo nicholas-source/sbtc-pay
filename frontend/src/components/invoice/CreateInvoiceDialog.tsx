@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -24,21 +24,26 @@ import { humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
 import { useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
 import type { TokenType } from "@/lib/stacks/config";
 
-const MIN_AMOUNT = 0.00001;
-const MAX_AMOUNT = 21;
+const TOKEN_LIMITS: Record<TokenType, { min: number; max: number; placeholder: string; step: string }> = {
+  sbtc: { min: 0.00001, max: 21, placeholder: '0.001', step: '0.00000001' },
+  stx:  { min: 0.000001, max: 1_000_000, placeholder: '50', step: '0.000001' },
+};
 
-const schema = z.object({
-  amount: z.coerce.number()
-    .positive("Amount must be greater than 0")
-    .min(MIN_AMOUNT, `Minimum amount is ${MIN_AMOUNT}`)
-    .max(MAX_AMOUNT, `Maximum amount is ${MAX_AMOUNT}`),
-  memo: z.string().transform((v) => v.trim()).pipe(z.string().max(CONTRACT_LIMITS.MEMO, `Max ${CONTRACT_LIMITS.MEMO} characters`)).optional().default(""),
-  referenceId: z.string().transform((v) => v.trim()).pipe(z.string().max(CONTRACT_LIMITS.REFERENCE_ID, `Max ${CONTRACT_LIMITS.REFERENCE_ID} characters`)).optional().default(""),
-  allowPartial: z.boolean().default(false),
-  allowOverpay: z.boolean().default(false),
-});
+function createSchema(tokenType: TokenType) {
+  const { min, max } = TOKEN_LIMITS[tokenType];
+  return z.object({
+    amount: z.coerce.number()
+      .positive("Amount must be greater than 0")
+      .min(min, `Minimum amount is ${min}`)
+      .max(max, `Maximum amount is ${max.toLocaleString()}`),
+    memo: z.string().transform((v) => v.trim()).pipe(z.string().max(CONTRACT_LIMITS.MEMO, `Max ${CONTRACT_LIMITS.MEMO} characters`)).optional().default(""),
+    referenceId: z.string().transform((v) => v.trim()).pipe(z.string().max(CONTRACT_LIMITS.REFERENCE_ID, `Max ${CONTRACT_LIMITS.REFERENCE_ID} characters`)).optional().default(""),
+    allowPartial: z.boolean().default(false),
+    allowOverpay: z.boolean().default(false),
+  });
+}
 
-type FormValues = z.infer<typeof schema>;
+type FormValues = z.infer<ReturnType<typeof createSchema>>;
 
 const expirationPresets = [
   { label: "1 hour", value: "1h" },
@@ -82,10 +87,17 @@ export default function CreateInvoiceDialog() {
   const backfillFromChain = useInvoiceStore((s) => s.backfillFromChain);
   const walletAddress = useWalletStore((s) => s.address);
 
+  const schema = useMemo(() => createSchema(tokenType), [tokenType]);
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: { amount: undefined as unknown as number, memo: "", referenceId: "", allowPartial: false, allowOverpay: false },
   });
+
+  // Re-validate amount when token type changes
+  useEffect(() => {
+    const amt = form.getValues('amount');
+    if (amt) form.trigger('amount');
+  }, [tokenType]);
 
   const watchAmount = form.watch("amount");
   const baseAmount = watchAmount && watchAmount > 0 ? humanToBaseUnits(watchAmount, tokenType) : 0;
@@ -187,7 +199,7 @@ export default function CreateInvoiceDialog() {
                 <FormLabel>Amount ({tokenLabel(tokenType)})</FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <Input type="number" step={tokenType === 'stx' ? '0.000001' : '0.00000001'} placeholder="0.001" {...field} className="font-mono pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
+                    <Input type="number" step={TOKEN_LIMITS[tokenType].step} placeholder={TOKEN_LIMITS[tokenType].placeholder} {...field} className="font-mono pr-20 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" />
                     {usdValue && (
                       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
                         ≈ ${usdValue}
