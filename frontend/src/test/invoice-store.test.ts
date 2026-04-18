@@ -52,22 +52,22 @@ describe("invoice-store", () => {
   });
 
   describe("updateInvoice", () => {
-    it("updates memo on existing invoice", () => {
+    it("updates memo on existing invoice (local-only, dbId=0)", async () => {
       const { createInvoice, updateInvoice } = useInvoiceStore.getState();
       const inv = createInvoice({ amount: 5000 });
 
-      updateInvoice(inv.id, { memo: "Updated memo" });
+      await updateInvoice(inv.id, { amount: 5000, memo: "Updated memo", expiresInBlocks: 1008 });
 
       const updated = useInvoiceStore.getState().invoices.find((i) => i.id === inv.id);
       expect(updated?.memo).toBe("Updated memo");
     });
 
-    it("does not affect other invoices", () => {
+    it("does not affect other invoices", async () => {
       const { createInvoice, updateInvoice } = useInvoiceStore.getState();
       const inv1 = createInvoice({ amount: 1000, memo: "first" });
       const inv2 = createInvoice({ amount: 2000, memo: "second" });
 
-      updateInvoice(inv1.id, { memo: "changed" });
+      await updateInvoice(inv1.id, { amount: 1000, memo: "changed", expiresInBlocks: 1008 });
 
       const invoices = useInvoiceStore.getState().invoices;
       expect(invoices.find((i) => i.id === inv1.id)?.memo).toBe("changed");
