@@ -99,8 +99,18 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
               <Progress value={pct} className="h-2" />
               <div className="flex justify-between text-xs text-muted-foreground">
                 <span>{formatAmount(invoice.amountPaid, invoice.tokenType)} paid</span>
-                <span>{formatAmount(invoice.amount - invoice.amountPaid, invoice.tokenType)} remaining</span>
+                <span>{formatAmount(Math.max(0, invoice.amount - invoice.amountPaid), invoice.tokenType)} remaining</span>
               </div>
+              {/* Refund summary */}
+              {invoice.refunds.length > 0 && (() => {
+                const totalRefunded = invoice.refunds.reduce((sum, r) => sum + r.amount, 0);
+                return (
+                  <div className="flex justify-between text-xs text-destructive/80">
+                    <span>{formatAmount(totalRefunded, invoice.tokenType)} refunded</span>
+                    <span>Net: {formatAmount(Math.max(0, invoice.amountPaid - totalRefunded), invoice.tokenType)}</span>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
@@ -155,93 +165,119 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            {invoice.amountPaid > 0 && (invoice.status === "paid" || invoice.status === "partial" || invoice.status === "expired") && (
-              <Button variant="outline" size="sm" onClick={() => setRefundOpen(true)} className="flex-1">
-                <RotateCcw className="mr-2 h-3.5 w-3.5" />Refund
-              </Button>
-            )}
+            {invoice.amountPaid > 0 && (invoice.status === "paid" || invoice.status === "partial" || invoice.status === "expired") && (() => {
+              const uniquePayers = Array.from(new Set(invoice.payments.map((p) => p.payer).filter(Boolean)));
+              const hasMultiplePayers = uniquePayers.length > 1;
+              return hasMultiplePayers ? (
+                <div className="flex-1">
+                  <Button variant="outline" size="sm" disabled className="w-full opacity-50">
+                    <RotateCcw className="mr-2 h-3.5 w-3.5" />Refund
+                  </Button>
+                  <p className="text-[10px] text-destructive mt-1 text-center">
+                    Multiple payers detected — on-chain refund would only go to the last payer. Contact payers directly.
+                  </p>
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setRefundOpen(true)} className="flex-1">
+                  <RotateCcw className="mr-2 h-3.5 w-3.5" />Refund
+                </Button>
+              );
+            })()}
           </div>
 
           <Separator />
 
-          {/* Payment history */}
+          {/* Transaction history — unified timeline of payments and refunds */}
           <div>
-            <h4 className="text-sm font-medium mb-3">Payment History</h4>
-            {invoice.payments.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No payments yet</p>
+            <h4 className="text-sm font-medium mb-3">Transaction History</h4>
+            {invoice.payments.length === 0 && invoice.refunds.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No transactions yet</p>
             ) : (
               <div className="space-y-3">
-                {invoice.payments.map((p, idx) => (
-                  <div key={p.txId || `synth-${idx}`} className="flex items-start gap-3 text-sm">
-                    <div className="mt-0.5 rounded-full bg-success/10 p-1.5">
-                      <ArrowDownLeft className="h-3 w-3 text-success" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono font-tabular">+{formatAmount(p.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
-                        <span className="text-xs text-muted-foreground">{format(p.timestamp, "MMM d, HH:mm")}</span>
+                {[
+                  ...invoice.payments.map((p, idx) => ({
+                    type: "payment" as const,
+                    timestamp: p.timestamp,
+                    amount: p.amount,
+                    txId: p.txId,
+                    payer: p.payer,
+                    reason: "",
+                    key: p.txId || `pay-${idx}`,
+                  })),
+                  ...invoice.refunds.map((r, idx) => ({
+                    type: "refund" as const,
+                    timestamp: r.timestamp,
+                    amount: r.amount,
+                    txId: r.txId,
+                    payer: "",
+                    reason: r.reason,
+                    key: r.txId || `ref-${idx}`,
+                  })),
+                ]
+                  .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
+                  .map((entry) =>
+                    entry.type === "payment" ? (
+                      <div key={entry.key} className="flex items-start gap-3 text-sm">
+                        <div className="mt-0.5 rounded-full bg-success/10 p-1.5">
+                          <ArrowDownLeft className="h-3 w-3 text-success" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono font-tabular text-success">+{formatAmount(entry.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
+                            <span className="text-xs text-muted-foreground">{format(entry.timestamp, "MMM d, HH:mm")}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">Payment received</p>
+                          {entry.payer && (
+                            <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
+                              From: {truncateAddress(entry.payer)}
+                            </p>
+                          )}
+                          {entry.txId ? (
+                            <a
+                              href={getExplorerTxUrl(entry.txId)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
+                            >
+                              Tx: {truncateAddress(entry.txId)}
+                            </a>
+                          ) : (
+                            <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
+                          )}
+                        </div>
                       </div>
-                      {p.payer && (
-                        <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
-                          From: {truncateAddress(p.payer)}
-                        </p>
-                      )}
-                      {p.txId ? (
-                        <a
-                          href={getExplorerTxUrl(p.txId)}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
-                        >
-                          Tx: {truncateAddress(p.txId)}
-                        </a>
-                      ) : (
-                        <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                    ) : (
+                      <div key={entry.key} className="flex items-start gap-3 text-sm">
+                        <div className="mt-0.5 rounded-full bg-destructive/10 p-1.5">
+                          <ArrowUpRight className="h-3 w-3 text-destructive" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="font-mono font-tabular text-destructive">-{formatAmount(entry.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
+                            <span className="text-xs text-muted-foreground">{format(entry.timestamp, "MMM d, HH:mm")}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Refund{entry.reason ? `: ${entry.reason}` : ""}
+                          </p>
+                          {entry.txId ? (
+                            <a
+                              href={getExplorerTxUrl(entry.txId)}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
+                            >
+                              Tx: {truncateAddress(entry.txId)}
+                            </a>
+                          ) : (
+                            <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
+                          )}
+                        </div>
+                      </div>
+                    ),
+                  )}
               </div>
             )}
           </div>
-
-          {/* Refund history */}
-          {invoice.refunds.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h4 className="text-sm font-medium mb-3">Refunds</h4>
-                <div className="space-y-3">
-                  {invoice.refunds.map((r) => (
-                    <div key={r.txId} className="flex items-start gap-3 text-sm">
-                      <div className="mt-0.5 rounded-full bg-destructive/10 p-1.5">
-                        <ArrowUpRight className="h-3 w-3 text-destructive" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-tabular">-{formatAmount(r.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
-                          <span className="text-xs text-muted-foreground">{format(r.timestamp, "MMM d, HH:mm")}</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{r.reason}</p>
-                        {r.txId ? (
-                          <a
-                            href={getExplorerTxUrl(r.txId)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
-                          >
-                            {truncateAddress(r.txId)}
-                          </a>
-                        ) : (
-                          <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
 
           <Separator />
 

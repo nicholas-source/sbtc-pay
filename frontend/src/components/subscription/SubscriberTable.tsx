@@ -47,6 +47,9 @@ export default function SubscriberTable({ planId }: Props) {
   const [statusFilter, setStatusFilter] = useState<"all" | SubscriberStatus>("all");
   const [currentPage, setCurrentPage] = useState(1);
 
+  const plan = useSubscriptionStore((s) => s.plans.find((p) => p.id === planId));
+  const tt = plan?.tokenType ?? 'sbtc';
+
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
@@ -280,7 +283,7 @@ export default function SubscriberTable({ planId }: Props) {
                                 {sortedPayments.map((p) => (
                                   <div key={p.txId} className="grid grid-cols-3 gap-4 text-body-sm px-2 py-1 rounded transition-colors hover:bg-muted/50">
                                     <span>{format(p.timestamp, "MMM d, yyyy HH:mm")}</span>
-                                    <span>{formatAmount(p.amount, 'sbtc')} sBTC</span>
+                                    <span>{formatAmount(p.amount, tt)} {tokenLabel(tt)}</span>
                                     <span className="font-mono text-muted-foreground" title={p.txId}>
                                       {truncateTx(p.txId)}
                                     </span>

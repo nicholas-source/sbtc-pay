@@ -29,11 +29,13 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
-import { amountToUsd } from "@/lib/constants";
+import { amountToUsd, tokenLabel, humanToBaseUnits } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
+import type { TokenType } from "@/lib/stacks/config";
 
 export default function CreatePlanDialog() {
   const [open, setOpen] = useState(false);
+  const [tokenType, setTokenType] = useState<TokenType>("sbtc");
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const createPlan = useSubscriptionStore((s) => s.createPlan);
 
@@ -43,19 +45,20 @@ export default function CreatePlanDialog() {
   });
 
   const amount = form.watch("amount");
-  const usdEstimate = amount ? amountToUsd(amount, 'sbtc', btcPriceUsd, stxPriceUsd) : "0.00";
+  const usdEstimate = amount ? amountToUsd(humanToBaseUnits(amount, tokenType), tokenType, btcPriceUsd, stxPriceUsd) : "0.00";
 
   function onSubmit(data: FormValues) {
     try {
       createPlan({
         name: data.name,
         description: data.description || "",
-        amount: data.amount,
+        amount: humanToBaseUnits(data.amount, tokenType),
         interval: data.interval,
-        tokenType: 'sbtc',
+        tokenType,
       });
       toast.success("Subscription plan created");
       form.reset();
+      setTokenType("sbtc");
       setOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to create plan");
@@ -100,13 +103,23 @@ export default function CreatePlanDialog() {
                 </FormItem>
               )}
             />
+            <div className="space-y-2">
+              <FormLabel>Token</FormLabel>
+              <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sbtc">sBTC</SelectItem>
+                  <SelectItem value="stx">STX</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <FormField
               control={form.control}
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Amount (sats)</FormLabel>
-                  <FormControl><Input type="number" placeholder="50000" {...field} /></FormControl>
+                  <FormLabel>Amount ({tokenLabel(tokenType)})</FormLabel>
+                  <FormControl><Input type="number" step={tokenType === 'stx' ? '0.000001' : '0.00000001'} placeholder={tokenType === 'stx' ? '50' : '0.001'} {...field} /></FormControl>
                   {amount > 0 && (
                     <p className="text-caption text-muted-foreground">≈ ${usdEstimate} USD</p>
                   )}
