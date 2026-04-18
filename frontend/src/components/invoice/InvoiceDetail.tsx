@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { format, formatDistanceToNow } from "date-fns";
-import { Copy, XCircle, ArrowDownLeft, ArrowUpRight, RotateCcw } from "lucide-react";
+import { Copy, XCircle, ArrowDownLeft, ArrowUpRight, RotateCcw, Pencil } from "lucide-react";
 import type { Invoice } from "@/stores/invoice-store";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import InvoiceStatusBadge from "./InvoiceStatusBadge";
 import RefundDialog from "./RefundDialog";
+import EditInvoiceDialog from "./EditInvoiceDialog";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -30,12 +31,15 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
   const cancelInvoice = useInvoiceStore((s) => s.cancelInvoice);
   const liveInvoice = useInvoiceStore((s) => invoiceProp ? s.invoices.find((i) => i.id === invoiceProp.id) : undefined);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
 
   const invoice = liveInvoice ?? invoiceProp;
   if (!invoice) return null;
 
   const pct = invoice.amount > 0 ? Math.round((invoice.amountPaid / invoice.amount) * 100) : 0;
+
+  const canEdit = invoice.status === "pending" && invoice.amountPaid === 0 && invoice.dbId > 0;
 
   async function copyLink() {
     if (invoice!.dbId === 0) {
@@ -119,6 +123,11 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
             <Button variant="outline" size="sm" onClick={copyLink} className="flex-1" disabled={invoice.dbId === 0}>
               <Copy className="mr-2 h-3.5 w-3.5" />{invoice.dbId === 0 ? "Pending…" : "Copy link"}
             </Button>
+            {canEdit && (
+              <Button variant="outline" size="sm" onClick={() => setEditOpen(true)} className="flex-1">
+                <Pencil className="mr-2 h-3.5 w-3.5" />Edit
+              </Button>
+            )}
             {invoice.status === "pending" && invoice.dbId > 0 && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
@@ -247,6 +256,9 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
     </Sheet>
     {invoice && refundOpen && (
       <RefundDialog invoice={invoice} open={refundOpen} onOpenChange={setRefundOpen} />
+    )}
+    {invoice && editOpen && (
+      <EditInvoiceDialog invoice={invoice} open={editOpen} onOpenChange={setEditOpen} />
     )}
     </>
   );
