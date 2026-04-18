@@ -960,7 +960,7 @@ export async function getTransaction(txId: string): Promise<unknown> {
  */
 export async function fetchPaymentEventsForInvoice(
   invoiceId: number
-): Promise<{ txId: string; timestamp: Date; amount: number }[]> {
+): Promise<{ txId: string; timestamp: Date; amount: number; payer: string }[]> {
   try {
     // Strategy 1: Search contract transactions for pay-invoice calls with this invoice ID
     const txRes = await fetch(
@@ -968,13 +968,14 @@ export async function fetchPaymentEventsForInvoice(
     );
     if (txRes.ok) {
       const txData = await txRes.json();
-      const results: { txId: string; timestamp: Date; amount: number }[] = [];
+      const results: { txId: string; timestamp: Date; amount: number; payer: string }[] = [];
 
       for (const tx of txData.results ?? []) {
         if (tx.tx_type !== 'contract_call') continue;
         if (tx.tx_status !== 'success') continue;
         const cc = tx.contract_call;
-        if (!cc || cc.function_name !== 'pay-invoice') continue;
+        // Match all payment function variants: pay-invoice, pay-invoice-stx
+        if (!cc || !cc.function_name?.startsWith('pay-invoice')) continue;
 
         // Check if the first argument is our invoice ID
         const args = cc.function_args;
@@ -999,6 +1000,7 @@ export async function fetchPaymentEventsForInvoice(
             ? new Date(tx.burn_block_time * 1000)
             : new Date(),
           amount,
+          payer: tx.sender_address || '',
         });
       }
 
@@ -1011,7 +1013,7 @@ export async function fetchPaymentEventsForInvoice(
     );
     if (!res.ok) return [];
     const data = await res.json();
-    const events: { txId: string; timestamp: Date; amount: number }[] = [];
+    const events: { txId: string; timestamp: Date; amount: number; payer: string }[] = [];
 
     for (const ev of data.events ?? []) {
       if (ev.event_type !== 'smart_contract_log') continue;
@@ -1025,12 +1027,17 @@ export async function fetchPaymentEventsForInvoice(
       const amountMatch = repr.match(/amount\s+u(\d+)/);
       const amount = amountMatch ? Number(amountMatch[1]) : 0;
 
+      // Extract payer from print event if available
+      const payerMatch = repr.match(/payer\s+'?(S[A-Z0-9]+)/);
+      const payer = payerMatch ? payerMatch[1] : '';
+
       events.push({
         txId: ev.tx_id || '',
         timestamp: ev.block_time
           ? new Date(ev.block_time * 1000)
           : new Date(),
         amount,
+        payer,
       });
     }
 

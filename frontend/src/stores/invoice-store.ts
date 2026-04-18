@@ -11,6 +11,7 @@ export interface Payment {
   timestamp: Date;
   amount: number;
   txId: string;
+  payer: string;
 }
 
 export interface Refund {
@@ -146,6 +147,7 @@ function mapDbInvoice(
       timestamp: new Date(p.created_at),
       amount: p.amount,
       txId: p.tx_id || "",
+      payer: p.payer || "",
     })),
     refunds: refunds.map((r) => ({
       timestamp: new Date(r.created_at),
@@ -291,6 +293,7 @@ async function reconcileWithChain(
               timestamp: ev.timestamp,
               amount: ev.amount || gap,
               txId: ev.txId,
+              payer: ev.payer || "",
             })),
           ];
         } else {
@@ -301,6 +304,7 @@ async function reconcileWithChain(
               timestamp: inv.createdAt,
               amount: gap,
               txId: "",
+              payer: chain.payer || "",
             },
           ];
         }
@@ -422,6 +426,15 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
 
       saveOptimisticToStorage(pending);
       set({ invoices: [...pending, ...invoices], isLoading: false, hasMore: invoiceRows.length === PAGE_SIZE });
+
+      // Auto-resolve any remaining optimistic invoices (dbId === 0 with txId).
+      // This handles cases where the CreateInvoiceDialog's fire-and-forget chain
+      // failed or the user navigated away before backfill completed.
+      const unresolved = pending.filter((inv) => inv.dbId === 0 && inv.txId);
+      for (const inv of unresolved) {
+        // Fire-and-forget: backfill will update the store directly via set()
+        get().backfillFromChain(inv.txId!, inv.id, merchantPrincipal).catch(() => {});
+      }
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Failed to fetch invoices";
       set({ error: message, isLoading: false });
@@ -632,6 +645,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       timestamp: new Date(),
       amount,
       txId: randomTxId(),
+      payer: "",
     };
 
     set((state) => ({
@@ -663,6 +677,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
       timestamp: new Date(),
       amount,
       txId,
+      payer: "",
     };
 
     set((state) => ({

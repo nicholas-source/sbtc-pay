@@ -53,13 +53,14 @@ export function DashboardLayout() {
     }
   }, [walletAddress, fetchMerchant, fetchInvoices, fetchSubscriptions]);
 
-  // Background refresh every 2 minutes to pick up chainhook-indexed data
+  // Background refresh every 30 seconds to pick up chainhook-indexed data
+  // and resolve optimistic invoices faster
   useEffect(() => {
     if (!walletAddress) return;
     const interval = setInterval(() => {
       fetchInvoices(walletAddress);
       fetchSubscriptions(walletAddress);
-    }, 120_000);
+    }, 30_000);
     return () => clearInterval(interval);
   }, [walletAddress, fetchInvoices, fetchSubscriptions]);
 

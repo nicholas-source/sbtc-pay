@@ -1,0 +1,18 @@
+[project]
+id = "oggvlwdptcpwipxahhjn"
+
+# Chainhook webhook receives requests from Hiro Platform with its own
+# consumer-secret auth (checked inside the function). Supabase JWT
+# verification must be disabled so Hiro's Authorization header isn't
+# rejected by the edge runtime before the function can process it.
+[functions.chainhook-webhook]
+verify_jwt = false
+
+# Reconcile is invoked by pg_cron / internal service — also needs JWT bypass
+[functions.reconcile]
+verify_jwt = false
+
+# Wallet auth is called from the frontend with user-signed messages,
+# not Supabase JWTs, so keep JWT verification off.
+[functions.wallet-auth]
+verify_jwt = false

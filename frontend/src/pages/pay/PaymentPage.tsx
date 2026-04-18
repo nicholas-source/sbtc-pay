@@ -105,6 +105,7 @@ function PaymentPage() {
         timestamp: new Date(p.created_at),
         amount: p.amount,
         txId: p.tx_id || "",
+        payer: p.payer || "",
       }));
 
       // Blockchain fallback: if Supabase has no payments but on-chain shows paid,
@@ -116,6 +117,7 @@ function PaymentPage() {
             timestamp: ev.timestamp,
             amount: ev.amount || Number(onChain.amountPaid),
             txId: ev.txId,
+            payer: ev.payer || "",
           }));
         } else {
           // Last resort: synthesize from on-chain data with blockchain-resolved timestamp
@@ -123,6 +125,7 @@ function PaymentPage() {
             timestamp: resolvedPaidAt || resolvedCreatedAt,
             amount: Number(onChain.amountPaid),
             txId: "",
+            payer: onChain.payer || "",
           }];
         }
       }
@@ -201,7 +204,7 @@ function PaymentPage() {
     setTxId(pending.txId);
     confirmedAmount.current = pending.amount;
     setPaymentState("confirming");
-    setCompletedPayment({ timestamp: new Date(), amount: pending.amount, txId: pending.txId });
+    setCompletedPayment({ timestamp: new Date(), amount: pending.amount, txId: pending.txId, payer: "" });
     toast.info("Resuming payment confirmation...");
 
     const ctrl = new AbortController();
@@ -232,6 +235,7 @@ function PaymentPage() {
   }, [invoiceId]);
 
   useEffect(() => {
+    mountedRef.current = true;
     return () => {
       mountedRef.current = false;
       clearTimeout(copyTimerRef.current);
@@ -251,9 +255,14 @@ function PaymentPage() {
   // Initialize pay amount when invoice loads
   const effectivePayAmount = useMemo(() => {
     if (!invoice) return 0;
-    if (invoice.allowPartial && payAmount !== "") {
+    if ((invoice.allowPartial || invoice.allowOverpay) && payAmount !== "") {
       const val = parseFloat(payAmount);
-      if (!isNaN(val) && val > 0) return Math.min(humanToBaseUnits(val, invoice.tokenType), remaining);
+      if (!isNaN(val) && val > 0) {
+        const baseUnits = humanToBaseUnits(val, invoice.tokenType);
+        // Partial: cap at remaining. Overpay: allow above remaining. Both: no cap needed.
+        if (invoice.allowOverpay) return Math.max(baseUnits, 0);
+        return Math.min(baseUnits, remaining);
+      }
     }
     return remaining;
   }, [invoice, payAmount, remaining]);
@@ -319,6 +328,7 @@ function PaymentPage() {
             timestamp: new Date(),
             amount: effectivePayAmount,
             txId: result.txId,
+            payer: address || "",
           });
           // Don't set "confirmed" yet — poll for on-chain result with AbortController
           const ctrl = new AbortController();
@@ -341,7 +351,7 @@ function PaymentPage() {
                 ...prev,
                 amountPaid: prev.amountPaid + confirmedAmount.current,
                 status: prev.amountPaid + confirmedAmount.current >= prev.amount ? "paid" : "partial",
-                payments: [...prev.payments, { timestamp: new Date(), amount: confirmedAmount.current, txId: result.txId }],
+                payments: [...prev.payments, { timestamp: new Date(), amount: confirmedAmount.current, txId: result.txId, payer: address || "" }],
               } : prev);
             }
           } else if (txResult.status === 'failed') {
@@ -376,6 +386,7 @@ function PaymentPage() {
             timestamp: new Date(),
             amount: effectivePayAmount,
             txId: 'pending',
+            payer: address || "",
           });
           setPaymentState("confirmed");
         }
@@ -639,14 +650,25 @@ function PaymentPage() {
 
       {/* Payment action */}
       <div className="space-y-4">
-        {invoice.allowPartial && (
+        {(invoice.allowPartial || invoice.allowOverpay) && (
           <div className="space-y-2">
-            <label className="text-caption text-muted-foreground">Payment amount ({tokenLabel(tt)})</label>
+            <label className="text-caption text-muted-foreground">
+              Payment amount ({tokenLabel(tt)})
+              {invoice.allowPartial && !invoice.allowOverpay && (
+                <span className="ml-1 text-muted-foreground/60">· min any, max {formatAmount(remaining, tt)}</span>
+              )}
+              {invoice.allowOverpay && !invoice.allowPartial && (
+                <span className="ml-1 text-muted-foreground/60">· min {formatAmount(remaining, tt)}</span>
+              )}
+              {invoice.allowPartial && invoice.allowOverpay && (
+                <span className="ml-1 text-muted-foreground/60">· any amount</span>
+              )}
+            </label>
             <Input
               type="number"
               step={tt === 'stx' ? '0.000001' : '0.00000001'}
               min={tt === 'stx' ? 0.000001 : 0.00000001}
-              max={baseToHuman(remaining, tt)}
+              {...(!invoice.allowOverpay ? { max: baseToHuman(remaining, tt) } : {})}
               placeholder={formatAmount(remaining, tt)}
               value={payAmount}
               onChange={(e) => setPayAmount(e.target.value)}

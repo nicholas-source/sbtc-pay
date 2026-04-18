@@ -181,6 +181,11 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                         <span className="font-mono font-tabular">+{formatAmount(p.amount, invoice.tokenType)} {tokenLabel(invoice.tokenType)}</span>
                         <span className="text-xs text-muted-foreground">{format(p.timestamp, "MMM d, HH:mm")}</span>
                       </div>
+                      {p.payer && (
+                        <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">
+                          From: {truncateAddress(p.payer)}
+                        </p>
+                      )}
                       {p.txId ? (
                         <a
                           href={getExplorerTxUrl(p.txId)}
@@ -188,7 +193,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                           rel="noopener noreferrer"
                           className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
                         >
-                          {truncateAddress(p.txId)}
+                          Tx: {truncateAddress(p.txId)}
                         </a>
                       ) : (
                         <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
@@ -245,7 +250,25 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
             {invoice.memo && <div className="flex gap-1"><span className="text-muted-foreground shrink-0">Memo:</span> <span className="break-words line-clamp-3">{invoice.memo}</span></div>}
             {invoice.referenceId && <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Reference:</span> <span className="font-mono truncate">{invoice.referenceId}</span></div>}
             <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Merchant:</span> <span className="font-mono truncate">{invoice.merchantAddress}</span></div>
-            {invoice.payerAddress && <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Payer:</span> <span className="font-mono truncate">{invoice.payerAddress}</span></div>}
+            {(() => {
+              const payers = Array.from(new Set(
+                [invoice.payerAddress, ...invoice.payments.map((p) => p.payer)].filter(Boolean)
+              ));
+              if (payers.length === 0) return null;
+              if (payers.length === 1) {
+                return <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Payer:</span> <span className="font-mono truncate">{payers[0]}</span></div>;
+              }
+              return (
+                <div className="space-y-1">
+                  <span className="text-muted-foreground">Payers ({payers.length}):</span>
+                  {payers.map((p) => (
+                    <div key={p} className="flex gap-1 min-w-0 pl-2">
+                      <span className="font-mono truncate">{p}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="flex gap-4">
               {invoice.allowPartial && <span className="text-muted-foreground">✓ Partial payments</span>}
               {invoice.allowOverpay && <span className="text-muted-foreground">✓ Accepts overpayments</span>}
