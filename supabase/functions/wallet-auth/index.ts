@@ -20,46 +20,18 @@ const MAX_MESSAGE_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_EXPIRY = "24h";
 
 // ── Stacks message hashing ──────────────────────────────────────────────────
-// Wallets may use different hashing strategies. We try all known ones.
+// Exact replica of @stacks/encryption encodeMessage + hashMessage.
+// Uses byte length (not string length) to match the SDK.
 
-function hashVariants(message: string): Array<{ name: string; hash: Uint8Array }> {
-  const messageBytes = utf8ToBytes(message);
-  const msgLen = String(message.length);
-  const msgByteLen = String(messageBytes.length);
-
-  const variants: Array<{ name: string; hash: Uint8Array }> = [];
-
-  // 1. @stacks/encryption v6+ style: \x18 + "Stacks Signed Message:\n" + msgLen + msg
-  for (const byte of ["\x18", "\x17"]) {
-    const prefix = `${byte}Stacks Signed Message:\n`;
-    const prefixBytes = utf8ToBytes(prefix);
-    // string length variant
-    variants.push({
-      name: `0x${byte.charCodeAt(0).toString(16)}+strLen`,
-      hash: sha256(concatBytes(prefixBytes, utf8ToBytes(msgLen), messageBytes)),
-    });
-    // byte length variant (differs for multi-byte chars)
-    if (msgLen !== msgByteLen) {
-      variants.push({
-        name: `0x${byte.charCodeAt(0).toString(16)}+byteLen`,
-        hash: sha256(concatBytes(prefixBytes, utf8ToBytes(msgByteLen), messageBytes)),
-      });
-    }
-  }
-
-  // 2. Raw SHA-256 of the message (no prefix) — some wallets just sign sha256(msg)
-  variants.push({ name: "raw-sha256", hash: sha256(messageBytes) });
-
-  // 3. Double SHA-256 (Bitcoin-style)
-  variants.push({ name: "double-sha256", hash: sha256(sha256(messageBytes)) });
-
-  // 4. Raw message bytes as "hash" (wallet signs the raw utf8 bytes directly)
-  variants.push({ name: "raw-bytes", hash: messageBytes });
-
-  return variants;
+function stacksHashMessage(message: string): Uint8Array {
+  const encoded = utf8ToBytes(message);
+  const prefix = utf8ToBytes(`\x18Stacks Signed Message:\n${encoded.length}`);
+  return sha256(concatBytes(prefix, encoded));
 }
 
 // ── Signature verification ──────────────────────────────────────────────────
+// Uses direct secp256k1.verify() (no recovery byte needed) which matches
+// the @stacks/transactions verifyMessageSignatureRsv implementation.
 interface VerifyResult {
   valid: boolean;
   debug?: string;
@@ -70,46 +42,74 @@ function verifySignature(
   signatureHex: string,
   expectedPubKeyHex: string,
 ): VerifyResult {
-  const cleanHex = signatureHex.startsWith("0x") ? signatureHex.slice(2) : signatureHex;
-  const sigBytes = hexToBytes(cleanHex);
+  const cleanSig = signatureHex.startsWith("0x") ? signatureHex.slice(2) : signatureHex;
+  const cleanPub = expectedPubKeyHex.startsWith("0x") ? expectedPubKeyHex.slice(2) : expectedPubKeyHex;
 
-  if (sigBytes.length !== 65) {
-    return { valid: false, debug: `bad sig length: ${sigBytes.length}` };
+  if (cleanSig.length !== 130) {
+    return { valid: false, debug: `bad sig hex length: ${cleanSig.length} (expected 130)` };
   }
 
-  // Two possible byte orders: VRS [v(1)+r(32)+s(32)] and RSV [r(32)+s(32)+v(1)]
-  const formats = [
-    { name: "VRS", v: sigBytes[0], r: sigBytes.slice(1, 33), s: sigBytes.slice(33, 65) },
-    { name: "RSV", v: sigBytes[64], r: sigBytes.slice(0, 32), s: sigBytes.slice(32, 64) },
+  const hash = stacksHashMessage(message);
+  const hashHex = bytesToHex(hash);
+
+  // RSV format (Stacks standard): r(32 bytes) + s(32 bytes) + v(1 byte)
+  const rHex = cleanSig.slice(0, 64);
+  const sHex = cleanSig.slice(64, 128);
+  const vByte = parseInt(cleanSig.slice(128, 130), 16);
+
+  // 1. Direct verification — does not need recovery byte at all
+  try {
+    const sig = new secp256k1.Signature(BigInt("0x" + rHex), BigInt("0x" + sHex));
+    const valid = secp256k1.verify(sig, hash, cleanPub);
+    if (valid) {
+      return { valid: true, debug: "direct-verify-RSV" };
+    }
+  } catch (e) {
+    // Fall through to recovery-based check
+  }
+
+  // 2. Recovery-based check (for diagnostics) — try RSV and VRS byte orders
+  const attempts: string[] = [];
+  const orders = [
+    { name: "RSV", r: rHex, s: sHex, v: vByte },
+    {
+      name: "VRS",
+      r: cleanSig.slice(2, 66),
+      s: cleanSig.slice(66, 130),
+      v: parseInt(cleanSig.slice(0, 2), 16),
+    },
   ];
 
-  const hashes = hashVariants(message);
-  const attempts: string[] = [];
-
-  for (const { name: hashName, hash } of hashes) {
-    for (const fmt of formats) {
-      const recoveryId = fmt.v > 27 ? fmt.v - 27 : fmt.v;
-      if (recoveryId > 3) {
-        attempts.push(`${fmt.name}+${hashName}: v=${fmt.v} (skip)`);
-        continue;
+  for (const fmt of orders) {
+    const recoveryId = fmt.v >= 27 ? fmt.v - 27 : fmt.v;
+    if (recoveryId > 3) {
+      attempts.push(`${fmt.name}: v=${fmt.v} (skip, recId=${recoveryId})`);
+      continue;
+    }
+    try {
+      const sig = new secp256k1.Signature(
+        BigInt("0x" + fmt.r),
+        BigInt("0x" + fmt.s),
+      ).addRecoveryBit(recoveryId);
+      const recovered = sig.recoverPublicKey(hash).toHex(true);
+      if (recovered === cleanPub) {
+        return { valid: true, debug: `recovery-${fmt.name}` };
       }
-      try {
-        const r = BigInt("0x" + bytesToHex(fmt.r));
-        const s = BigInt("0x" + bytesToHex(fmt.s));
-        const sig = new secp256k1.Signature(r, s).addRecoveryBit(recoveryId);
-        const recovered = sig.recoverPublicKey(hash);
-        const recoveredHex = recovered.toHex(true);
-        if (recoveredHex === expectedPubKeyHex) {
-          return { valid: true, debug: `matched: ${fmt.name}+${hashName}` };
-        }
-        attempts.push(`${fmt.name}+${hashName}: v=${fmt.v} got=${recoveredHex.slice(0, 12)}…`);
-      } catch (e) {
-        attempts.push(`${fmt.name}+${hashName}: v=${fmt.v} err=${e instanceof Error ? e.message : String(e)}`);
-      }
+      attempts.push(`${fmt.name}: v=${fmt.v} got=${recovered.slice(0, 16)}`);
+    } catch (e) {
+      attempts.push(`${fmt.name}: v=${fmt.v} err=${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
-  return { valid: false, debug: `expected=${expectedPubKeyHex.slice(0, 12)}… sigHex=${cleanHex.slice(0, 12)}… | ${attempts.join(" | ")}` };
+  return {
+    valid: false,
+    debug: [
+      `pub=${cleanPub.slice(0, 16)}`,
+      `sig=${cleanSig.slice(0, 16)}…${cleanSig.slice(-4)}`,
+      `hash=${hashHex.slice(0, 16)}`,
+      ...attempts,
+    ].join(" | "),
+  };
 }
 
 // ── Address derivation from compressed public key ───────────────────────────

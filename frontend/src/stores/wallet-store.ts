@@ -295,15 +295,21 @@ export const useWalletStore = create<WalletState>()(
       },
 
       authenticate: async () => {
-        const { address, publicKey } = get();
-        if (!address || !publicKey) return;
+        const { address, publicKey: storedPublicKey } = get();
+        if (!address || !storedPublicKey) return;
 
         try {
           // Build a timestamped message for signing
           const message = `Sign in to sBTC Pay\nAddress: ${address}\nTimestamp: ${Date.now()}`;
 
-          // Request wallet signature
-          const { signature } = await stacksRequest('stx_signMessage', { message });
+          // Request wallet signature — also extract the signing publicKey
+          const { signature, publicKey: signPublicKey } = await stacksRequest('stx_signMessage', { message });
+
+          // Prefer the publicKey from the signing response (matches the actual signing key)
+          const pubKeyToSend = signPublicKey || storedPublicKey;
+          if (signPublicKey && signPublicKey !== storedPublicKey) {
+            console.info('[wallet-auth] Signing pubkey differs from stored:', { signPublicKey: signPublicKey.slice(0, 12), storedPublicKey: storedPublicKey.slice(0, 12) });
+          }
 
           // Exchange for JWT via wallet-auth edge function
           const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -313,7 +319,7 @@ export const useWalletStore = create<WalletState>()(
               'Content-Type': 'application/json',
               'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
             },
-            body: JSON.stringify({ message, signature, publicKey, address }),
+            body: JSON.stringify({ message, signature, publicKey: pubKeyToSend, address }),
           });
 
           if (!res.ok) {
