@@ -1046,3 +1046,64 @@ export async function fetchPaymentEventsForInvoice(
     return [];
   }
 }
+
+/**
+ * Fetch refund events for an invoice from the blockchain.
+ * Searches contract transactions for refund-invoice / refund-invoice-stx calls.
+ */
+export async function fetchRefundEventsForInvoice(
+  invoiceId: number
+): Promise<{ txId: string; timestamp: Date; amount: number; reason: string }[]> {
+  try {
+    const txRes = await fetch(
+      `${API_URL}/extended/v1/address/${PAYMENT_CONTRACT_ID}/transactions?limit=50&offset=0`
+    );
+    if (!txRes.ok) return [];
+
+    const txData = await txRes.json();
+    const results: { txId: string; timestamp: Date; amount: number; reason: string }[] = [];
+
+    for (const tx of txData.results ?? []) {
+      if (tx.tx_type !== 'contract_call') continue;
+      if (tx.tx_status !== 'success') continue;
+      const cc = tx.contract_call;
+      if (!cc || !cc.function_name?.startsWith('refund-invoice')) continue;
+
+      const args = cc.function_args;
+      if (!args || args.length === 0) continue;
+
+      // First arg is invoice ID
+      const invoiceArg = args[0];
+      if (!invoiceArg) continue;
+      const argRepr = invoiceArg.repr ?? '';
+      if (argRepr !== `u${invoiceId}`) continue;
+
+      // Second arg is refund amount
+      let amount = 0;
+      if (args.length > 1 && args[1]?.repr) {
+        const amtMatch = args[1].repr.match(/^u(\d+)$/);
+        if (amtMatch) amount = Number(amtMatch[1]);
+      }
+
+      // Third arg is reason
+      let reason = '';
+      if (args.length > 2 && args[2]?.repr) {
+        const reasonMatch = args[2].repr.match(/^u"(.+)"$/);
+        if (reasonMatch) reason = reasonMatch[1];
+      }
+
+      results.push({
+        txId: tx.tx_id || '',
+        timestamp: tx.burn_block_time
+          ? new Date(tx.burn_block_time * 1000)
+          : new Date(),
+        amount,
+        reason,
+      });
+    }
+
+    return results;
+  } catch {
+    return [];
+  }
+}

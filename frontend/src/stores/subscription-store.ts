@@ -301,7 +301,6 @@ export const useSubscriptionStore = create<SubscriptionStore>((set, get) => ({
       merchantAddress: "",
       createdAt: new Date(),
       isActive: true,
-      tokenType: 'sbtc',
     };
     set((s) => ({ plans: [plan, ...s.plans] }));
     return plan;

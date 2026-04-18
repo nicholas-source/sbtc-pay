@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
-import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, updateInvoice as updateInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain, fetchPaymentEventsForInvoice } from "@/lib/stacks/contract";
+import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, updateInvoice as updateInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain, fetchPaymentEventsForInvoice, fetchRefundEventsForInvoice } from "@/lib/stacks/contract";
 import { API_URL, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight, type TokenType } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
@@ -312,11 +312,38 @@ async function reconcileWithChain(
     }
     if (chain.amountRefunded !== undefined) {
       const chainRefunded = Number(chain.amountRefunded);
-      if (supaRefundSum !== chainRefunded) {
+      if (supaRefundSum !== chainRefunded && chainRefunded > supaRefundSum) {
         console.warn(
           `[reconcile] Invoice ${inv.id}: refund history mismatch — ` +
           `Supabase sum=${supaRefundSum}, on-chain amountRefunded=${chainRefunded}`,
         );
+        // Try to resolve the missing refund(s) from the blockchain
+        const gap = chainRefunded - supaRefundSum;
+        const refundEvents = await fetchRefundEventsForInvoice(inv.dbId).catch(() => []);
+        if (refundEvents.length > 0) {
+          const existingTxIds = new Set(inv.refunds.map((r) => r.txId).filter(Boolean));
+          const newEvents = refundEvents.filter((ev) => !existingTxIds.has(ev.txId));
+          inv.refunds = [
+            ...inv.refunds,
+            ...newEvents.map((ev) => ({
+              timestamp: ev.timestamp,
+              amount: ev.amount || gap,
+              reason: ev.reason || "",
+              txId: ev.txId,
+            })),
+          ];
+        } else {
+          // Last resort: synthesize from on-chain data without txId
+          inv.refunds = [
+            ...inv.refunds,
+            {
+              timestamp: inv.createdAt,
+              amount: gap,
+              reason: "",
+              txId: "",
+            },
+          ];
+        }
       }
     }
   }
