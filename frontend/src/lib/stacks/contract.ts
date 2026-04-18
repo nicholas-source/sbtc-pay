@@ -585,6 +585,32 @@ export async function refundInvoice(params: {
 }
 
 /**
+ * Update an invoice (only before any payment, while still pending)
+ */
+export async function updateInvoice(params: {
+  invoiceId: number;
+  newAmount: bigint;
+  newMemo: string;
+  newExpiresInBlocks: number;
+}): Promise<{ txId: string }> {
+  validateStringLength(params.newMemo, 'Memo', CONTRACT_LIMITS.MEMO);
+
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'update-invoice',
+    functionArgs: [
+      Cl.uint(params.invoiceId),
+      Cl.uint(params.newAmount),
+      Cl.stringUtf8(params.newMemo),
+      Cl.uint(params.newExpiresInBlocks),
+    ],
+    network: NETWORK_MODE,
+  });
+
+  return { txId: requireTxId(response) };
+}
+
+/**
  * Cancel an invoice
  */
 export async function cancelInvoice(invoiceId: number): Promise<{ txId: string }> {
