@@ -7,7 +7,7 @@ import "./index.css";
 // invoices, notification logs/settings, wallet cache) becomes invalid.
 // This clears it automatically so users don't have to manually wipe site data.
 const APP_VERSION_KEY = "sbtc-pay-version";
-const CURRENT_VERSION = "payment-v5"; // bump this on each contract migration
+const CURRENT_VERSION = "payment-v6"; // bump this on each contract migration
 
 const storedVersion = localStorage.getItem(APP_VERSION_KEY);
 if (storedVersion !== CURRENT_VERSION) {
