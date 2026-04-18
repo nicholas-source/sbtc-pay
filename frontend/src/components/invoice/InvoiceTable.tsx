@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { formatDistanceToNow, startOfDay, startOfWeek, startOfMonth, format } from "date-fns";
-import { ArrowUpDown, Search, Copy, Eye, XCircle, Check, FileText, SearchX, CalendarIcon } from "lucide-react";
+import { ArrowUpDown, Search, Copy, Eye, XCircle, Check, FileText, SearchX, CalendarIcon, Pencil } from "lucide-react";
 import EmptyState from "@/components/dashboard/EmptyState";
 import { cn } from "@/lib/utils";
 import { useInvoiceStore, type Invoice, type InvoiceStatus } from "@/stores/invoice-store";
@@ -247,6 +247,11 @@ export default function InvoiceTable({ onSelect }: Props) {
                           <DropdownMenuItem aria-label={`Copy payment link for ${inv.id}`} onClick={(e) => { e.stopPropagation(); copyLink(inv); }}>
                             <Copy className="mr-2 h-4 w-4" />Copy link
                           </DropdownMenuItem>
+                          {inv.status === "pending" && inv.amountPaid === 0 && inv.dbId > 0 && (
+                            <DropdownMenuItem aria-label={`Edit invoice ${inv.id}`} onClick={(e) => { e.stopPropagation(); onSelect(inv); }}>
+                              <Pencil className="mr-2 h-4 w-4" />Edit
+                            </DropdownMenuItem>
+                          )}
                           {inv.status === "pending" && (
                             <DropdownMenuItem aria-label={`Cancel invoice ${inv.id}`} className="text-destructive" onClick={async (e) => { e.stopPropagation(); try { await cancelInvoice(inv.id); toast.success("Invoice cancelled"); } catch (err) { toast.error(err instanceof Error ? err.message : "Cancel failed"); } }}>
                               <XCircle className="mr-2 h-4 w-4" />Cancel Invoice
