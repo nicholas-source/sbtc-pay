@@ -318,7 +318,7 @@ export const useWalletStore = create<WalletState>()(
 
           if (!res.ok) {
             const data = await res.json().catch(() => ({ error: 'Auth request failed' }));
-            console.warn('[wallet-auth] Token exchange failed:', data.error);
+            console.warn('[wallet-auth] Token exchange failed:', data.error, data.debug || '');
             return; // Graceful degradation — falls back to x-wallet-address header
           }
 
