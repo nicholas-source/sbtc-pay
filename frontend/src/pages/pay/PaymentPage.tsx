@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2 } from "lucide-react";
+import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2, RefreshCw } from "lucide-react";
 import { useInvoiceStore, STATUS_MAP, type Payment, type Invoice } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
@@ -166,11 +166,76 @@ function PaymentPage() {
   const confirmedAmount = useRef<number>(0);
   const mountedRef = useRef(true);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const abortRef = useRef<AbortController | null>(null);
+
+  // --- Pending payment localStorage helpers (double-pay guard + recovery) ---
+  const pendingKey = invoiceId ? `sbtc-pay-pending-tx-${invoiceId}` : null;
+
+  function savePendingPayment(txIdVal: string, amount: number) {
+    if (!pendingKey) return;
+    localStorage.setItem(pendingKey, JSON.stringify({ txId: txIdVal, amount, submittedAt: Date.now() }));
+  }
+  function clearPendingPayment() {
+    if (pendingKey) localStorage.removeItem(pendingKey);
+  }
+  function loadPendingPayment(): { txId: string; amount: number; submittedAt: number } | null {
+    if (!pendingKey) return null;
+    try {
+      const raw = localStorage.getItem(pendingKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      // Expire after 10 minutes (tx should have finalized by then)
+      if (Date.now() - parsed.submittedAt > 10 * 60 * 1000) {
+        localStorage.removeItem(pendingKey);
+        return null;
+      }
+      return parsed;
+    } catch { return null; }
+  }
+
+  // --- Recover pending payment on mount ---
+  useEffect(() => {
+    const pending = loadPendingPayment();
+    if (!pending) return;
+    // Resume polling for the pending tx
+    setTxId(pending.txId);
+    confirmedAmount.current = pending.amount;
+    setPaymentState("confirming");
+    setCompletedPayment({ timestamp: new Date(), amount: pending.amount, txId: pending.txId });
+    toast.info("Resuming payment confirmation...");
+
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
+    waitForTransaction(pending.txId, 40, 8000, ctrl.signal)
+      .then((txResult) => {
+        if (!mountedRef.current) return;
+        if (txResult.status === "success") {
+          setPaymentState("confirmed");
+          clearPendingPayment();
+          toast.success("Payment confirmed on-chain!");
+          fetchBalances();
+        } else if (txResult.status === "failed") {
+          setPaymentState("error");
+          setCompletedPayment(null);
+          clearPendingPayment();
+          toast.error("Payment was rejected on-chain.");
+        } else {
+          // still pending after max attempts
+          setPaymentState("confirmed");
+          clearPendingPayment();
+          toast.info("Transaction submitted but not yet confirmed. Check back shortly.");
+        }
+      })
+      .catch(() => { /* aborted */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceId]);
 
   useEffect(() => {
     return () => {
       mountedRef.current = false;
       clearTimeout(copyTimerRef.current);
+      abortRef.current?.abort();
     };
   }, []);
 
@@ -198,6 +263,12 @@ function PaymentPage() {
     // Guard: don't allow paying already-paid/expired/cancelled invoices
     if (invoice.status === "paid" || invoice.status === "expired" || invoice.status === "cancelled" || invoice.status === "refunded") {
       toast.error(`This invoice is ${invoice.status} and cannot be paid.`);
+      return;
+    }
+    // Guard: check for an existing pending payment (double-pay protection)
+    const existingPending = loadPendingPayment();
+    if (existingPending) {
+      toast.warning("A payment for this invoice is already in progress. Please wait for it to confirm.");
       return;
     }
     confirmedAmount.current = effectivePayAmount;
@@ -239,6 +310,8 @@ function PaymentPage() {
         if (!mountedRef.current) return;
 
         if (result.txId) {
+          // Persist pending payment so we can recover on page reload
+          savePendingPayment(result.txId, effectivePayAmount);
           setTxId(result.txId);
           toast.success("Transaction submitted! Waiting for confirmation...");
           // Show "confirming" state with spinner while we poll
@@ -247,12 +320,14 @@ function PaymentPage() {
             amount: effectivePayAmount,
             txId: result.txId,
           });
-          // Don't set "confirmed" yet — poll for on-chain result
-          // Poll faster initially (every 8s, up to 40 attempts = ~5 min)
-          const txResult = await waitForTransaction(result.txId, 40, 8000);
+          // Don't set "confirmed" yet — poll for on-chain result with AbortController
+          const ctrl = new AbortController();
+          abortRef.current = ctrl;
+          const txResult = await waitForTransaction(result.txId, 40, 8000, ctrl.signal);
           if (!mountedRef.current) return;
 
           if (txResult.status === 'success') {
+            clearPendingPayment();
             setPaymentState("confirmed");
             toast.success("Payment confirmed on-chain!");
             fetchBalances();
@@ -270,6 +345,7 @@ function PaymentPage() {
               } : prev);
             }
           } else if (txResult.status === 'failed') {
+            clearPendingPayment();
             // Parse error from tx result
             let failMsg = "Payment was rejected on-chain";
             const resultRepr = (txResult.result as { repr?: string })?.repr || "";
@@ -291,6 +367,7 @@ function PaymentPage() {
             toast.error(failMsg);
           } else {
             // Still pending after max attempts
+            clearPendingPayment();
             setPaymentState("confirmed");
             toast.info("Transaction submitted but not yet confirmed. Check back shortly.");
           }

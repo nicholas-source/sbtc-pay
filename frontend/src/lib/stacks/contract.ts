@@ -881,7 +881,8 @@ export async function suspendMerchant(merchantAddress: string): Promise<{ txId: 
 export async function waitForTransaction(
   txId: string,
   maxAttempts = 30,
-  intervalMs = 10000
+  intervalMs = 10000,
+  signal?: AbortSignal,
 ): Promise<{
   status: 'success' | 'failed' | 'pending';
   result?: unknown;
@@ -889,8 +890,9 @@ export async function waitForTransaction(
   const cleanTxId = txId.startsWith('0x') ? txId : `0x${txId}`;
 
   for (let i = 0; i < maxAttempts; i++) {
+    if (signal?.aborted) return { status: 'pending' };
     try {
-      const response = await fetch(`${API_URL}/extended/v1/tx/${cleanTxId}`);
+      const response = await fetch(`${API_URL}/extended/v1/tx/${cleanTxId}`, { signal });
       const data = await response.json();
 
       if (data.tx_status === 'success') {
@@ -900,8 +902,12 @@ export async function waitForTransaction(
       }
 
       // Still pending, wait and retry
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(resolve, intervalMs);
+        signal?.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
+      });
     } catch (error) {
+      if (signal?.aborted) return { status: 'pending' };
       console.error('Error checking transaction:', error);
       await new Promise((resolve) => setTimeout(resolve, intervalMs));
     }
@@ -930,6 +936,50 @@ export async function fetchPaymentEventsForInvoice(
   invoiceId: number
 ): Promise<{ txId: string; timestamp: Date; amount: number }[]> {
   try {
+    // Strategy 1: Search contract transactions for pay-invoice calls with this invoice ID
+    const txRes = await fetch(
+      `${API_URL}/extended/v1/address/${PAYMENT_CONTRACT_ID}/transactions?limit=50&offset=0`
+    );
+    if (txRes.ok) {
+      const txData = await txRes.json();
+      const results: { txId: string; timestamp: Date; amount: number }[] = [];
+
+      for (const tx of txData.results ?? []) {
+        if (tx.tx_type !== 'contract_call') continue;
+        if (tx.tx_status !== 'success') continue;
+        const cc = tx.contract_call;
+        if (!cc || cc.function_name !== 'pay-invoice') continue;
+
+        // Check if the first argument is our invoice ID
+        const args = cc.function_args;
+        if (!args || args.length === 0) continue;
+        const invoiceArg = args[0];
+        if (!invoiceArg) continue;
+
+        // The repr is like "u1" for invoice ID 1
+        const argRepr = invoiceArg.repr ?? '';
+        if (argRepr !== `u${invoiceId}`) continue;
+
+        // Extract amount from the second arg if available
+        let amount = 0;
+        if (args.length > 1 && args[1]?.repr) {
+          const amtMatch = args[1].repr.match(/^u(\d+)$/);
+          if (amtMatch) amount = Number(amtMatch[1]);
+        }
+
+        results.push({
+          txId: tx.tx_id || '',
+          timestamp: tx.burn_block_time
+            ? new Date(tx.burn_block_time * 1000)
+            : new Date(),
+          amount,
+        });
+      }
+
+      if (results.length > 0) return results;
+    }
+
+    // Strategy 2: Fall back to contract events (print events)
     const res = await fetch(
       `${API_URL}/extended/v1/contract/${PAYMENT_CONTRACT_ID}/events?limit=50&offset=0`
     );
@@ -938,19 +988,14 @@ export async function fetchPaymentEventsForInvoice(
     const events: { txId: string; timestamp: Date; amount: number }[] = [];
 
     for (const ev of data.events ?? []) {
-      // Look for print events from contract calls
       if (ev.event_type !== 'smart_contract_log') continue;
       const val = ev.contract_log?.value;
       if (!val) continue;
 
-      // The print event repr contains the invoice-id — check for it
       const repr = typeof val === 'string' ? val : val.repr ?? '';
       if (!repr.includes(`invoice-id`) || !repr.includes(`u${invoiceId}`)) continue;
-
-      // Check it's a payment event (not a refund or cancellation)
       if (!repr.includes('payment-received') && !repr.includes('invoice-paid')) continue;
 
-      // Extract amount from the repr if possible
       const amountMatch = repr.match(/amount\s+u(\d+)/);
       const amount = amountMatch ? Number(amountMatch[1]) : 0;
 

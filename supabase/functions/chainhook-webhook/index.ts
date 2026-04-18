@@ -485,18 +485,26 @@ async function handlePaymentReceived(
     }).catch(() => {});
   }
 
-  // Update platform stats (per-token)
+  // Update platform stats (per-token) — atomic increment avoids read-then-write race
   const amt = data.amount as number;
   const fee = (data.fee as number) ?? 0;
   const volCol = tokenType === "stx" ? "total_volume_stx" : "total_volume_sbtc";
   const feeCol = tokenType === "stx" ? "total_fees_stx" : "total_fees_sbtc";
-  const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
-  if (stats) {
-    await supabase.from("platform_stats").update({
-      [volCol]: (stats[volCol] ?? 0) + amt,
-      [feeCol]: (stats[feeCol] ?? 0) + fee,
-    }).eq("id", 1);
-  }
+  await supabase.rpc("increment_platform_stats", {
+    p_vol_col: volCol,
+    p_vol_amount: amt,
+    p_fee_col: feeCol,
+    p_fee_amount: fee,
+  }).catch(async () => {
+    // Fallback: read-then-write if RPC not deployed yet
+    const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
+    if (stats) {
+      await supabase.from("platform_stats").update({
+        [volCol]: (stats[volCol] ?? 0) + amt,
+        [feeCol]: (stats[feeCol] ?? 0) + fee,
+      }).eq("id", 1);
+    }
+  });
 }
 
 async function handleDirectPayment(
@@ -518,28 +526,41 @@ async function handleDirectPayment(
     token_type: tokenType,
   });
 
-  // Update merchant total received (per-token)
+  // Update merchant total received (per-token) — atomic increment
   const merchantRecv = (data["merchant-received"] ?? 0) as number;
-  const recvCol = tokenType === "stx" ? "total_received_stx" : "total_received_sbtc";
-  const { data: merchant } = await supabase.from("merchants").select(recvCol).eq("principal", data.merchant).single();
-  if (merchant) {
-    await supabase.from("merchants").update({
-      [recvCol]: (merchant[recvCol] ?? 0) + merchantRecv,
-    }).eq("principal", data.merchant);
-  }
+  await supabase.rpc("increment_merchant_received", {
+    p_principal: data.merchant,
+    p_amount: merchantRecv,
+    p_token: tokenType,
+  }).catch(async () => {
+    const recvCol = tokenType === "stx" ? "total_received_stx" : "total_received_sbtc";
+    const { data: merchant } = await supabase.from("merchants").select(recvCol).eq("principal", data.merchant).single();
+    if (merchant) {
+      await supabase.from("merchants").update({
+        [recvCol]: (merchant[recvCol] ?? 0) + merchantRecv,
+      }).eq("principal", data.merchant);
+    }
+  });
 
-  // Update platform stats (per-token volume + fees)
+  // Update platform stats (per-token volume + fees) — atomic increment
   const amt = data.amount as number;
   const fee = (data.fee as number) ?? 0;
   const volCol = tokenType === "stx" ? "total_volume_stx" : "total_volume_sbtc";
   const feeCol = tokenType === "stx" ? "total_fees_stx" : "total_fees_sbtc";
-  const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
-  if (stats) {
-    await supabase.from("platform_stats").update({
-      [volCol]: (stats[volCol] ?? 0) + amt,
-      [feeCol]: (stats[feeCol] ?? 0) + fee,
-    }).eq("id", 1);
-  }
+  await supabase.rpc("increment_platform_stats", {
+    p_vol_col: volCol,
+    p_vol_amount: amt,
+    p_fee_col: feeCol,
+    p_fee_amount: fee,
+  }).catch(async () => {
+    const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
+    if (stats) {
+      await supabase.from("platform_stats").update({
+        [volCol]: (stats[volCol] ?? 0) + amt,
+        [feeCol]: (stats[feeCol] ?? 0) + fee,
+      }).eq("id", 1);
+    }
+  });
 }
 
 async function handleInvoiceCancelled(data: Record<string, unknown>) {
@@ -597,14 +618,22 @@ async function handleRefundProcessed(
       .eq("id", invoiceId);
   }
 
-  // Update platform refund stat (per-token)
+  // Update platform refund stat (per-token) — atomic increment
+  const refundAmt = data.amount as number;
   const refundCol = tokenType === "stx" ? "total_refunds_stx" : "total_refunds_sbtc";
-  const { data: stats } = await supabase.from("platform_stats").select(refundCol).eq("id", 1).single();
-  if (stats) {
-    await supabase.from("platform_stats").update({
-      [refundCol]: (stats[refundCol] ?? 0) + (data.amount as number),
-    }).eq("id", 1);
-  }
+  await supabase.rpc("increment_platform_stats", {
+    p_vol_col: refundCol,
+    p_vol_amount: refundAmt,
+    p_fee_col: refundCol,
+    p_fee_amount: 0,
+  }).catch(async () => {
+    const { data: stats } = await supabase.from("platform_stats").select(refundCol).eq("id", 1).single();
+    if (stats) {
+      await supabase.from("platform_stats").update({
+        [refundCol]: (stats[refundCol] ?? 0) + refundAmt,
+      }).eq("id", 1);
+    }
+  });
 }
 
 async function handleSubscriptionCreated(
@@ -695,28 +724,41 @@ async function handleSubscriptionPayment(
     })
     .eq("id", subId);
 
-  // Update merchant total received (per-token)
+  // Update merchant total received (per-token) — atomic increment
   const merchantRecv = (data["merchant-received"] ?? 0) as number;
-  const recvCol = tokenType === "stx" ? "total_received_stx" : "total_received_sbtc";
-  const { data: merchant } = await supabase.from("merchants").select(recvCol).eq("principal", data.merchant).single();
-  if (merchant) {
-    await supabase.from("merchants").update({
-      [recvCol]: (merchant[recvCol] ?? 0) + merchantRecv,
-    }).eq("principal", data.merchant);
-  }
+  await supabase.rpc("increment_merchant_received", {
+    p_principal: data.merchant,
+    p_amount: merchantRecv,
+    p_token: tokenType,
+  }).catch(async () => {
+    const recvCol = tokenType === "stx" ? "total_received_stx" : "total_received_sbtc";
+    const { data: merchant } = await supabase.from("merchants").select(recvCol).eq("principal", data.merchant).single();
+    if (merchant) {
+      await supabase.from("merchants").update({
+        [recvCol]: (merchant[recvCol] ?? 0) + merchantRecv,
+      }).eq("principal", data.merchant);
+    }
+  });
 
-  // Update platform stats (per-token volume + fees)
+  // Update platform stats (per-token volume + fees) — atomic increment
   const amt = data.amount as number;
   const fee = (data.fee as number) ?? 0;
   const volCol = tokenType === "stx" ? "total_volume_stx" : "total_volume_sbtc";
   const feeCol = tokenType === "stx" ? "total_fees_stx" : "total_fees_sbtc";
-  const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
-  if (stats) {
-    await supabase.from("platform_stats").update({
-      [volCol]: (stats[volCol] ?? 0) + amt,
-      [feeCol]: (stats[feeCol] ?? 0) + fee,
-    }).eq("id", 1);
-  }
+  await supabase.rpc("increment_platform_stats", {
+    p_vol_col: volCol,
+    p_vol_amount: amt,
+    p_fee_col: feeCol,
+    p_fee_amount: fee,
+  }).catch(async () => {
+    const { data: stats } = await supabase.from("platform_stats").select(`${volCol}, ${feeCol}`).eq("id", 1).single();
+    if (stats) {
+      await supabase.from("platform_stats").update({
+        [volCol]: (stats[volCol] ?? 0) + amt,
+        [feeCol]: (stats[feeCol] ?? 0) + fee,
+      }).eq("id", 1);
+    }
+  });
 }
 
 async function handleSubscriptionCancelled(data: Record<string, unknown>) {
@@ -876,6 +918,11 @@ Deno.serve(async (req: Request) => {
               console.error(
                 `Handler error for ${eventType}:`,
                 handlerError,
+              );
+              // Return 500 so Chainhook will retry delivery
+              return new Response(
+                JSON.stringify({ error: `Handler failed for ${eventType}`, detail: String(handlerError) }),
+                { status: 500, headers: { "Content-Type": "application/json" } },
               );
             }
           } else {

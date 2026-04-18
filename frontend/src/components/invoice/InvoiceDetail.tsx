@@ -182,7 +182,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                           {truncateAddress(p.txId)}
                         </a>
                       ) : (
-                        <p className="text-xs text-success mt-0.5 font-medium">\u2713 Confirmed</p>
+                        <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
                       )}
                     </div>
                   </div>
@@ -219,7 +219,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                             {truncateAddress(r.txId)}
                           </a>
                         ) : (
-                          <p className="text-xs text-success mt-0.5 font-medium">\u2713 Confirmed</p>
+                          <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
                         )}
                       </div>
                     </div>
