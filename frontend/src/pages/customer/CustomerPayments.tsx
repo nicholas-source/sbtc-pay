@@ -54,11 +54,12 @@ export default function CustomerPayments() {
     subscribers.forEach((sub) => {
       const plan = plans.find((p) => p.id === sub.planId);
       if (wallet && sub.payerAddress?.toLowerCase() !== wallet) return;
+      const planName = plan?.name || sub.planId;
       sub.payments.forEach((p) => {
         rows.push({
           id: `${sub.id}-${p.txId.slice(0, 8)}`,
           type: "subscription",
-          label: `Subscription ${sub.planId}`,
+          label: planName,
           amount: p.amount,
           txId: p.txId,
           timestamp: p.timestamp,
