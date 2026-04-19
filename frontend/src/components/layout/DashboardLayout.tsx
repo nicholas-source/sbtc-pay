@@ -25,6 +25,7 @@ import { useWalletStore } from "@/stores/wallet-store";
 import { useMerchantStore } from "@/stores/merchant-store";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
+import { useAdminStore } from "@/stores/admin-store";
 
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true },
@@ -43,6 +44,7 @@ export function DashboardLayout() {
   const fetchMerchant = useMerchantStore((s) => s.fetchMerchant);
   const fetchInvoices = useInvoiceStore((s) => s.fetchInvoices);
   const fetchSubscriptions = useSubscriptionStore((s) => s.fetchSubscriptions);
+  const isContractOwner = useAdminStore((s) => s.isContractOwner);
 
   // Bootstrap data when wallet is connected
   useEffect(() => {
@@ -140,6 +142,25 @@ export function DashboardLayout() {
               {sidebarOpen && <span>{item.label}</span>}
             </NavLink>
           ))}
+
+          {/* Admin link — only visible to contract owner */}
+          {isContractOwner && (
+            <NavLink
+              to="/admin"
+              aria-label={!sidebarOpen ? "Admin" : undefined}
+              className={({ isActive }) =>
+                cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-body-sm font-medium transition-colors focus-ring",
+                  isActive
+                    ? "bg-sidebar-accent text-primary border-l-3 border-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                )
+              }
+            >
+              <Shield className="h-5 w-5 shrink-0" />
+              {sidebarOpen && <span>Admin</span>}
+            </NavLink>
+          )}
         </nav>
 
         {/* Home link at bottom */}
