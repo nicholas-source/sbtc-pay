@@ -14,11 +14,19 @@ import { format, subDays, subWeeks, subMonths, startOfDay, startOfWeek, startOfM
 import { useIsMobile } from "@/hooks/use-mobile";
 import { amountToUsd } from "@/lib/constants";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
+import { useSubscriptionStore, type SubscriptionPlan, type Subscriber } from "@/stores/subscription-store";
 import { useLivePrices } from "@/stores/wallet-store";
 
 type Period = "daily" | "weekly" | "monthly";
 
-function buildRevenueData(invoices: Invoice[], period: Period, btcPriceUsd: number | null, stxPriceUsd: number | null) {
+function buildRevenueData(
+  invoices: Invoice[],
+  plans: SubscriptionPlan[],
+  subscribers: Subscriber[],
+  period: Period,
+  btcPriceUsd: number | null,
+  stxPriceUsd: number | null,
+) {
   const now = new Date();
 
   // Build time buckets
@@ -63,6 +71,25 @@ function buildRevenueData(invoices: Invoice[], period: Period, btcPriceUsd: numb
     }
   }
 
+  // Sum subscription payments into buckets
+  const planTokenMap = new Map<string, 'sbtc' | 'stx'>();
+  for (const plan of plans) planTokenMap.set(plan.id, plan.tokenType ?? 'sbtc');
+
+  for (const sub of subscribers) {
+    const tt = planTokenMap.get(sub.planId) ?? 'sbtc';
+    for (const p of sub.payments) {
+      if (p.amount <= 0) continue;
+      const d = new Date(p.timestamp);
+      let key: string;
+      if (period === "daily") key = format(d, "yyyy-MM-dd");
+      else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
+      else key = format(d, "yyyy-MM");
+      if (usdMap.has(key)) {
+        usdMap.set(key, usdMap.get(key)! + (parseFloat(amountToUsd(p.amount, tt, btcPriceUsd, stxPriceUsd)) || 0));
+      }
+    }
+  }
+
   return buckets.map((b) => {
     const usd = usdMap.get(b.key) || 0;
     return { date: b.label, usd };
@@ -85,8 +112,10 @@ export default function RevenueChart() {
   const [period, setPeriod] = useState<Period>("daily");
   const isMobile = useIsMobile();
   const invoices = useInvoiceStore((s) => s.invoices);
+  const plans = useSubscriptionStore((s) => s.plans);
+  const subscribers = useSubscriptionStore((s) => s.subscribers);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
-  const data = useMemo(() => buildRevenueData(invoices, period, btcPriceUsd, stxPriceUsd), [invoices, period, btcPriceUsd, stxPriceUsd]);
+  const data = useMemo(() => buildRevenueData(invoices, plans, subscribers, period, btcPriceUsd, stxPriceUsd), [invoices, plans, subscribers, period, btcPriceUsd, stxPriceUsd]);
   const hasRevenue = data.some((d) => d.usd > 0);
 
   return (
