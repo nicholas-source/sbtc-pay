@@ -53,6 +53,10 @@ function SubscriptionsPage() {
   }, [plans, subscribers, btcPriceUsd, stxPriceUsd]);
 
   const handleExport = useCallback(() => {
+    const safeFmt = (d: Date | string, fmt: string) => {
+      const date = d instanceof Date ? d : new Date(d);
+      return isNaN(date.getTime()) ? "" : format(date, fmt);
+    };
     const rows: Record<string, string | number>[] = [];
     for (const sub of subscribers) {
       const plan = plans.find((p) => p.id === sub.planId);
@@ -63,7 +67,7 @@ function SubscriptionsPage() {
         Interval: plan?.interval ?? "",
         "Subscriber Address": sub.payerAddress,
         Status: sub.status,
-        "Started At": format(sub.startedAt, "yyyy-MM-dd"),
+        "Started At": safeFmt(sub.startedAt, "yyyy-MM-dd"),
       };
       if (sub.payments.length === 0) {
         rows.push({ ...base, "Payment Date": "", "Payment Amount": "", "TX ID": "" });
@@ -71,7 +75,7 @@ function SubscriptionsPage() {
         for (const p of sub.payments) {
           rows.push({
             ...base,
-            "Payment Date": format(p.timestamp, "yyyy-MM-dd"),
+            "Payment Date": safeFmt(p.timestamp, "yyyy-MM-dd"),
             "Payment Amount": p.amount,
             "TX ID": p.txId,
           });
@@ -92,7 +96,7 @@ function SubscriptionsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleExport}>
+          <Button variant="outline" size="sm" onClick={handleExport} disabled={subscribers.length === 0}>
             <Download className="mr-1 h-4 w-4" />
             Export CSV
           </Button>
@@ -111,9 +115,9 @@ function SubscriptionsPage() {
         <>
           {/* Stats */}
           <div className="grid gap-4 sm:grid-cols-3">
-            <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change="+1 this month" accent="secondary" />
-            <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change="+2 this month" accent="info" />
-            <StatCard label="Monthly Revenue" value={stats.revenueUsd} displayValue={stats.revenueDisplay} unit="" usd={stats.revenueUsd > 0 ? `≈ $${stats.revenueUsd.toFixed(2)}` : ""} icon={TrendingUp} change="+12%" accent="success" />
+            <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change={`${plans.filter(p => p.isActive).length} active`} accent="secondary" />
+            <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change={`${subscribers.length} total`} accent="info" />
+            <StatCard label="Monthly Revenue" value={stats.revenueUsd} displayValue={stats.revenueDisplay} unit="" usd={stats.revenueUsd > 0 ? `≈ $${stats.revenueUsd.toFixed(2)}` : ""} icon={TrendingUp} change={stats.revenueUsd > 0 ? "recurring" : ""} accent="success" />
           </div>
 
           {/* Analytics Chart */}
