@@ -32,7 +32,7 @@ export default function DirectPaymentWidget() {
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, balancesLoading, connect } = useWalletStore();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const addr = merchantAddress || "";
 
@@ -93,7 +93,7 @@ export default function DirectPaymentWidget() {
       setPayState("error");
       toast.error(readable || msg);
     }
-  }, [addr, payAmount, payMemo, payState, isConnected, address, connect]);
+  }, [addr, payAmount, payMemo, payState, isConnected, address, connect, tokenType, stxBalance, sbtcBalance]);
 
   if (!addr) {
     return (
@@ -132,13 +132,6 @@ export default function DirectPaymentWidget() {
               >
                 View transaction →
               </a>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => { setPayState("idle"); setTxId(null); setPayAmount(initialHuman); setPayMemo(memo); }}
-              >
-                Pay Again
-              </Button>
             </CardContent>
           </Card>
         </div>
@@ -200,18 +193,27 @@ export default function DirectPaymentWidget() {
               <Button className="w-full h-11 gap-2 font-semibold" onClick={() => connect()}>
                 <Wallet className="h-4 w-4" /> Connect Wallet
               </Button>
-            ) : (
-              <Button
-                className="w-full h-11 gap-2 font-semibold"
-                onClick={handlePay}
-                disabled={payState === "confirming" || !payAmount || Number(payAmount) <= 0}
-              >
-                {payState === "confirming" ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
-                ) : (
-                  <><Wallet className="h-4 w-4" /> Pay {payAmount ? `${Number(payAmount)} ${tokenLabel(tokenType)}` : ""}</>
-                )}
+            ) : balancesLoading ? (
+              <Button className="w-full h-11 gap-2 font-semibold" disabled>
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading balance…
               </Button>
+            ) : (
+              <>
+                <p className="text-caption text-muted-foreground text-center">
+                  Balance: {baseToHuman(Number(tokenType === 'stx' ? stxBalance : sbtcBalance), tokenType)} {tokenLabel(tokenType)}
+                </p>
+                <Button
+                  className="w-full h-11 gap-2 font-semibold"
+                  onClick={handlePay}
+                  disabled={payState === "confirming" || !payAmount || Number(payAmount) <= 0}
+                >
+                  {payState === "confirming" ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
+                  ) : (
+                    <><Wallet className="h-4 w-4" /> Pay {payAmount ? `${Number(payAmount)} ${tokenLabel(tokenType)}` : ""}</>
+                  )}
+                </Button>
+              </>
             )}
 
             <p className="text-micro text-muted-foreground text-center">
