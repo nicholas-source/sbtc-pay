@@ -10,51 +10,89 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
-import { format, subDays, subWeeks, subMonths } from "date-fns";
+import { format, subDays, subWeeks, subMonths, startOfDay, startOfWeek, startOfMonth } from "date-fns";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { baseToHuman, formatAmountCompact } from "@/lib/constants";
+import { baseToHuman, formatAmountCompact, tokenLabel } from "@/lib/constants";
+import { useSubscriptionStore } from "@/stores/subscription-store";
+import type { TokenType } from "@/lib/stacks/config";
 
 type Period = "daily" | "weekly" | "monthly";
 
-import { useBtcPrice } from "@/stores/wallet-store";
+import { useLivePrices } from "@/stores/wallet-store";
 
-function seed(i: number) {
-  const x = Math.sin(i * 131.7 + 217.3) * 41283.1927;
-  return x - Math.floor(x);
-}
-
-function generateData(period: Period, btcPriceUsd: number) {
-  const usdRate = btcPriceUsd / 100_000_000;
+function buildRealData(
+  plans: ReturnType<typeof useSubscriptionStore.getState>["plans"],
+  subscribers: ReturnType<typeof useSubscriptionStore.getState>["subscribers"],
+  period: Period,
+  btcPriceUsd: number,
+  stxPriceUsd: number,
+) {
+  const sbtcUsdRate = btcPriceUsd > 0 ? btcPriceUsd / 100_000_000 : 0; // per sat
+  const stxUsdRate = stxPriceUsd > 0 ? stxPriceUsd / 1_000_000 : 0; // per µSTX
   const now = new Date();
 
+  // Build a map from subscriber planId → tokenType
+  const planTokenMap = new Map<string, TokenType>();
+  for (const plan of plans) {
+    planTokenMap.set(plan.id, plan.tokenType ?? 'sbtc');
+  }
+
+  // Build time buckets
+  const buckets: { label: string; start: Date; end: Date }[] = [];
   if (period === "daily") {
-    return Array.from({ length: 30 }, (_, i) => {
-      const date = subDays(now, 29 - i);
-      const subscribers = Math.round(8 + (i / 29) * 12 + seed(i) * 4);
-      const revenue = Math.round(20000 + (i / 29) * 40000 + seed(i + 200) * 15000);
-      return { date: format(date, "MMM d"), subscribers, revenue, revenueUsd: +(revenue * usdRate).toFixed(2) };
-    });
+    for (let i = 29; i >= 0; i--) {
+      const day = subDays(now, i);
+      buckets.push({ label: format(day, "MMM d"), start: startOfDay(day), end: startOfDay(subDays(now, i - 1)) });
+    }
+  } else if (period === "weekly") {
+    for (let i = 11; i >= 0; i--) {
+      const week = subWeeks(now, i);
+      buckets.push({ label: format(week, "MMM d"), start: startOfWeek(week), end: startOfWeek(subWeeks(now, i - 1)) });
+    }
+  } else {
+    for (let i = 5; i >= 0; i--) {
+      const month = subMonths(now, i);
+      buckets.push({ label: format(month, "MMM yyyy"), start: startOfMonth(month), end: startOfMonth(subMonths(now, i - 1)) });
+    }
   }
-  if (period === "weekly") {
-    return Array.from({ length: 12 }, (_, i) => {
-      const date = subWeeks(now, 11 - i);
-      const subscribers = Math.round(5 + (i / 11) * 18 + seed(i + 50) * 5);
-      const revenue = Math.round(80000 + (i / 11) * 200000 + seed(i + 250) * 60000);
-      return { date: format(date, "MMM d"), subscribers, revenue, revenueUsd: +(revenue * usdRate).toFixed(2) };
-    });
-  }
-  return Array.from({ length: 6 }, (_, i) => {
-    const date = subMonths(now, 5 - i);
-    const subscribers = Math.round(3 + (i / 5) * 20 + seed(i + 100) * 6);
-    const revenue = Math.round(300000 + (i / 5) * 800000 + seed(i + 300) * 200000);
-    return { date: format(date, "MMM yyyy"), subscribers, revenue, revenueUsd: +(revenue * usdRate).toFixed(2) };
+
+  return buckets.map((b) => {
+    // Count subscribers active at bucket start (started before bucket end)
+    const activeSubs = subscribers.filter((s) => {
+      const started = s.startedAt instanceof Date ? s.startedAt : new Date(s.startedAt);
+      return !isNaN(started.getTime()) && started <= b.end;
+    }).length;
+
+    // Sum payments within this bucket, split by token type
+    let sbtcRevenue = 0;
+    let stxRevenue = 0;
+    for (const sub of subscribers) {
+      const tokenType = planTokenMap.get(sub.planId) ?? 'sbtc';
+      for (const p of sub.payments) {
+        const ts = p.timestamp instanceof Date ? p.timestamp : new Date(p.timestamp);
+        if (!isNaN(ts.getTime()) && ts >= b.start && ts < b.end) {
+          if (tokenType === 'stx') stxRevenue += p.amount;
+          else sbtcRevenue += p.amount;
+        }
+      }
+    }
+
+    const revenueUsd = +(sbtcRevenue * sbtcUsdRate + stxRevenue * stxUsdRate).toFixed(2);
+
+    return {
+      date: b.label,
+      subscribers: activeSubs,
+      sbtcRevenue,
+      stxRevenue,
+      revenueUsd,
+    };
   });
 }
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey: string; value: number; payload: { revenueUsd: number } }>; label?: string }) => {
+const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ dataKey: string; value: number; payload: { revenueUsd: number; sbtcRevenue: number; stxRevenue: number } }>; label?: string }) => {
   if (!active || !payload?.length) return null;
   const subs = payload.find((p) => p.dataKey === "subscribers");
-  const rev = payload.find((p) => p.dataKey === "revenue");
+  const data = payload[0]?.payload;
   return (
     <div className="rounded-lg border border-border bg-card p-3 shadow-lg">
       <p className="text-caption text-muted-foreground mb-1">{label}</p>
@@ -63,15 +101,20 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
           {subs.value} <span className="text-muted-foreground">subscribers</span>
         </p>
       )}
-      {rev && (
-        <>
-          <p className="font-mono-nums text-sm font-semibold text-foreground">
-            {baseToHuman(rev.value, 'sbtc').toFixed(8)} <span className="text-muted-foreground">sBTC</span>
-          </p>
-          <p className="font-mono-nums text-caption text-muted-foreground">
-            ≈ ${rev.payload.revenueUsd.toLocaleString()}
-          </p>
-        </>
+      {data && data.sbtcRevenue > 0 && (
+        <p className="font-mono-nums text-sm font-semibold text-foreground">
+          {baseToHuman(data.sbtcRevenue, 'sbtc').toFixed(8)} <span className="text-muted-foreground">sBTC</span>
+        </p>
+      )}
+      {data && data.stxRevenue > 0 && (
+        <p className="font-mono-nums text-sm font-semibold text-foreground">
+          {baseToHuman(data.stxRevenue, 'stx').toFixed(2)} <span className="text-muted-foreground">STX</span>
+        </p>
+      )}
+      {data && data.revenueUsd > 0 && (
+        <p className="font-mono-nums text-caption text-muted-foreground">
+          ≈ ${data.revenueUsd.toLocaleString()}
+        </p>
       )}
     </div>
   );
@@ -80,8 +123,11 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 export default function SubscriptionAnalyticsChart() {
   const [period, setPeriod] = useState<Period>("daily");
   const isMobile = useIsMobile();
-  const btcPrice = useBtcPrice();
-  const data = useMemo(() => generateData(period, btcPrice), [period, btcPrice]);
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
+  const plans = useSubscriptionStore((s) => s.plans);
+  const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const data = useMemo(() => buildRealData(plans, subscribers, period, btcPriceUsd ?? 0, stxPriceUsd ?? 0), [plans, subscribers, period, btcPriceUsd, stxPriceUsd]);
+  const hasData = data.some((d) => d.subscribers > 0 || d.revenueUsd > 0);
 
   return (
     <Card>
@@ -112,7 +158,12 @@ export default function SubscriptionAnalyticsChart() {
         </ToggleGroup>
       </CardHeader>
       <CardContent>
-        <div className="h-[220px] sm:h-[280px] md:h-[320px] lg:h-[360px]">
+        <div className="h-[220px] sm:h-[280px] md:h-[320px] lg:h-[360px] relative">
+          {!hasData && (
+            <div className="absolute inset-0 flex items-center justify-center z-10 bg-card/80 rounded-lg">
+              <p className="text-muted-foreground text-body-sm">No subscriber data yet. Charts will populate as subscriptions are created.</p>
+            </div>
+          )}
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={data} margin={{ top: 4, right: isMobile ? 4 : 8, left: isMobile ? -20 : 0, bottom: 0 }}>
               <defs>
@@ -148,7 +199,7 @@ export default function SubscriptionAnalyticsChart() {
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(v) => formatAmountCompact(v, 'sbtc')}
+                  tickFormatter={(v) => `$${v}`}
                 />
               )}
               <Tooltip content={<CustomTooltip />} />
@@ -164,7 +215,7 @@ export default function SubscriptionAnalyticsChart() {
               <Area
                 yAxisId={isMobile ? "left" : "right"}
                 type="monotone"
-                dataKey="revenue"
+                dataKey="revenueUsd"
                 stroke="hsl(var(--chart-2))"
                 strokeWidth={2}
                 fill="url(#subAnalyticsRevGrad)"
