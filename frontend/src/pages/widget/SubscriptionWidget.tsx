@@ -32,7 +32,15 @@ export default function SubscriptionWidget() {
   const tokenType: TokenType = (rawToken === 'stx' ? 'stx' : 'sbtc');
 
   const addr = merchantAddress || "";
-  const baseAmount = parseInt(amount) || 100000;
+  const parsedAmount = parseInt(amount);
+  if (!parsedAmount || parsedAmount <= 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px] text-destructive text-sm">
+        Invalid or missing amount parameter.
+      </div>
+    );
+  }
+  const baseAmount = parsedAmount;
   const humanAmount = baseToHuman(baseAmount, tokenType);
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
 
