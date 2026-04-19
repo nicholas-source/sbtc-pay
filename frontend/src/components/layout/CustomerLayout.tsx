@@ -1,7 +1,10 @@
+import { useEffect } from "react";
 import { Outlet, NavLink } from "react-router-dom";
 import { Bitcoin, Repeat, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WalletButton } from "@/components/wallet/WalletButton";
+import { useWalletStore } from "@/stores/wallet-store";
+import { useSubscriptionStore } from "@/stores/subscription-store";
 
 const tabs = [
   { to: "/customer/subscriptions", icon: Repeat, label: "Subscriptions" },
@@ -9,6 +12,15 @@ const tabs = [
 ];
 
 export default function CustomerLayout() {
+  const walletAddress = useWalletStore((s) => s.address);
+  const fetchMySubscriptions = useSubscriptionStore((s) => s.fetchMySubscriptions);
+
+  useEffect(() => {
+    if (walletAddress) {
+      fetchMySubscriptions(walletAddress);
+    }
+  }, [walletAddress, fetchMySubscriptions]);
+
   return (
     <div className="min-h-svh bg-background">
       <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30">
