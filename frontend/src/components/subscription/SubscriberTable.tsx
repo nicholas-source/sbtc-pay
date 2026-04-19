@@ -76,12 +76,19 @@ export default function SubscriberTable({ planId }: Props) {
   const pauseRaw = useSubscriptionStore((s) => s.pauseSubscription);
   const resumeRaw = useSubscriptionStore((s) => s.resumeSubscription);
   const cancelRaw = useSubscriptionStore((s) => s.cancelSubscription);
-  const processRenewal = useSubscriptionStore((s) => s.processRenewal);
   const pendingTxIds = useSubscriptionStore((s) => s.pendingTxIds);
+
+  const safeDate = (d: Date | string) => {
+    const date = d instanceof Date ? d : new Date(d);
+    return isNaN(date.getTime()) ? null : date;
+  };
 
   const pause = async (id: string) => { try { await pauseRaw(id); toast.success("Subscription paused"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to pause"); } };
   const resume = async (id: string) => { try { await resumeRaw(id); toast.success("Subscription resumed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to resume"); } };
-  const cancel = async (id: string) => { try { await cancelRaw(id); toast.success("Subscription cancelled"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to cancel"); } };
+  const cancel = async (id: string) => {
+    if (!window.confirm("Cancel this subscription? This is an on-chain action and cannot be undone.")) return;
+    try { await cancelRaw(id); toast.success("Subscription cancelled"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to cancel"); }
+  };
 
   const totalPages = Math.max(1, Math.ceil(filteredSubscribers.length / PAGE_SIZE));
   const paginatedSubscribers = filteredSubscribers.slice(
@@ -116,15 +123,6 @@ export default function SubscriberTable({ planId }: Props) {
       }
       return next;
     });
-  };
-
-  const handleRenewal = async (subId: string) => {
-    try {
-      await processRenewal(subId);
-      toast.success("Renewal payment submitted on-chain");
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Failed to process renewal");
-    }
   };
 
   if (subscribers.length === 0) {
@@ -221,10 +219,10 @@ export default function SubscriberTable({ planId }: Props) {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-body-sm text-muted-foreground hidden sm:table-cell">
-                        {format(sub.startedAt, "MMM d, yyyy")}
+                        {safeDate(sub.startedAt) ? format(safeDate(sub.startedAt)!, "MMM d, yyyy") : "—"}
                       </TableCell>
                       <TableCell className="text-body-sm text-muted-foreground hidden sm:table-cell">
-                        {sub.status === "cancelled" ? "—" : format(sub.nextPaymentAt, "MMM d, yyyy")}
+                        {sub.status === "cancelled" ? "—" : safeDate(sub.nextPaymentAt) ? format(safeDate(sub.nextPaymentAt)!, "MMM d, yyyy") : "—"}
                       </TableCell>
                       <TableCell onClick={(e) => e.stopPropagation()}>
                         {sub.status !== "cancelled" && (
@@ -239,11 +237,6 @@ export default function SubscriberTable({ planId }: Props) {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {sub.status === "active" && (
-                                <DropdownMenuItem aria-label="Process renewal payment" onClick={() => handleRenewal(sub.id)}>
-                                  <RefreshCw className="mr-2 h-4 w-4" /> Process Renewal
-                                </DropdownMenuItem>
-                              )}
                               {sub.status === "active" ? (
                                 <DropdownMenuItem aria-label="Pause subscription" onClick={() => pause(sub.id)}>
                                   <Pause className="mr-2 h-4 w-4" /> Pause
@@ -282,7 +275,7 @@ export default function SubscriberTable({ planId }: Props) {
                                 </div>
                                 {sortedPayments.map((p) => (
                                   <div key={p.txId} className="grid grid-cols-3 gap-4 text-body-sm px-2 py-1 rounded transition-colors hover:bg-muted/50">
-                                    <span>{format(p.timestamp, "MMM d, yyyy HH:mm")}</span>
+                                    <span>{safeDate(p.timestamp) ? format(safeDate(p.timestamp)!, "MMM d, yyyy HH:mm") : "—"}</span>
                                     <span>{formatAmount(p.amount, tt)} {tokenLabel(tt)}</span>
                                     <span className="font-mono text-muted-foreground" title={p.txId}>
                                       {truncateTx(p.txId)}
