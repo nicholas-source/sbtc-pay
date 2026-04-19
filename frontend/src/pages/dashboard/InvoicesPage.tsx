@@ -75,7 +75,7 @@ function InvoicesPage() {
         <EmptyState
             icon={FileText}
             title="No invoices yet"
-            description="Create your first invoice to start accepting sBTC payments from your customers."
+            description="Create your first invoice to start accepting payments from your customers."
             action={<CreateInvoiceDialog />}
           />
       </div>
