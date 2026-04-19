@@ -21,7 +21,7 @@ import { useSubscriptionStore } from "@/stores/subscription-store";
 import { CONTRACT_LIMITS } from "@/lib/stacks/contract";
 
 const schema = z.object({
-  name: z.string().min(1, "Plan name is required").max(CONTRACT_LIMITS.SUBSCRIPTION_NAME, `Max ${CONTRACT_LIMITS.SUBSCRIPTION_NAME} characters`),
+  name: z.string().trim().min(1, "Plan name is required").max(CONTRACT_LIMITS.SUBSCRIPTION_NAME, `Max ${CONTRACT_LIMITS.SUBSCRIPTION_NAME} characters`),
   description: z.string().max(CONTRACT_LIMITS.DESCRIPTION, `Max ${CONTRACT_LIMITS.DESCRIPTION} characters`).optional().default(""),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
   interval: z.enum(["weekly", "monthly", "yearly"]),
@@ -38,6 +38,7 @@ export default function CreatePlanDialog() {
   const [tokenType, setTokenType] = useState<TokenType>("sbtc");
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const createPlan = useSubscriptionStore((s) => s.createPlan);
+  const existingPlans = useSubscriptionStore((s) => s.plans);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -48,11 +49,24 @@ export default function CreatePlanDialog() {
   const usdEstimate = amount ? amountToUsd(humanToBaseUnits(amount, tokenType), tokenType, btcPriceUsd, stxPriceUsd) : "0.00";
 
   function onSubmit(data: FormValues) {
+    // Guard against duplicate plan names
+    const duplicate = existingPlans.find(
+      (p) => p.name.toLowerCase().trim() === data.name.toLowerCase().trim()
+    );
+    if (duplicate) {
+      form.setError("name", { message: "A plan with this name already exists" });
+      return;
+    }
     try {
+      const baseAmount = humanToBaseUnits(data.amount, tokenType);
+      if (baseAmount <= 0) {
+        form.setError("amount", { message: "Amount is too small — results in 0 base units" });
+        return;
+      }
       createPlan({
-        name: data.name,
-        description: data.description || "",
-        amount: humanToBaseUnits(data.amount, tokenType),
+        name: data.name.trim(),
+        description: data.description?.trim() || "",
+        amount: baseAmount,
         interval: data.interval,
         tokenType,
       });
