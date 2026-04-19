@@ -27,7 +27,6 @@ import { cn } from "@/lib/utils";
 import { formatAmount, amountToUsd } from "@/lib/constants";
 import { getExplorerAddressUrl } from "@/lib/stacks/config";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
-import { Navigate } from "react-router-dom";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -80,11 +79,6 @@ export default function AdminPage() {
     if (address) fetchAdminData(address);
   }, [address, fetchAdminData]);
 
-  // Redirect to dashboard if no wallet connected
-  if (!address && !isLoading) {
-    return <Navigate to="/dashboard" replace />;
-  }
-
   const [newFeeBps, setNewFeeBps] = useState(feeBps.toString());
   const [newFeeRecipient, setNewFeeRecipient] = useState(feeRecipient);
   const [transferAddress, setTransferAddress] = useState("");
@@ -125,12 +119,13 @@ export default function AdminPage() {
         </div>
       </div>
 
+      {/* Non-owner warning — admin actions are disabled but page is viewable */}
       {!isContractOwner && !isLoading && (
         <Card className="border-warning/30 bg-warning/5">
           <CardContent className="flex items-center gap-3 py-4">
             <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
             <p className="text-body-sm text-foreground">
-              Your connected wallet is not the contract owner. Admin actions will require the owner wallet.
+              Your connected wallet is not the contract owner. Admin actions require the owner wallet.
             </p>
           </CardContent>
         </Card>
