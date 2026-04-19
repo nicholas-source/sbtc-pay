@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 import { formatAmount, baseToHuman, humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
+import { useLivePrices } from "@/stores/wallet-store";
 
 const REASON_PRESETS = [
   "Customer request",
@@ -34,7 +34,6 @@ interface Props {
 }
 
 export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
-  const satsToUsd = useSatsToUsd();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const refundInvoice = useInvoiceStore((s) => s.refundInvoice);
   const [confirmOpen, setConfirmOpen] = useState(false);
