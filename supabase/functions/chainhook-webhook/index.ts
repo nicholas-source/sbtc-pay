@@ -39,6 +39,124 @@ const [CONTRACT_ADDRESS, CONTRACT_NAME] = CONTRACT_ID.split(".");
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // =============================================
+// Dead-Letter Queue (DLQ) — events that fail processing
+// are saved here for manual replay. NEVER throws.
+// =============================================
+async function saveToDlq(
+  eventType: string,
+  txId: string,
+  blockHeight: number,
+  payload: Record<string, unknown>,
+  error: unknown,
+): Promise<void> {
+  try {
+    const errorMessage = error instanceof Error
+      ? `${error.message}\n${error.stack ?? ""}`
+      : String(error);
+
+    const { data: existing } = await supabase
+      .from("webhook_dlq")
+      .select("id, attempts")
+      .eq("tx_id", txId)
+      .eq("event_type", eventType)
+      .is("resolved_at", null)
+      .maybeSingle();
+
+    if (existing) {
+      await supabase.from("webhook_dlq").update({
+        attempts: (existing.attempts ?? 1) + 1,
+        last_attempted_at: new Date().toISOString(),
+        error_message: errorMessage,
+      }).eq("id", existing.id);
+    } else {
+      await supabase.from("webhook_dlq").insert({
+        event_type: eventType,
+        tx_id: txId,
+        block_height: blockHeight,
+        payload,
+        error_message: errorMessage,
+      });
+    }
+    console.warn(`DLQ: saved ${eventType} | tx: ${txId.slice(0, 12)}...`);
+  } catch (dlqError) {
+    // Absolute last resort — DLQ save itself failed. Log everything.
+    console.error("CRITICAL: DLQ save failed:", dlqError);
+    console.error("Lost event:", JSON.stringify({ eventType, txId, blockHeight, payload, error: String(error) }));
+  }
+}
+
+// Replay unresolved DLQ events. Called via GET (auth required).
+// Accepts either CHAINHOOK_AUTH_TOKEN or SUPABASE_SERVICE_ROLE_KEY for auth.
+async function handleDlqReplay(req: Request): Promise<Response> {
+  const authHeader = req.headers.get("authorization") ?? "";
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
+  const isChainAuth = CHAINHOOK_AUTH_TOKEN && timingSafeEqual(token, CHAINHOOK_AUTH_TOKEN);
+  const isServiceAuth = SUPABASE_SERVICE_ROLE_KEY && timingSafeEqual(token, SUPABASE_SERVICE_ROLE_KEY);
+  if (!isChainAuth && !isServiceAuth) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+
+  const { data: dlqEvents, error: dlqErr } = await supabase
+    .from("webhook_dlq")
+    .select("*")
+    .is("resolved_at", null)
+    .order("created_at", { ascending: true })
+    .limit(50);
+
+  if (dlqErr || !dlqEvents) {
+    return new Response(
+      JSON.stringify({ status: "error", message: dlqErr?.message ?? "Failed to read DLQ" }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  if (dlqEvents.length === 0) {
+    return new Response(
+      JSON.stringify({ status: "ok", message: "DLQ is empty", replayed: 0, failed: 0 }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  let replayed = 0;
+  let failed = 0;
+  const errors: string[] = [];
+
+  for (const evt of dlqEvents) {
+    const handler = EVENT_HANDLERS[evt.event_type];
+    if (!handler) {
+      // No handler exists for this event type — mark resolved
+      await supabase.from("webhook_dlq")
+        .update({ resolved_at: new Date().toISOString() })
+        .eq("id", evt.id);
+      replayed++;
+      continue;
+    }
+
+    try {
+      await handler(evt.payload as Record<string, unknown>, evt.tx_id, evt.block_height);
+      await supabase.from("webhook_dlq")
+        .update({ resolved_at: new Date().toISOString() })
+        .eq("id", evt.id);
+      replayed++;
+    } catch (replayErr) {
+      failed++;
+      const msg = replayErr instanceof Error ? replayErr.message : String(replayErr);
+      errors.push(`${evt.event_type}/${evt.tx_id.slice(0, 12)}: ${msg}`);
+      await supabase.from("webhook_dlq").update({
+        attempts: (evt.attempts ?? 1) + 1,
+        last_attempted_at: new Date().toISOString(),
+        error_message: msg,
+      }).eq("id", evt.id);
+    }
+  }
+
+  return new Response(
+    JSON.stringify({ status: "ok", total: dlqEvents.length, replayed, failed, errors }),
+    { status: 200, headers: { "Content-Type": "application/json" } },
+  );
+}
+
+// =============================================
 // Chainhook v2 Payload Types
 // =============================================
 
@@ -382,8 +500,7 @@ async function handleInvoiceCreated(
     .single();
 
   if (!merchant) {
-    console.error("merchant not found for invoice:", data.merchant);
-    return;
+    throw new Error(`Merchant not found for invoice (principal: ${data.merchant})`);
   }
 
   const { error } = await supabase.from("invoices").upsert(
@@ -707,15 +824,49 @@ async function handleSubscriptionCreated(
   txId: string,
   blockHeight: number,
 ) {
-  const { data: merchant } = await supabase
+  let { data: merchant } = await supabase
     .from("merchants")
     .select("id")
     .eq("principal", data.merchant)
     .single();
 
+  // If merchant doesn't exist in DB yet, look up on-chain registration
+  // and create a stub row so the subscription FK can be satisfied.
   if (!merchant) {
-    console.error("merchant not found for subscription:", data.merchant);
-    return;
+    console.warn("Merchant not in DB for subscription, attempting on-chain lookup:", data.merchant);
+    try {
+      const merchantPrincipal = data.merchant as string;
+      const chainMerchant = await fetchCallReadOnlyFunction({
+        contractAddress: CONTRACT_ADDRESS,
+        contractName: CONTRACT_NAME,
+        functionName: "get-merchant",
+        functionArgs: [Cl.principal(merchantPrincipal)],
+        senderAddress: CONTRACT_ADDRESS,
+        network: "testnet",
+      });
+      const parsed = cvToJSON(chainMerchant);
+      if (parsed?.value?.value) {
+        const m = parsed.value.value;
+        const merchantId = Number(m.id?.value ?? 0);
+        if (merchantId > 0) {
+          await supabase.from("merchants").upsert({
+            id: merchantId,
+            principal: merchantPrincipal,
+            name: m.name?.value ?? "Unknown",
+            registered_at: Number(m["registered-at"]?.value ?? blockHeight),
+            is_active: m["is-active"]?.value ?? true,
+          }, { onConflict: "id" });
+          merchant = { id: merchantId };
+          console.log("Auto-created merchant stub:", merchantId, merchantPrincipal);
+        }
+      }
+    } catch (lookupErr) {
+      console.error("On-chain merchant lookup failed:", lookupErr);
+    }
+  }
+
+  if (!merchant) {
+    throw new Error(`Merchant not found for subscription (principal: ${data.merchant}, even after on-chain lookup)`);
   }
 
   await supabase.from("subscriptions").upsert(
@@ -841,11 +992,46 @@ async function handleSubscriptionPaused(data: Record<string, unknown>) {
     .eq("id", data["subscription-id"]);
 }
 
-async function handleSubscriptionResumed(data: Record<string, unknown>) {
+async function handleSubscriptionResumed(
+  data: Record<string, unknown>,
+  _txId: string,
+  blockHeight: number,
+) {
+  const subId = data["subscription-id"] as number;
+
+  // The contract recalculates next-payment-at on resume:
+  //   proper-next = last-payment-at + interval-blocks
+  //   next-at = max(burn-block-height, proper-next)
+  // Read the subscription on-chain to get the authoritative next-payment-at.
+  let nextPaymentAtBlock: number | null = null;
+  try {
+    const result = await fetchCallReadOnlyFunction({
+      contractAddress: CONTRACT_ADDRESS,
+      contractName: CONTRACT_NAME,
+      functionName: "get-subscription",
+      functionArgs: [Cl.uint(subId)],
+      senderAddress: CONTRACT_ADDRESS,
+      network: "testnet",
+    });
+    const parsed = cvToJSON(result);
+    if (parsed?.value?.value) {
+      nextPaymentAtBlock = Number(parsed.value.value["next-payment-at"]?.value ?? 0) || null;
+    }
+  } catch (err) {
+    console.warn("Failed to read on-chain subscription after resume:", err);
+    // Fallback: use blockHeight as approximation
+    nextPaymentAtBlock = blockHeight;
+  }
+
+  const updatePayload: Record<string, unknown> = { status: 0 };
+  if (nextPaymentAtBlock) {
+    updatePayload.next_payment_at_block = nextPaymentAtBlock;
+  }
+
   await supabase
     .from("subscriptions")
-    .update({ status: 0 })
-    .eq("id", data["subscription-id"]);
+    .update(updatePayload)
+    .eq("id", subId);
 }
 
 // =============================================
@@ -881,7 +1067,12 @@ const EVENT_HANDLERS: Record<
 };
 
 Deno.serve(async (req: Request) => {
-  // Only accept POST
+  // GET: replay failed events from the dead-letter queue
+  if (req.method === "GET") {
+    return await handleDlqReplay(req);
+  }
+
+  // Only accept POST for webhook events
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
@@ -924,10 +1115,10 @@ Deno.serve(async (req: Request) => {
 
     // Process applied blocks
     for (const block of applyBlocks) {
-      const blockHeight = block.block_identifier.index;
-      const blockHash = block.block_identifier.hash;
+      const blockHeight = block.block_identifier?.index ?? 0;
+      const blockHash = block.block_identifier?.hash ?? "";
 
-      for (const tx of block.transactions) {
+      for (const tx of (block.transactions ?? [])) {
         // v2: metadata.status === "success", v1: metadata.success === true
         const isSuccess = isV2
           ? tx.metadata.status === "success"
@@ -950,7 +1141,13 @@ Deno.serve(async (req: Request) => {
         console.log(`Processing tx ${txId.slice(0, 12)}... ops: ${operations.length}`);
 
         for (const operation of operations) {
-          const data = extractEventData(operation);
+          let data: Record<string, unknown> | null = null;
+          try {
+            data = extractEventData(operation);
+          } catch (extractErr) {
+            console.error("Failed to extract event data from operation:", extractErr);
+            continue;
+          }
           if (!data || !data.event) continue;
 
           const eventType = data.event as string;
@@ -978,20 +1175,14 @@ Deno.serve(async (req: Request) => {
             continue;
           }
 
-          // Process specific event
+          // Process specific event — errors DLQ'd, never abort remaining events
           if (handler) {
             try {
               await handler(data, txId, blockHeight);
             } catch (handlerError) {
-              console.error(
-                `Handler error for ${eventType}:`,
-                handlerError,
-              );
-              // Return 500 so Chainhook will retry delivery
-              return new Response(
-                JSON.stringify({ error: `Handler failed for ${eventType}`, detail: String(handlerError) }),
-                { status: 500, headers: { "Content-Type": "application/json" } },
-              );
+              console.error(`Handler error for ${eventType}:`, handlerError);
+              // Save to dead-letter queue for manual replay — NEVER return 500
+              await saveToDlq(eventType, txId, blockHeight, data, handlerError);
             }
           } else {
             console.log(`No handler for event: ${eventType}`);
@@ -1002,7 +1193,7 @@ Deno.serve(async (req: Request) => {
 
     // Handle rollbacks — delete events and associated data at rolled-back blocks
     for (const block of rollbackBlocks) {
-      const blockHeight = block.block_identifier.index;
+      const blockHeight = block.block_identifier?.index ?? 0;
       console.warn(`Rollback detected at block ${blockHeight}`);
 
       // Find all events that were applied at this block height
@@ -1074,7 +1265,7 @@ Deno.serve(async (req: Request) => {
         event_type: "rollback",
         tx_id: `rollback-${blockHeight}`,
         block_height: blockHeight,
-        block_hash: block.block_identifier.hash,
+        block_hash: block.block_identifier?.hash ?? "",
         contract_identifier: CONTRACT_ID,
         payload: { type: "rollback", block_height: blockHeight, reverted_count: rolledBackEvents?.length ?? 0 },
       });
@@ -1085,10 +1276,12 @@ Deno.serve(async (req: Request) => {
       headers: { "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Webhook processing error:", error);
+    console.error("CRITICAL webhook processing error:", error);
+    // Always return 200 — a 500 causes Chainhook to retry the entire block payload,
+    // but idempotency will skip already-inserted events, causing permanent data loss.
     return new Response(
-      JSON.stringify({ error: "Internal server error" }),
-      { status: 500, headers: { "Content-Type": "application/json" } },
+      JSON.stringify({ status: "error", message: String(error) }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
     );
   }
 });
