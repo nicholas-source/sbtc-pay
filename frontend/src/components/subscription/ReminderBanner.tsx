@@ -1,17 +1,22 @@
 import { useMemo } from "react";
 import { AlertTriangle } from "lucide-react";
-import { differenceInDays } from "date-fns";
+import { differenceInCalendarDays } from "date-fns";
 import { useSubscriptionStore } from "@/stores/subscription-store";
+import { useWalletStore } from "@/stores/wallet-store";
 
 export default function ReminderBanner() {
   const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const address = useWalletStore((s) => s.address);
 
   const dueSubs = useMemo(() => {
     const now = new Date();
     return subscribers.filter(
-      (s) => s.status === "active" && differenceInDays(s.nextPaymentAt, now) <= 3
+      (s) =>
+        s.status === "active" &&
+        s.payerAddress?.toLowerCase() === address?.toLowerCase() &&
+        differenceInCalendarDays(s.nextPaymentAt, now) <= 1
     );
-  }, [subscribers]);
+  }, [subscribers, address]);
 
   if (dueSubs.length === 0) return null;
 
@@ -23,7 +28,7 @@ export default function ReminderBanner() {
           {dueSubs.length} subscription{dueSubs.length > 1 ? "s" : ""} due soon
         </p>
         <p className="text-caption text-muted-foreground">
-          Payment will be processed within the next 3 days.
+          Use the "Pay Now" button below to process your payment.
         </p>
       </div>
     </div>
