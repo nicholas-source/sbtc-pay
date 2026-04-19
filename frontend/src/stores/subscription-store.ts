@@ -227,6 +227,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           timestamp: new Date(p.created_at),
           amount: p.amount,
           txId: p.tx_id || "",
+          payer: p.subscriber || "",
         }));
 
         // Estimate next payment date from block height
@@ -415,6 +416,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           timestamp: new Date(p.created_at),
           amount: p.amount,
           txId: p.tx_id || "",
+          payer: p.subscriber || "",
         }));
 
         // Estimate next payment date from block height (not just now + interval)
@@ -617,6 +619,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
         timestamp: new Date(),
         amount: plan.amount,
         txId,
+        payer: sub.payerAddress,
       };
 
       // Estimate next payment from block height (contract sets next-payment-at = burn-block-height + interval-blocks)
