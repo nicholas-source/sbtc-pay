@@ -21,7 +21,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 import { humanToBaseUnits, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useSatsToUsd, useLivePrices } from "@/stores/wallet-store";
+import { useLivePrices } from "@/stores/wallet-store";
 import { BURN_BLOCKS_PER_HOUR, type TokenType } from "@/lib/stacks/config";
 
 const TOKEN_LIMITS: Record<TokenType, { min: number; max: number; placeholder: string; step: string }> = {
@@ -74,7 +74,6 @@ function presetToBlocks(preset: string, customDate?: Date): number {
 }
 
 export default function CreateInvoiceDialog() {
-  const satsToUsd = useSatsToUsd();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
