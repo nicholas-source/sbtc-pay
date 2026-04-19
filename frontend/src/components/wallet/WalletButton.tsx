@@ -60,14 +60,14 @@ export function WalletButton() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
               </span>
-              Testnet
+              {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'}
             </div>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs">
             <div className="space-y-1">
-              <p className="font-semibold">Testnet Mode</p>
+              <p className="font-semibold">{NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'} Mode</p>
               <p className="text-muted-foreground">
-                sBTC Pay is running on Stacks Testnet. Make sure your wallet is set to Testnet before connecting.
+                sBTC Pay is running on Stacks {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'}. Make sure your wallet is set to {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'} before connecting.
               </p>
             </div>
           </TooltipContent>
