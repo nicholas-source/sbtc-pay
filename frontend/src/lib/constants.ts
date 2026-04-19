@@ -142,6 +142,7 @@ export function formatStxCompact(microStx: number): string {
 // ── Token-agnostic formatting ────────────────────────────────────────
 
 import type { TokenType } from './stacks/config';
+export type { TokenType };
 
 /**
  * Format an amount in base units (sats or microSTX) for display,
