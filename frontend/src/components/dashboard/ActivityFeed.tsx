@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowDownLeft, FileText, RefreshCcw, Repeat } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { formatAmount } from "@/lib/constants";
+import { formatAmount, tokenLabel } from "@/lib/constants";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useMemo } from "react";
+import type { TokenType } from "@/lib/stacks/config";
 
 interface ActivityEvent {
   id: string;
@@ -13,6 +14,7 @@ interface ActivityEvent {
   amount: number;
   address: string;
   timestamp: Date;
+  tokenType: TokenType;
 }
 
 const iconMap = {
@@ -45,10 +47,13 @@ export default function ActivityFeed() {
   const invoices = useInvoiceStore((s) => s.invoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
 
+  const plans = useSubscriptionStore((s) => s.plans);
+
   const events = useMemo(() => {
     const items: ActivityEvent[] = [];
 
     for (const inv of invoices) {
+      const invToken = inv.tokenType ?? 'sbtc';
       // Invoice creation
       items.push({
         id: `inv-${inv.id}`,
@@ -57,6 +62,7 @@ export default function ActivityFeed() {
         amount: inv.amount,
         address: truncateAddr(inv.payerAddress || inv.merchantAddress),
         timestamp: new Date(inv.createdAt),
+        tokenType: invToken,
       });
 
       // Payments on this invoice
@@ -68,6 +74,7 @@ export default function ActivityFeed() {
           amount: p.amount,
           address: truncateAddr(inv.payerAddress || ""),
           timestamp: new Date(p.timestamp),
+          tokenType: invToken,
         });
       }
 
@@ -80,12 +87,15 @@ export default function ActivityFeed() {
           amount: r.amount,
           address: truncateAddr(inv.payerAddress || ""),
           timestamp: new Date(r.timestamp),
+          tokenType: invToken,
         });
       }
     }
 
     // Subscription payments
     for (const sub of subscribers) {
+      const plan = plans.find((p) => p.id === sub.planId);
+      const subToken = plan?.tokenType ?? 'sbtc';
       for (const p of sub.payments || []) {
         items.push({
           id: `sub-${sub.id}-${p.txId}`,
@@ -94,6 +104,7 @@ export default function ActivityFeed() {
           amount: p.amount,
           address: truncateAddr(sub.payerAddress || ""),
           timestamp: new Date(p.timestamp),
+          tokenType: subToken,
         });
       }
     }
@@ -101,7 +112,7 @@ export default function ActivityFeed() {
     // Sort by most recent first, limit to 15
     items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     return items.slice(0, 15);
-  }, [invoices, subscribers]);
+  }, [invoices, subscribers, plans]);
   return (
     <Card>
       <CardHeader>
@@ -138,8 +149,8 @@ export default function ActivityFeed() {
                     </div>
                     <div className="text-right shrink-0 ml-3">
                       <p className="font-mono-nums text-sm text-foreground">
-                        {event.type === "refund" ? "-" : "+"}{formatAmount(event.amount, 'sbtc')}
-                        <span className="text-muted-foreground ml-1 text-caption">sBTC</span>
+                        {event.type === "refund" ? "-" : "+"}{formatAmount(event.amount, event.tokenType)}
+                        <span className="text-muted-foreground ml-1 text-caption">{tokenLabel(event.tokenType)}</span>
                       </p>
                       <p className="text-caption text-muted-foreground">
                         {formatDistanceToNow(event.timestamp, { addSuffix: true })}
