@@ -6,6 +6,7 @@ import { lazy, Suspense, useEffect } from "react";
 import { MotionConfig } from "framer-motion";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import CustomerLayout from "@/components/layout/CustomerLayout";
+import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 const CommandPalette = lazy(() => import("@/components/dashboard/CommandPalette"));
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import InvoicesSkeleton from "@/components/dashboard/InvoicesSkeleton";
@@ -72,8 +73,8 @@ function AnimatedRoutes() {
       <Routes>
         <Route path="/" element={<LandingPage />} />
 
-        {/* Dashboard routes */}
-        <Route path="/dashboard" element={<DashboardLayout />}>
+        {/* Dashboard routes — requires connected wallet */}
+        <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
           <Route index element={<Suspense fallback={<DashboardSkeleton />}><DashboardOverview /></Suspense>} />
           <Route path="invoices" element={<Suspense fallback={<InvoicesSkeleton />}><InvoicesPage /></Suspense>} />
           <Route path="refunds" element={<Suspense fallback={<RefundsSkeleton />}><RefundsPage /></Suspense>} />
@@ -82,11 +83,11 @@ function AnimatedRoutes() {
           <Route path="widget" element={<Suspense fallback={<DashboardSkeleton />}><WidgetGeneratorPage /></Suspense>} />
         </Route>
 
-        {/* Admin */}
-        <Route path="/admin" element={<ErrorBoundary><Suspense fallback={<DashboardSkeleton />}><AdminPage /></Suspense></ErrorBoundary>} />
+        {/* Admin — requires connected wallet; ownership enforced on-chain + UI */}
+        <Route path="/admin" element={<ProtectedRoute><ErrorBoundary><Suspense fallback={<DashboardSkeleton />}><AdminPage /></Suspense></ErrorBoundary></ProtectedRoute>} />
 
-        {/* Customer */}
-        <Route path="/customer" element={<ErrorBoundary><CustomerLayout /></ErrorBoundary>}>
+        {/* Customer — requires connected wallet */}
+        <Route path="/customer" element={<ProtectedRoute><ErrorBoundary><CustomerLayout /></ErrorBoundary></ProtectedRoute>}>
           <Route path="subscriptions" element={<CustomerSubscriptions />} />
           <Route path="payments" element={<CustomerPayments />} />
         </Route>
