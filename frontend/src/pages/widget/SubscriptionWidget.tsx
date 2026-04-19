@@ -1,11 +1,11 @@
 import { useState, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Bitcoin, Repeat, Wallet, Loader2, Check } from "lucide-react";
+import { Bitcoin, Repeat, Wallet, Loader2, Check, CreditCard } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { formatAmount, amountToUsd, tokenLabel, baseToHuman, humanToBaseUnits } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel, baseToHuman } from "@/lib/constants";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
@@ -36,9 +36,9 @@ export default function SubscriptionWidget() {
   const humanAmount = baseToHuman(baseAmount, tokenType);
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
 
-  const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, balancesLoading, connect } = useWalletStore();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
-  const [subState, setSubState] = useState<"idle" | "confirming" | "confirmed" | "error">("idle");
+  const [subState, setSubState] = useState<"idle" | "confirming" | "subscribed" | "error">("idle");
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -61,19 +61,14 @@ export default function SubscriptionWidget() {
       return;
     }
 
-    // Guard: check wallet balance before attempting subscription
-    const walletBalance = tokenType === 'stx' ? stxBalance : sbtcBalance;
-    if (walletBalance < BigInt(baseAmount)) {
-      const label = tokenLabel(tokenType);
-      toast.error(`Insufficient ${label} balance: need ${humanAmount} but wallet has ${baseToHuman(Number(walletBalance), tokenType)}`);
-      return;
-    }
+    // NOTE: create-subscription does NOT transfer tokens — no balance check needed here.
+    // Balance is checked before the first payment (handleFirstPayment).
 
     setSubState("confirming");
     setErrorMsg(null);
 
     try {
-      toast.info("Please confirm the transaction in your wallet");
+      toast.info("Please confirm the subscription in your wallet");
       const result = await createSubscription({
         merchantAddress: addr,
         name: plan,
@@ -85,8 +80,8 @@ export default function SubscriptionWidget() {
 
       if (result.txId) {
         setTxId(result.txId);
-        setSubState("confirmed");
-        toast.success("Subscription created!");
+        setSubState("subscribed");
+        toast.success("Subscription created! You can now make your first payment.");
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Subscription failed";
@@ -96,9 +91,12 @@ export default function SubscriptionWidget() {
       setSubState("error");
       toast.error(readable || msg);
     }
-  }, [addr, plan, baseAmount, intervalBlocks, subState, isConnected, address, connect]);
+  }, [addr, plan, baseAmount, intervalBlocks, subState, isConnected, address, connect, tokenType]);
 
-  if (subState === "confirmed" && txId) {
+  if (subState === "subscribed" && txId) {
+    // Subscription registered on-chain — direct user to Customer Portal for first payment
+    const walletBalance = tokenType === 'stx' ? stxBalance : sbtcBalance;
+
     return (
       <PageTransition>
         <div className="min-h-svh flex items-center justify-center p-4 bg-background">
@@ -111,8 +109,21 @@ export default function SubscriptionWidget() {
               </p>
               <a href={getExplorerTxUrl(txId)} target="_blank" rel="noopener noreferrer"
                 className="text-primary text-body-sm underline">
-                View transaction →
+                View subscription TX →
               </a>
+              <div className="border-t border-border pt-4 space-y-2">
+                <p className="text-body-sm text-muted-foreground">
+                  Your first payment is due now. Once the subscription TX confirms on-chain, make your first payment from the <strong>Customer Portal</strong>.
+                </p>
+                <p className="text-caption text-muted-foreground">
+                  Balance: {baseToHuman(Number(walletBalance), tokenType)} {tokenLabel(tokenType)}
+                </p>
+                <a href="/customer/subscriptions" className="inline-block">
+                  <Button className="w-full h-10 gap-2 font-semibold" variant="default">
+                    <CreditCard className="h-4 w-4" /> Go to Customer Portal
+                  </Button>
+                </a>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -147,20 +158,29 @@ export default function SubscriptionWidget() {
               <Button className="w-full h-10 gap-2 font-semibold" onClick={() => connect()}>
                 <Wallet className="h-4 w-4" /> Connect Wallet
               </Button>
-            ) : (
-              <Button
-                className="w-full h-10 gap-2 font-semibold"
-                onClick={handleSubscribe}
-                disabled={subState === "confirming"}
-              >
-                {subState === "confirming" ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
-                ) : subState === "error" ? (
-                  <><Wallet className="h-4 w-4" /> Try Again</>
-                ) : (
-                  <><Wallet className="h-4 w-4" /> Subscribe Now</>
-                )}
+            ) : balancesLoading ? (
+              <Button className="w-full h-10 gap-2 font-semibold" disabled>
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading balance…
               </Button>
+            ) : (
+              <>
+                <p className="text-caption text-muted-foreground text-center">
+                  Balance: {baseToHuman(Number(tokenType === 'stx' ? stxBalance : sbtcBalance), tokenType)} {tokenLabel(tokenType)}
+                </p>
+                <Button
+                  className="w-full h-10 gap-2 font-semibold"
+                  onClick={handleSubscribe}
+                  disabled={subState === "confirming"}
+                >
+                  {subState === "confirming" ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Confirming...</>
+                  ) : subState === "error" ? (
+                    <><Wallet className="h-4 w-4" /> Try Again</>
+                  ) : (
+                    <><Wallet className="h-4 w-4" /> Subscribe Now</>
+                  )}
+                </Button>
+              </>
             )}
 
             <p className="text-micro text-muted-foreground text-center">
