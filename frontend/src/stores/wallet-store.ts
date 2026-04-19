@@ -105,6 +105,7 @@ interface WalletState {
   // Balances (in base units: microSTX and sats)
   stxBalance: bigint;
   sbtcBalance: bigint;
+  balancesLoading: boolean;
   btcPriceUsd: number | null;
   stxPriceUsd: number | null;
   priceLastUpdated: number | null; // epoch ms of last successful live fetch
@@ -112,7 +113,7 @@ interface WalletState {
   // Actions
   connect: () => Promise<void>;
   disconnect: () => void;
-  checkConnection: () => void;
+  checkConnection: () => Promise<void>;
   authenticate: () => Promise<void>;
   fetchBalances: () => Promise<void>;
   fetchPrices: () => Promise<void>;
@@ -150,6 +151,7 @@ export const useWalletStore = create<WalletState>()(
       authToken: null,
       stxBalance: BigInt(0),
       sbtcBalance: BigInt(0),
+      balancesLoading: false,
       btcPriceUsd: null,
       stxPriceUsd: null,
       priceLastUpdated: null,
@@ -196,8 +198,8 @@ export const useWalletStore = create<WalletState>()(
 
               // Authenticate with wallet signature → JWT
               get().authenticate();
-              // Fetch balances after connecting
-              get().fetchBalances();
+              // Fetch balances after connecting (awaited so UI has real data)
+              await get().fetchBalances();
               get().fetchPrices();
             } else {
               set({
@@ -246,11 +248,12 @@ export const useWalletStore = create<WalletState>()(
           authToken: null,
           stxBalance: BigInt(0),
           sbtcBalance: BigInt(0),
+          balancesLoading: false,
           connectionError: null,
         });
       },
 
-      checkConnection: () => {
+      checkConnection: async () => {
         // Check if we have a stored connection
         if (stacksIsConnected()) {
           const stored = getLocalStorage();
@@ -287,8 +290,8 @@ export const useWalletStore = create<WalletState>()(
             if (!get().authToken) {
               get().authenticate();
             }
-            // Refresh balances
-            get().fetchBalances();
+            // Refresh balances (awaited so UI has real data)
+            await get().fetchBalances();
             get().fetchPrices();
           }
         }
@@ -346,6 +349,7 @@ export const useWalletStore = create<WalletState>()(
         const { address } = get();
         if (!address) return;
 
+        set({ balancesLoading: true });
         try {
           // Fetch balances from Hiro API
           const response = await fetch(
@@ -362,9 +366,10 @@ export const useWalletStore = create<WalletState>()(
             data.fungible_tokens?.[sbtcKey]?.balance || '0'
           );
 
-          set({ stxBalance, sbtcBalance });
+          set({ stxBalance, sbtcBalance, balancesLoading: false });
         } catch (error) {
           console.error('Failed to fetch balances:', error);
+          set({ balancesLoading: false });
         }
       },
 
