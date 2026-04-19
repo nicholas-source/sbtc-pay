@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { format } from "date-fns";
-import { Pause, Play, XCircle, Inbox } from "lucide-react";
+import { Pause, Play, XCircle, Inbox, CreditCard, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,7 @@ import { useSubscriptionStore, type SubscriberStatus } from "@/stores/subscripti
 import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
 import ReminderBanner from "@/components/subscription/ReminderBanner";
 
-import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
+import { formatAmount, amountToUsd, tokenLabel, baseToHuman } from "@/lib/constants";
 
 const statusStyles: Record<SubscriberStatus, string> = {
   active: "bg-success/15 text-success border-success/30",
@@ -25,13 +25,15 @@ const statusStyles: Record<SubscriberStatus, string> = {
 };
 
 function CustomerSubscriptions() {
-  const { address, isConnected } = useWalletStore();
+  const { address, isConnected, sbtcBalance, stxBalance } = useWalletStore();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
   const pauseSub = useSubscriptionStore((s) => s.pauseSubscription);
   const resumeSub = useSubscriptionStore((s) => s.resumeSubscription);
   const cancelSub = useSubscriptionStore((s) => s.cancelSubscription);
+  const processRenewal = useSubscriptionStore((s) => s.processRenewal);
+  const [payingId, setPayingId] = useState<string | null>(null);
 
   // Filter to subscriptions belonging to the connected wallet
   const mySubs = useMemo(
@@ -46,19 +48,48 @@ function CustomerSubscriptions() {
     return plans.find((p) => p.id === planId);
   }
 
-  function handlePause(id: string) {
-    pauseSub(id);
-    toast.success("Subscription paused");
+  function isPaymentDue(sub: { nextPaymentAt: Date; status: string }) {
+    return sub.status === "active" && new Date(sub.nextPaymentAt) <= new Date();
   }
 
-  function handleResume(id: string) {
-    resumeSub(id);
-    toast.success("Subscription resumed");
+  async function handlePayNow(subId: string) {
+    setPayingId(subId);
+    try {
+      await processRenewal(subId);
+      toast.success("Payment processed!");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Payment failed";
+      toast.error(msg);
+    } finally {
+      setPayingId(null);
+    }
   }
 
-  function handleCancel(id: string) {
-    cancelSub(id);
-    toast.success("Subscription cancelled");
+  async function handlePause(id: string) {
+    try {
+      await pauseSub(id);
+      toast.success("Subscription paused");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to pause");
+    }
+  }
+
+  async function handleResume(id: string) {
+    try {
+      await resumeSub(id);
+      toast.success("Subscription resumed");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to resume");
+    }
+  }
+
+  async function handleCancel(id: string) {
+    try {
+      await cancelSub(id);
+      toast.success("Subscription cancelled");
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : "Failed to cancel");
+    }
   }
 
   return (
@@ -117,7 +148,22 @@ function CustomerSubscriptions() {
                         Next payment: {format(sub.nextPaymentAt, "MMM d, yyyy")}
                       </p>
 
-                      <div className="flex gap-2 pt-1">
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {sub.status === "active" && isPaymentDue(sub) && (
+                          <Button
+                            size="sm"
+                            onClick={() => handlePayNow(sub.id)}
+                            disabled={payingId === sub.id}
+                            className="gap-1"
+                          >
+                            {payingId === sub.id ? (
+                              <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                            ) : (
+                              <CreditCard className="mr-1 h-4 w-4" />
+                            )}
+                            {payingId === sub.id ? "Processing…" : "Pay Now"}
+                          </Button>
+                        )}
                         {sub.status === "active" ? (
                           <Button variant="outline" size="sm" onClick={() => handlePause(sub.id)}>
                             <Pause className="mr-1 h-4 w-4" /> Pause
