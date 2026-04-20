@@ -216,7 +216,7 @@ export function DashboardLayout() {
 
         {/* Page content */}
         <div id="main-content" className="flex-1 overflow-y-auto scrollbar-thin">
-          <div className="p-3 sm:p-4 lg:p-6 xl:p-8">
+          <div className="p-fluid-md lg:p-fluid-lg">
             <div className="mx-auto max-w-7xl">
               <DashboardBreadcrumb />
               <ErrorBoundary>

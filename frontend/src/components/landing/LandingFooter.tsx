@@ -25,9 +25,9 @@ export default function LandingFooter() {
   return (
     <footer role="contentinfo" aria-label="Site footer" className="border-t border-border bg-background">
       <div className="container py-8 sm:py-12 lg:py-16">
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-6 md:gap-8 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 sm:gap-6 md:gap-8" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))' }}>
           {/* Brand column */}
-          <div className="col-span-2 md:col-span-1 space-y-4">
+          <div className="col-span-2 md:col-span-1 flex flex-col gap-space-md">
             <div className="flex items-center gap-2">
               <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
                 <Bitcoin className="h-4 w-4 text-primary-foreground" />
@@ -55,9 +55,9 @@ export default function LandingFooter() {
 
           {/* Link columns */}
           {Object.entries(footerLinks).map(([title, links]) => (
-            <div key={title} className="space-y-3">
+            <div key={title} className="flex flex-col gap-space-sm">
               <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-              <ul className="space-y-2">
+              <ul className="flex flex-col gap-space-xs">
                 {links.map((link) => (
                   <li key={link.label}>
                     {link.href.startsWith("/") ? (
