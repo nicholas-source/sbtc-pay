@@ -85,9 +85,9 @@ export default function WidgetGeneratorPage() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-fluid-lg">
       <div>
-        <h1 className="text-heading-lg text-foreground flex items-center gap-2">
+        <h1 className="text-heading-lg font-display text-foreground flex items-center gap-2">
           <Code2 className="h-6 w-6 text-primary" /> Widget Generator
         </h1>
         <p className="text-body-sm text-muted-foreground mt-1">
@@ -95,13 +95,13 @@ export default function WidgetGeneratorPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-space-md">
         {/* Configuration */}
         <Card>
           <CardHeader>
             <CardTitle className="text-heading-sm">Configuration</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex flex-col gap-space-md">
             <Tabs value={widgetType} onValueChange={(v) => setWidgetType(v as WidgetType)}>
               <TabsList className="w-full flex-wrap">
                 <TabsTrigger value="direct" className="flex-1 min-w-0 text-xs sm:text-body-sm">Direct Pay</TabsTrigger>
@@ -109,13 +109,13 @@ export default function WidgetGeneratorPage() {
                 <TabsTrigger value="subscription" className="flex-1 min-w-0 text-xs sm:text-body-sm">Subscribe</TabsTrigger>
               </TabsList>
 
-              <TabsContent value="direct" className="space-y-3 mt-4">
-                <div className="space-y-1">
+              <TabsContent value="direct" className="flex flex-col gap-space-sm mt-4">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Merchant Address</label>
                   <Input value={merchantAddress} onChange={(e) => setMerchantAddress(e.target.value)} className="font-mono text-caption" />
                   {addressError && <p className="text-xs text-destructive">{addressError}</p>}
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Token</label>
                   <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -125,18 +125,18 @@ export default function WidgetGeneratorPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Default Amount ({tokenLabel(tokenType)})</label>
                   <Input type="number" min={0} step={tokenType === 'stx' ? '0.000001' : '0.00000001'} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={tokenType === 'stx' ? '50' : '0.001'} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
                     <p className="text-caption text-muted-foreground">{Number(amount)} {tokenLabel(tokenType)} ≈ ${amountToUsd(humanToBaseUnits(Number(amount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD</p>
                   )}
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Memo</label>
                   <Input value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="Optional memo" />
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Theme</label>
                   <Select value={theme} onValueChange={setTheme}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -148,8 +148,8 @@ export default function WidgetGeneratorPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="invoice" className="space-y-3 mt-4">
-                <div className="space-y-1">
+              <TabsContent value="invoice" className="flex flex-col gap-space-sm mt-4">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Invoice ID</label>
                   <Input
                     value={invoiceId}
@@ -166,17 +166,17 @@ export default function WidgetGeneratorPage() {
                 </div>
               </TabsContent>
 
-              <TabsContent value="subscription" className="space-y-3 mt-4">
-                <div className="space-y-1">
+              <TabsContent value="subscription" className="flex flex-col gap-space-sm mt-4">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Merchant Address</label>
                   <Input value={merchantAddress} onChange={(e) => setMerchantAddress(e.target.value)} className="font-mono text-caption" />
                   {addressError && <p className="text-xs text-destructive">{addressError}</p>}
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Plan Name</label>
                   <Input value={planName} onChange={(e) => setPlanName(e.target.value)} />
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Token</label>
                   <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -186,14 +186,14 @@ export default function WidgetGeneratorPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Amount ({tokenLabel(tokenType)})</label>
                   <Input type="number" min={0} step={tokenType === 'stx' ? '0.000001' : '0.00000001'} value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={tokenType === 'stx' ? '50' : '0.001'} className="font-tabular" />
                   {amount && Number(amount) > 0 && (
                     <p className="text-caption text-muted-foreground">{Number(amount)} {tokenLabel(tokenType)} ≈ ${amountToUsd(humanToBaseUnits(Number(amount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD</p>
                   )}
                 </div>
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <label className="text-caption text-muted-foreground">Interval</label>
                   <Select value={interval} onValueChange={setInterval}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
@@ -210,7 +210,7 @@ export default function WidgetGeneratorPage() {
         </Card>
 
         {/* Preview & Embed */}
-        <div className="space-y-4">
+        <div className="flex flex-col gap-space-md">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-heading-sm flex items-center gap-2">
@@ -231,7 +231,7 @@ export default function WidgetGeneratorPage() {
             <CardHeader>
               <CardTitle className="text-heading-sm">Embed Code</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="flex flex-col gap-space-sm">
               <pre className={cn("rounded-lg bg-muted p-3 text-caption font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all transition-colors duration-300", copied && "bg-primary/10 ring-1 ring-primary/30")}>
                 {embedCode}
               </pre>
