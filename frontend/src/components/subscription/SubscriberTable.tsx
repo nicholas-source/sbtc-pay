@@ -130,7 +130,7 @@ export default function SubscriberTable({ planId }: Props) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-space-sm">
       {/* Toolbar */}
       <div className="flex items-center gap-3">
         <div className="relative flex-1">
@@ -139,11 +139,11 @@ export default function SubscriberTable({ planId }: Props) {
             placeholder="Search by address..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 h-9 text-sm"
+            className="pl-8 h-11 text-sm"
           />
         </div>
         <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "all" | SubscriberStatus)}>
-          <SelectTrigger className="w-full sm:w-[140px] h-9 text-sm">
+          <SelectTrigger className="w-full sm:w-[140px] h-11 text-sm">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -266,7 +266,7 @@ export default function SubscriberTable({ planId }: Props) {
                             {sortedPayments.length === 0 ? (
                               <p className="text-body-sm text-muted-foreground text-center py-2">No payments recorded.</p>
                             ) : (
-                              <div className="space-y-1">
+                              <div className="flex flex-col gap-1">
                                 <p className="text-body-sm font-medium text-muted-foreground mb-2">Payment History</p>
                                 <div className="grid grid-cols-3 gap-4 text-body-sm text-muted-foreground font-medium px-2">
                                   <span>Date</span>

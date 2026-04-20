@@ -72,9 +72,9 @@ export default function CustomerPayments() {
   }, [invoices, subscribers, address]);
 
   return (
-    <PageTransition className="mx-auto max-w-4xl space-y-6 p-6">
+    <PageTransition className="mx-auto max-w-4xl flex flex-col gap-space-lg p-fluid-md lg:p-fluid-lg">
       <div>
-        <h1 className="text-heading-lg text-foreground flex items-center gap-2">
+        <h1 className="text-heading-lg font-display text-foreground flex items-center gap-2">
           <Bitcoin className="h-6 w-6 text-primary" /> Payment History
         </h1>
         <p className="text-body-sm text-muted-foreground mt-1">

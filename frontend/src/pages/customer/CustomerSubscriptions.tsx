@@ -93,9 +93,9 @@ function CustomerSubscriptions() {
   }
 
   return (
-    <PageTransition className="mx-auto max-w-4xl space-y-6 p-6">
+    <PageTransition className="mx-auto max-w-4xl flex flex-col gap-space-lg p-fluid-md lg:p-fluid-lg">
       <div>
-        <h1 className="text-heading-lg text-foreground">My Subscriptions</h1>
+        <h1 className="text-heading-lg font-display text-foreground">My Subscriptions</h1>
         <p className="text-body-sm text-muted-foreground mt-1">
           {isConnected && address
             ? `Wallet: ${address.slice(0, 8)}…${address.slice(-6)}`
@@ -118,8 +118,8 @@ function CustomerSubscriptions() {
       ) : (
         <>
           {activeSubs.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-heading-sm text-foreground">Active</h2>
+            <div className="flex flex-col gap-space-md">
+              <h2 className="text-heading-sm font-display text-foreground">Active</h2>
               {activeSubs.map((sub) => {
                 const plan = getPlan(sub.planId);
                 if (!plan) return null;
@@ -133,7 +133,7 @@ function CustomerSubscriptions() {
                         {sub.status}
                       </Badge>
                     </CardHeader>
-                    <CardContent className="space-y-3">
+                    <CardContent className="flex flex-col gap-space-sm">
                       <div className="flex items-baseline gap-2">
                         <span className="font-mono-nums text-sats text-foreground">
                           {formatAmount(plan.amount, plan.tokenType)}
@@ -208,8 +208,8 @@ function CustomerSubscriptions() {
 
           {/* Past / Cancelled */}
           {pastSubs.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-heading-sm text-muted-foreground">Past</h2>
+            <div className="flex flex-col gap-space-md">
+              <h2 className="text-heading-sm font-display text-muted-foreground">Past</h2>
               {pastSubs.map((sub) => {
                 const plan = getPlan(sub.planId);
                 if (!plan) return null;

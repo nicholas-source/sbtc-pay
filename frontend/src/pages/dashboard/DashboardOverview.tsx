@@ -56,14 +56,14 @@ function DashboardOverview() {
   ];
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-fluid-lg">
       <div>
-        <h1 className="text-heading-lg text-foreground">Dashboard</h1>
+        <h1 className="text-heading-lg font-display text-foreground">Dashboard</h1>
         <p className="text-body-sm text-muted-foreground mt-1">Overview of your payment activity.</p>
         <PriceStatusBadge />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         {stats.map((s) => (
           <StatCard key={s.label} {...s} />
         ))}

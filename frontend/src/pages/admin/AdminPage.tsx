@@ -100,11 +100,11 @@ export default function AdminPage() {
   }, [feeRecipient]);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-3 sm:p-4 md:p-6">
+    <div className="mx-auto max-w-7xl flex flex-col gap-fluid-lg p-fluid-md lg:p-fluid-lg">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-heading-lg text-foreground flex items-center gap-2">
+          <h1 className="text-heading-lg font-display text-foreground flex items-center gap-2">
             <Shield className="h-6 w-6 text-primary" /> Admin Panel
           </h1>
           <p className="text-body-sm text-muted-foreground mt-1">
@@ -132,9 +132,9 @@ export default function AdminPage() {
       )}
 
       {/* Platform Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-space-md">
         <StatCard label="Merchants" value={Math.max(stats.totalMerchants, merchants.length).toString()} icon={Users} accent="info" />
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           <StatCard label="Invoices" value={stats.totalInvoices.toString()} icon={FileText} accent="primary" />
           {stats.totalInvoices > 0 && (
             <div className="flex flex-wrap gap-x-3 gap-y-1 px-1 text-caption text-muted-foreground">
@@ -160,8 +160,8 @@ export default function AdminPage() {
           )}
         </div>
         <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
-        <StatCard label="Total Volume" value={[stats.totalVolumeSbtc > 0 ? `${formatAmount(stats.totalVolumeSbtc, 'sbtc')} sBTC` : '', stats.totalVolumeStx > 0 ? `${formatAmount(stats.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={TrendingUp} accent="success" />
-        <StatCard label="Fees Collected" value={[stats.feesCollectedSbtc > 0 ? `${formatAmount(stats.feesCollectedSbtc, 'sbtc')} sBTC` : '', stats.feesCollectedStx > 0 ? `${formatAmount(stats.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={Bitcoin} accent="warning" />
+        <StatCard label="Total Volume" value={[stats.totalVolumeSbtc > 0 ? `${formatAmount(stats.totalVolumeSbtc, 'sbtc')} sBTC` : '', stats.totalVolumeStx > 0 ? `${formatAmount(stats.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={TrendingUp} accent="success" compact />
+        <StatCard label="Fees Collected" value={[stats.feesCollectedSbtc > 0 ? `${formatAmount(stats.feesCollectedSbtc, 'sbtc')} sBTC` : '', stats.feesCollectedStx > 0 ? `${formatAmount(stats.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={Bitcoin} accent="warning" compact />
       </div>
 
       {/* Contract Controls */}
@@ -173,7 +173,7 @@ export default function AdminPage() {
             {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
           </Button>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="flex flex-col gap-space-md">
           {/* Pause / Unpause */}
           <div className="flex items-center justify-between">
             <div>
@@ -209,11 +209,11 @@ export default function AdminPage() {
           </div>
 
           {showSettings && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="space-y-4 overflow-hidden">
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} className="flex flex-col gap-space-md overflow-hidden">
               <Separator />
 
               {/* Fee Management */}
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <p className="text-body font-medium text-foreground">Platform Fee</p>
                 <div className="flex items-center gap-2">
                   <Input
@@ -234,7 +234,7 @@ export default function AdminPage() {
               </div>
 
               {/* Fee Recipient */}
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <p className="text-body font-medium text-foreground">Fee Recipient</p>
                 <div className="flex items-center gap-2">
                   <Input value={newFeeRecipient} onChange={(e) => setNewFeeRecipient(e.target.value)} className="font-mono text-caption" disabled={!isContractOwner || !!pendingAction} />
@@ -247,7 +247,7 @@ export default function AdminPage() {
               <Separator />
 
               {/* Ownership Transfer */}
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <p className="text-body font-medium text-foreground">Ownership Transfer</p>
                 <p className="text-caption text-muted-foreground">Current owner: <code className="font-mono">{currentOwner.slice(0, 10)}…{currentOwner.slice(-6)}</code></p>
                 {pendingOwner ? (

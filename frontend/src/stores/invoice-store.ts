@@ -382,14 +382,14 @@ async function reconcileWithChainInner(
             },
           ];
           // Persist synthesized payment so the mismatch is resolved permanently
-          db.rpc("backfill_payment", {
+          void db.rpc("backfill_payment", {
             p_invoice_id: inv.dbId,
             p_payer: chain.payer || "",
             p_amount: gap,
             p_tx_id: "",
             p_block_height: 0,
             p_token_type: inv.tokenType,
-          }).catch(() => {}); // best-effort
+          }).then(() => {}, () => {}); // best-effort
         }
       }
     }
@@ -440,14 +440,14 @@ async function reconcileWithChainInner(
             },
           ];
           // Persist synthesized refund so the mismatch is resolved permanently
-          db.rpc("backfill_refund", {
+          void db.rpc("backfill_refund", {
             p_invoice_id: inv.dbId,
             p_amount: gap,
             p_reason: "",
             p_tx_id: "",
             p_block_height: 0,
             p_token_type: inv.tokenType,
-          }).catch(() => {}); // best-effort
+          }).then(() => {}, () => {}); // best-effort
         }
       }
     }

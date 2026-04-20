@@ -153,9 +153,9 @@ function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8 max-w-2xl">
+    <div className="flex flex-col gap-fluid-lg max-w-2xl">
       <div>
-        <h1 className="text-heading-lg text-foreground">Settings</h1>
+        <h1 className="text-heading-lg font-display text-foreground">Settings</h1>
         <p className="text-body-sm text-muted-foreground mt-1">Manage your merchant profile.</p>
       </div>
 
@@ -193,7 +193,7 @@ function SettingsPage() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-space-md">
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
                   <div className="flex justify-between">
@@ -251,8 +251,8 @@ function SettingsPage() {
           </CardTitle>
           <CardDescription>Configure alerts for subscription events.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
+        <CardContent className="flex flex-col gap-space-md">
+          <div className="flex flex-col gap-space-sm">
             <div>
               <Label htmlFor="notif-email">Email Address</Label>
               <Input
@@ -277,7 +277,7 @@ function SettingsPage() {
             </div>
           </div>
           <Separator />
-          <div className="space-y-3">
+          <div className="flex flex-col gap-space-sm">
             {eventToggles.map(({ key, label, description }) => (
               <div key={key} className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -310,7 +310,7 @@ function SettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-foreground">Disconnect Merchant</p>
-              <p className="text-caption text-muted-foreground">Remove your merchant profile entirely.</p>
+              <p className="text-caption text-muted-foreground prose-width">Remove your merchant profile entirely.</p>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>

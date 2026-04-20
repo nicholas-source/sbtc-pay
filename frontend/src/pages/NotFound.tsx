@@ -10,7 +10,7 @@ function NotFound() {
   return (
     <PageTransition>
       <div className="flex min-h-svh items-center justify-center bg-background p-6">
-        <div className="text-center space-y-6 max-w-md">
+        <div className="text-center flex flex-col items-center gap-space-lg max-w-md">
           <div className="flex justify-center">
             <div className="flex h-12 w-12 sm:h-16 sm:w-16 items-center justify-center rounded-2xl bg-primary/10">
               <Bitcoin className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
@@ -26,7 +26,7 @@ function NotFound() {
             404
           </motion.h1>
 
-          <div className="space-y-2">
+          <div className="flex flex-col gap-space-xs">
             <p className="text-heading-sm text-foreground">Page not found</p>
             <p className="text-body-sm text-muted-foreground">
               The page <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-primary text-xs">{location.pathname}</code> doesn't exist or has been moved.

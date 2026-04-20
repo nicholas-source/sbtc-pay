@@ -123,7 +123,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-space-md">
               {/* Type selector */}
               <RadioGroup
                 value={refundType}
@@ -159,7 +159,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
               )}
 
               {/* Reason */}
-              <div className="space-y-2">
+              <div className="flex flex-col gap-2">
                 <Label>Reason</Label>
                 <Select value={reasonPreset} onValueChange={handleReasonPreset}>
                   <SelectTrigger>
@@ -202,7 +202,7 @@ export default function RefundDialog({ invoice, open, onOpenChange }: Props) {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Refund</AlertDialogTitle>
             <AlertDialogDescription asChild>
-              <div className="space-y-2 text-sm">
+              <div className="flex flex-col gap-2 text-sm">
                 <p>Invoice: <span className="font-mono font-semibold">{invoice.id}</span></p>
                 <p>Amount: <span className="font-mono font-semibold">{formatAmount(amountInBaseUnits, tt)} {tokenLabel(tt)}</span> (${usd})</p>
                 <p>Reason: {form.getValues("reason")}</p>

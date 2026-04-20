@@ -23,7 +23,7 @@ export default function PricingSection() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
         >
-          <h2 className="text-heading-lg sm:text-display text-foreground">
+          <h2 className="text-heading-lg sm:text-display font-display text-foreground">
             Simple, transparent{" "}
             <span className="text-primary">pricing</span>
           </h2>
@@ -55,7 +55,7 @@ export default function PricingSection() {
                 <p className="mt-2 text-body text-muted-foreground">per transaction</p>
               </div>
 
-              <div className="mt-8 space-y-3">
+              <div className="mt-8 flex flex-col gap-space-sm">
                 {checkpoints.map((c) => (
                   <div key={c} className="flex items-start gap-3 text-body-sm text-foreground">
                     <CheckCircle2 className="h-5 w-5 shrink-0 text-success mt-0.5" />

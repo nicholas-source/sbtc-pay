@@ -63,7 +63,7 @@ export function WalletButton() {
             </div>
           </TooltipTrigger>
           <TooltipContent side="bottom" className="max-w-xs">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               <p className="font-semibold">{NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'} Mode</p>
               <p className="text-muted-foreground">
                 sBTC Pay is running on Stacks {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'}. Make sure your wallet is set to {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'} before connecting.
@@ -104,7 +104,7 @@ export function WalletButton() {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-64 max-w-[calc(100vw-2rem)]">
-        <div className="px-3 py-2.5 space-y-2">
+        <div className="px-3 py-2.5 flex flex-col gap-2">
           <div className="flex justify-between text-body-sm">
             <span className="text-muted-foreground">sBTC</span>
             <div className="text-right">

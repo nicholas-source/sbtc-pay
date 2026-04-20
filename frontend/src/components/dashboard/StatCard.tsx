@@ -31,9 +31,10 @@ interface StatCardProps {
   icon: LucideIcon;
   change: string;
   accent?: AccentColor;
+  compact?: boolean;
 }
 
-export default function StatCard({ label, displayValue, unit, usd, icon: Icon, change, accent = "primary" }: StatCardProps) {
+export default function StatCard({ label, displayValue, unit, usd, icon: Icon, change, accent = "primary", compact }: StatCardProps) {
   return (
     <Card
       className={cn("animate-fade-slide-up", accentBorderMap[accent])}
@@ -46,7 +47,7 @@ export default function StatCard({ label, displayValue, unit, usd, icon: Icon, c
         </div>
       </CardHeader>
       <CardContent>
-        <div className="font-mono-nums text-sats text-foreground">
+        <div className={cn("font-mono-nums text-foreground", compact ? "text-body-lg font-bold" : "text-sats")}>
           {displayValue}
           {unit && <span className="ml-1 text-caption text-muted-foreground">{unit}</span>}
         </div>

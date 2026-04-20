@@ -70,7 +70,7 @@ export default function PlanCard({ plan }: PlanCardProps) {
   return (
     <Card className="card-accent-secondary">
       <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
-        <div className="space-y-1.5">
+        <div className="flex flex-col gap-1.5">
           <div className="flex items-center gap-2">
             <CardTitle className="text-heading-sm">{plan.name}</CardTitle>
             <Badge variant="outline" className={plan.tokenType === 'stx' ? 'border-stacks text-stacks' : 'border-primary text-primary'}>
@@ -103,7 +103,7 @@ export default function PlanCard({ plan }: PlanCardProps) {
           />
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="flex flex-col gap-space-md">
         <div className="flex items-baseline gap-2">
           <span className="font-mono-nums text-sats text-foreground">
             {formatAmount(plan.amount, plan.tokenType)}
