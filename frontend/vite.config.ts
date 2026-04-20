@@ -21,28 +21,26 @@ export default defineConfig(({ mode }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          // React core — changes rarely, caches long
-          "vendor-react": ["react", "react-dom", "react-router-dom"],
-          // Stacks SDK — large crypto libs
-          "vendor-stacks": ["@stacks/connect", "@stacks/network", "@stacks/transactions"],
-          // Charts — only used on dashboard + subscriptions pages
-          "vendor-recharts": ["recharts"],
-          // UI framework — Radix + utilities
-          "vendor-ui": [
-            "framer-motion",
-            "class-variance-authority",
-            "clsx",
-            "tailwind-merge",
-            "cmdk",
-            "sonner",
-          ],
-          // Supabase client
-          "vendor-supabase": ["@supabase/supabase-js"],
-          // Date utilities
-          "vendor-date": ["date-fns"],
-          // Form handling
-          "vendor-form": ["react-hook-form", "@hookform/resolvers", "zod"],
+        manualChunks(id) {
+          if (id.includes("node_modules")) {
+            // WalletConnect / Reown — heaviest transitive dep, loaded with wallet
+            if (id.includes("@walletconnect/") || id.includes("@reown/")) return "vendor-walletconnect";
+            // Stacks SDK
+            if (id.includes("@stacks/")) return "vendor-stacks";
+            // React core — match exact package boundaries
+            if (/node_modules\/(react-dom|react-router-dom|react-router|scheduler)\//.test(id)) return "vendor-react";
+            if (/node_modules\/react\//.test(id)) return "vendor-react";
+            // Charts — only dashboard
+            if (id.includes("recharts") || id.includes("react-smooth")) return "vendor-recharts";
+            // UI framework
+            if (id.includes("framer-motion") || id.includes("class-variance-authority") || id.includes("clsx") || id.includes("tailwind-merge") || id.includes("cmdk") || id.includes("sonner") || id.includes("@radix-ui/")) return "vendor-ui";
+            // Supabase
+            if (id.includes("@supabase/")) return "vendor-supabase";
+            // Date utilities
+            if (id.includes("date-fns")) return "vendor-date";
+            // Form handling
+            if (id.includes("react-hook-form") || id.includes("@hookform/") || id.includes("/zod/")) return "vendor-form";
+          }
         },
       },
     },

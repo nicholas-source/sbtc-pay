@@ -21,7 +21,6 @@ export function WalletButton() {
   const sbtcBalance = useFormattedSbtcBalance();
   const sbtcUsd = useSbtcBalanceInUsd();
   const stxBalance = useFormattedStxBalance();
-
   const handleConnect = async () => {
     clearError();
     await connect();

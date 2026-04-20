@@ -66,26 +66,28 @@ export default function ActivityFeed() {
       });
 
       // Payments on this invoice
-      for (const p of inv.payments ?? []) {
+      for (let pi = 0; pi < (inv.payments ?? []).length; pi++) {
+        const p = inv.payments[pi];
         items.push({
-          id: `pay-${inv.id}-${p.txId}`,
+          id: `pay-${inv.id}-${p.txId || pi}`,
           type: "payment",
           title: "Payment Received",
           amount: p.amount,
-          address: truncateAddr(inv.payerAddress || ""),
+          address: truncateAddr(p.payer || inv.payerAddress || ""),
           timestamp: new Date(p.timestamp),
           tokenType: invToken,
         });
       }
 
       // Refunds on this invoice
-      for (const r of inv.refunds ?? []) {
+      for (let ri = 0; ri < (inv.refunds ?? []).length; ri++) {
+        const r = inv.refunds[ri];
         items.push({
-          id: `ref-${inv.id}-${r.txId}`,
+          id: `ref-${inv.id}-${r.txId || ri}`,
           type: "refund",
           title: "Refund Issued",
           amount: r.amount,
-          address: truncateAddr(inv.payerAddress || ""),
+          address: truncateAddr(inv.payerAddress || inv.merchantAddress),
           timestamp: new Date(r.timestamp),
           tokenType: invToken,
         });

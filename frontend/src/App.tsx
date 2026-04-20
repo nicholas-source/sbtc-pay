@@ -2,7 +2,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useRef } from "react";
 import { MotionConfig } from "framer-motion";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import CustomerLayout from "@/components/layout/CustomerLayout";
@@ -16,6 +16,7 @@ import SettingsSkeleton from "@/components/dashboard/SettingsSkeleton";
 import { useWalletStore } from "@/stores/wallet-store";
 import { startPricePolling, stopPricePolling } from "@/stores/wallet-store";
 import { ErrorBoundary } from "@/components/ui/error-boundary";
+import { NetworkStatus } from "@/components/ui/network-status";
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/Index"));
@@ -34,27 +35,83 @@ const InvoicePaymentWidget = lazy(() => import("./pages/widget/InvoicePaymentWid
 const SubscriptionWidget = lazy(() => import("./pages/widget/SubscriptionWidget"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,      // Data fresh for 30 s — avoids refetch on every navigation
+      gcTime: 10 * 60_000,    // Keep unused cache 10 min
+      retry: 2,               // Retry failed requests twice
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-// Scroll to top on route change
-function ScrollToTop() {
+// Route title map for dynamic <title>
+const ROUTE_TITLES: Record<string, string> = {
+  "/": "sBTC Pay — Bitcoin Payments on Stacks",
+  "/dashboard": "Dashboard | sBTC Pay",
+  "/dashboard/invoices": "Invoices | sBTC Pay",
+  "/dashboard/refunds": "Refunds | sBTC Pay",
+  "/dashboard/subscriptions": "Subscriptions | sBTC Pay",
+  "/dashboard/settings": "Settings | sBTC Pay",
+  "/dashboard/widget": "Widget Generator | sBTC Pay",
+  "/admin": "Admin | sBTC Pay",
+  "/customer/subscriptions": "My Subscriptions | sBTC Pay",
+  "/customer/payments": "My Payments | sBTC Pay",
+};
+
+// Scroll to top, move focus for screen readers, and set page title on route change
+function RouteAnnouncer() {
   const { pathname } = useLocation();
+  const mainRef = useRef<HTMLElement | null>(null);
+  const isFirstRender = useRef(true);
+
   useEffect(() => {
+    // Set dynamic page title
+    const title = ROUTE_TITLES[pathname] || "sBTC Pay";
+    document.title = title;
+
     window.scrollTo(0, 0);
+
+    // Skip focus management on initial load
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+
+    // Move focus to main content area so screen readers announce the new page
+    const main = mainRef.current || document.querySelector("main") || document.getElementById("root");
+    if (main) {
+      main.setAttribute("tabindex", "-1");
+      main.focus({ preventScroll: true });
+    }
   }, [pathname]);
+
   return null;
 }
 
 // Initialize wallet connection on app load
 function WalletInitializer() {
   const checkConnection = useWalletStore((state) => state.checkConnection);
+  const fetchBalances = useWalletStore((state) => state.fetchBalances);
+  const address = useWalletStore((state) => state.address);
 
+  // Run once on mount only — do NOT include address in deps.
+  // When connect() sets address, we don't want to re-fire checkConnection.
   useEffect(() => {
+    // If we have a persisted address, fetch balances immediately
+    // (don't wait for checkConnection to download the wallet SDK)
+    const currentAddress = useWalletStore.getState().address;
+    if (currentAddress) {
+      fetchBalances();
+    }
+    // Verify the session with the wallet SDK in the background
     checkConnection();
     // Start live BTC price polling (CoinGecko, every 60 s)
     startPricePolling();
     return () => stopPricePolling();
-  }, [checkConnection]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return null;
 }
@@ -71,7 +128,7 @@ function PageLoader() {
 function AnimatedRoutes() {
   return (
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<ErrorBoundary><LandingPage /></ErrorBoundary>} />
 
         {/* Dashboard routes — requires connected wallet */}
         <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
@@ -110,9 +167,10 @@ const App = () => (
     <MotionConfig reducedMotion="user">
     <TooltipProvider>
       <WalletInitializer />
+      <NetworkStatus />
       <Sonner />
       <BrowserRouter>
-        <ScrollToTop />
+        <RouteAnnouncer />
         <Suspense fallback={null}><CommandPalette /></Suspense>
         <Suspense fallback={<PageLoader />}>
           <AnimatedRoutes />

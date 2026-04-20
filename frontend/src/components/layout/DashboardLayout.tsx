@@ -47,8 +47,11 @@ export function DashboardLayout() {
   const isContractOwner = useAdminStore((s) => s.isContractOwner);
 
   // Bootstrap data when wallet is connected
+  // Use a ref to prevent StrictMode double-firing from making duplicate API calls
+  const lastFetchedAddress = useRef<string | null>(null);
   useEffect(() => {
-    if (walletAddress) {
+    if (walletAddress && walletAddress !== lastFetchedAddress.current) {
+      lastFetchedAddress.current = walletAddress;
       fetchMerchant(walletAddress);
       fetchInvoices(walletAddress);
       fetchSubscriptions(walletAddress);
@@ -204,7 +207,7 @@ export function DashboardLayout() {
             aria-label="Toggle sidebar"
             aria-expanded={sidebarOpen}
             aria-controls="sidebar-nav"
-            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-ring"
+            className="rounded-lg p-2.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-ring"
           >
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useWalletStore } from "@/stores/wallet-store";
 import { Loader2 } from "lucide-react";
@@ -11,8 +10,9 @@ interface ProtectedRouteProps {
  * Route guard: requires a connected wallet.
  * Redirects to "/" if no wallet is connected.
  *
- * Handles the async gap on page refresh: wallet state hasn't been restored yet
- * (checkConnection runs after first render). We wait for that before redirecting.
+ * With persisted wallet state (address + isConnected in zustand persist),
+ * on refresh we have the address immediately — no waiting. If the wallet
+ * session turns out to be stale, checkConnection clears it in the background.
  *
  * NOTE: Admin-level checks (contract owner) are intentionally NOT done here.
  * On-chain reads can fail (rate limits, network issues) which would lock out
@@ -25,27 +25,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const isConnected = useWalletStore((s) => s.isConnected);
   const address = useWalletStore((s) => s.address);
   const isConnecting = useWalletStore((s) => s.isConnecting);
+  const connectionChecked = useWalletStore((s) => s.connectionChecked);
 
-  // Track whether the initial wallet check has completed.
-  // On page refresh, isConnected/address are false/null until checkConnection resolves.
-  const [walletChecked, setWalletChecked] = useState(isConnected);
+  // If persisted state says connected, render immediately (don't wait for checkConnection)
+  if (isConnected && address) {
+    return <>{children}</>;
+  }
 
-  useEffect(() => {
-    if (isConnected) {
-      setWalletChecked(true);
-      return;
-    }
-
-    // Give checkConnection time to run (fires in WalletInitializer's useEffect).
-    // After a short grace period, if still not connected, allow the redirect.
-    if (!isConnecting) {
-      const timer = setTimeout(() => setWalletChecked(true), 150);
-      return () => clearTimeout(timer);
-    }
-  }, [isConnected, isConnecting]);
-
-  // Still waiting for wallet restoration on page refresh
-  if (!walletChecked || isConnecting) {
+  // No persisted state — wait for checkConnection to verify
+  if (!connectionChecked || isConnecting) {
     return (
       <div className="flex min-h-svh items-center justify-center bg-background" role="status">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -54,10 +42,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // No wallet connected → redirect to landing
-  if (!isConnected || !address) {
-    return <Navigate to="/" replace state={{ from: location.pathname }} />;
-  }
-
-  return <>{children}</>;
+  // checkConnection finished and still not connected → redirect to landing
+  return <Navigate to="/" replace state={{ from: location.pathname }} />;
 }

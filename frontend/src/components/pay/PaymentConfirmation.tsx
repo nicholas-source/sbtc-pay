@@ -196,7 +196,7 @@ export function PaymentConfirmation({
           <p className={`text-heading-sm ${confirmed ? "text-success receipt-success" : "text-primary receipt-primary"}`}>
             {confirmed ? "Payment Confirmed" : "Transaction Submitted"}
           </p>
-          <p className="text-2xl font-bold text-foreground receipt-fg mt-1 font-tabular">
+          <p className="text-heading font-bold text-foreground receipt-fg mt-1 font-tabular">
             {formatAmount(amount, tokenType)} {tokenLabel(tokenType)}
           </p>
           {usdValue !== "—" && (

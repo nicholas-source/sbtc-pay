@@ -44,7 +44,7 @@ export default function PricingSection() {
             <CardContent className="p-4 sm:p-6 md:p-8">
               <div className="text-center">
                 <motion.div
-                  className="text-4xl sm:text-display-lg md:text-display-xl text-primary font-black"
+                  className="text-display sm:text-display-lg md:text-display-xl text-primary font-black"
                   initial={{ opacity: 0, y: 8 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true }}

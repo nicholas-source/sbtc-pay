@@ -72,7 +72,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
       <SheetContent className="max-w-full sm:max-w-lg overflow-y-auto">
         <SheetHeader className="pb-4">
           <div className="flex items-center gap-3">
-            <SheetTitle className="font-mono text-xl">{invoice.id}</SheetTitle>
+            <SheetTitle className="font-mono text-heading-sm">{invoice.id}</SheetTitle>
             <InvoiceStatusBadge status={invoice.status} amountPaid={invoice.amountPaid} />
           </div>
           <div className="flex gap-4 text-xs text-muted-foreground mt-1">
@@ -85,7 +85,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           {/* Amount */}
           <div className="rounded-lg border p-4">
             <p className="text-xs text-muted-foreground mb-1">Total Amount</p>
-            <p className="text-2xl font-mono font-bold font-tabular">{formatAmount(invoice.amount, invoice.tokenType)} <span className="text-sm text-muted-foreground">{tokenLabel(invoice.tokenType)}</span></p>
+            <p className="text-heading font-mono font-bold font-tabular">{formatAmount(invoice.amount, invoice.tokenType)} <span className="text-sm text-muted-foreground">{tokenLabel(invoice.tokenType)}</span></p>
             <p className="text-sm text-muted-foreground">${amountToUsd(invoice.amount, invoice.tokenType, btcPriceUsd, stxPriceUsd)} USD</p>
           </div>
 
