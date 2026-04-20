@@ -23,9 +23,11 @@ function timingSafeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-// Expected contract identifier (testnet)
-const CONTRACT_ID =
-  "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v6";
+// Contract identifier — reads from env so the same code works on testnet & mainnet
+const CONTRACT_ID = Deno.env.get("PAYMENT_CONTRACT_ID")
+  ?? "STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR.payment-v6";
+const NETWORK: "testnet" | "mainnet" =
+  (Deno.env.get("NETWORK_MODE") ?? "testnet") as "testnet" | "mainnet";
 
 // Convert contract token-type (u0=sBTC, u1=STX) to DB string
 function resolveTokenType(data: Record<string, unknown>): string {
@@ -435,7 +437,7 @@ async function handleMerchantUpdated(
         contractName: CONTRACT_NAME,
         functionName: "get-merchant",
         functionArgs: [Cl.principal(merchantPrincipal)],
-        network: "testnet",
+        network: NETWORK,
         senderAddress: merchantPrincipal,
       });
       const json = cvToJSON(result);
@@ -708,7 +710,7 @@ async function handleInvoiceUpdated(
         contractName: CONTRACT_NAME,
         functionName: "get-invoice",
         functionArgs: [Cl.uint(invoiceId)],
-        network: "testnet",
+        network: NETWORK,
         senderAddress: invoiceRow.merchant_principal,
       });
       const json = cvToJSON(result);
@@ -842,7 +844,7 @@ async function handleSubscriptionCreated(
         functionName: "get-merchant",
         functionArgs: [Cl.principal(merchantPrincipal)],
         senderAddress: CONTRACT_ADDRESS,
-        network: "testnet",
+        network: NETWORK,
       });
       const parsed = cvToJSON(chainMerchant);
       if (parsed?.value?.value) {
@@ -1011,7 +1013,7 @@ async function handleSubscriptionResumed(
       functionName: "get-subscription",
       functionArgs: [Cl.uint(subId)],
       senderAddress: CONTRACT_ADDRESS,
-      network: "testnet",
+      network: NETWORK,
     });
     const parsed = cvToJSON(result);
     if (parsed?.value?.value) {
