@@ -42,10 +42,11 @@ const PAYMENT_CONTRACT_ADDRESS =
   import.meta.env.VITE_PAYMENT_CONTRACT_ADDRESS ||
   (NETWORK_MODE === 'testnet'
     ? 'STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR'
-    : '');
+    : 'SPR54P37AA27XHMMTCDEW4YZFPFJX69162JR5CT4');
 
 const PAYMENT_CONTRACT_NAME =
-  import.meta.env.VITE_PAYMENT_CONTRACT_NAME || 'payment-v6';
+  import.meta.env.VITE_PAYMENT_CONTRACT_NAME ||
+  (NETWORK_MODE === 'testnet' ? 'payment-v6' : 'sbtc-pay');
 
 export const PAYMENT_CONTRACT = {
   address: PAYMENT_CONTRACT_ADDRESS,
