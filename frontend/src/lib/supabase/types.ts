@@ -501,6 +501,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      backfill_payment: {
+        Args: {
+          p_invoice_id: number
+          p_payer: string
+          p_amount: number
+          p_tx_id: string
+          p_block_height: number
+          p_token_type?: string
+        }
+        Returns: string
+      }
+      backfill_refund: {
+        Args: {
+          p_invoice_id: number
+          p_amount: number
+          p_reason: string
+          p_tx_id: string
+          p_block_height: number
+          p_token_type?: string
+        }
+        Returns: string
+      }
       increment_merchant_received: {
         Args: { p_amount: number; p_principal: string }
         Returns: undefined

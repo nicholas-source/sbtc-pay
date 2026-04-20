@@ -5,8 +5,19 @@
  * using the latest @stacks/connect and @stacks/transactions APIs.
  */
 
-import { request } from '@stacks/connect';
 import { Cl, Pc, fetchCallReadOnlyFunction, cvToValue, type ClarityValue } from '@stacks/transactions';
+import type { Methods } from '@stacks/connect';
+
+type MethodParams<M extends keyof Methods> = Methods[M]['params'];
+type MethodResult<M extends keyof Methods> = Methods[M]['result'];
+
+// Lazy-load @stacks/connect — only needed when user submits a transaction.
+// Caches after first call so all subsequent invocations are synchronous.
+let _request: typeof import('@stacks/connect').request | null = null;
+async function request<M extends keyof Methods>(method: M, params?: MethodParams<M>): Promise<MethodResult<M>> {
+  if (!_request) _request = (await import('@stacks/connect')).request;
+  return _request(method, params);
+}
 import {
   PAYMENT_CONTRACT,
   PAYMENT_CONTRACT_ID,
