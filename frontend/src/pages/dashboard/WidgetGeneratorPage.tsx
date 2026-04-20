@@ -85,7 +85,7 @@ export default function WidgetGeneratorPage() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
       <div>
         <h1 className="text-heading-lg text-foreground flex items-center gap-2">
           <Code2 className="h-6 w-6 text-primary" /> Widget Generator

@@ -203,7 +203,7 @@ export default function InvoicePaymentWidget() {
       </div>
 
       <div className="text-center">
-        <span className="text-2xl sm:text-sats text-primary font-tabular">{formatAmount(remaining, tt)} {tokenLabel(tt)}</span>
+        <span className="text-heading sm:text-sats text-primary font-tabular">{formatAmount(remaining, tt)} {tokenLabel(tt)}</span>
         <p className="text-caption text-muted-foreground">≈ ${amountToUsd(remaining, tt, btcPriceUsd, stxPriceUsd)} USD</p>
         <PriceStatusBadge />
       </div>

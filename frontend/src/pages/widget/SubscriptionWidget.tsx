@@ -153,7 +153,7 @@ export default function SubscriptionWidget() {
             <div className="text-center space-y-1">
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
-              <p className="text-2xl sm:text-sats text-primary font-tabular">{humanAmount} {tokenLabel(tokenType)}</p>
+              <p className="text-heading sm:text-sats text-primary font-tabular">{humanAmount} {tokenLabel(tokenType)}</p>
               <p className="text-caption text-muted-foreground">≈ ${amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD per {interval}</p>
               <PriceStatusBadge />
             </div>

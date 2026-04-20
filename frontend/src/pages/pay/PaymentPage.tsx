@@ -575,8 +575,8 @@ function PaymentPage() {
       {/* Amount Due */}
       <div className="flex flex-col items-center gap-1 text-center">
         <span className="text-caption text-muted-foreground uppercase tracking-wider">Amount Due</span>
-        <span className="text-3xl text-primary font-tabular font-bold">
-          {formatAmount(remaining, tt)} <span className="text-lg font-medium">{tokenLabel(tt)}</span>
+        <span className="text-heading-lg text-primary font-tabular font-bold">
+          {formatAmount(remaining, tt)} <span className="text-body-lg font-medium">{tokenLabel(tt)}</span>
         </span>
         <span className="text-body-sm text-muted-foreground">
           ~${usdAmount.toFixed(2)} USD

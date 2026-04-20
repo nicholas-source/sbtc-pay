@@ -67,7 +67,7 @@ function InvoicesPage() {
 
   if (invoices.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-8">
         <div>
           <h1 className="text-heading-lg text-foreground">Invoices</h1>
           <p className="text-body-sm text-muted-foreground mt-1">Create and manage payment invoices</p>
@@ -83,7 +83,7 @@ function InvoicesPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-heading-lg text-foreground">Invoices</h1>

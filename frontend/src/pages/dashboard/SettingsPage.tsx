@@ -153,7 +153,7 @@ function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-8 max-w-2xl">
       <div>
         <h1 className="text-heading-lg text-foreground">Settings</h1>
         <p className="text-body-sm text-muted-foreground mt-1">Manage your merchant profile.</p>
