@@ -34,7 +34,7 @@ export default function FeaturesSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
         >
-          <h2 className="text-heading-lg sm:text-display text-foreground">
+          <h2 className="text-heading-lg sm:text-display font-display text-foreground">
             Everything you need to{" "}
             <span className="text-secondary">accept sBTC</span>
           </h2>
@@ -43,7 +43,7 @@ export default function FeaturesSection() {
           </p>
         </motion.div>
 
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-md">
           {features.map((f, i) => (
             <motion.div
               key={f.title}

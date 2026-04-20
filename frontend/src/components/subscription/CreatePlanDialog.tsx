@@ -92,7 +92,7 @@ export default function CreatePlanDialog() {
           <DialogDescription>Set up a recurring payment plan for your subscribers.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-space-md">
             <FormField
               control={form.control}
               name="name"
@@ -117,7 +117,7 @@ export default function CreatePlanDialog() {
                 </FormItem>
               )}
             />
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <FormLabel>Token</FormLabel>
               <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
