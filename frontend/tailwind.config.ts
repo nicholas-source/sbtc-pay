@@ -26,7 +26,21 @@ export default {
         xs: "400px",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "-apple-system", "sans-serif"],
+        sans: ["General Sans", "system-ui", "-apple-system", "sans-serif"],
+        display: ["Anybody", "General Sans", "system-ui", "sans-serif"],
+      },
+      spacing: {
+        /* 4pt semantic scale tied to 24px rhythm (body 16px × 1.5 line-height) */
+        'space-3xs': '0.125rem',  /* 2px  — hairline */
+        'space-2xs': '0.25rem',   /* 4px  */
+        'space-xs':  '0.5rem',    /* 8px  */
+        'space-sm':  '0.75rem',   /* 12px */
+        'space-md':  '1rem',      /* 16px */
+        'space-lg':  '1.5rem',    /* 24px = 1 rhythm unit */
+        'space-xl':  '2rem',      /* 32px */
+        'space-2xl': '3rem',      /* 48px = 2 rhythm units */
+        'space-3xl': '4rem',      /* 64px */
+        'space-4xl': '6rem',      /* 96px = 4 rhythm units */
       },
       fontSize: {
         "display-xl": ["clamp(2.75rem, 5vw + 1rem, 4.5rem)", { lineHeight: "1", letterSpacing: "-0.02em", fontWeight: "800" }],
@@ -36,7 +50,7 @@ export default {
         "heading": ["clamp(1.5rem, 1.5vw + 0.5rem, 1.875rem)", { lineHeight: "1.2", letterSpacing: "-0.01em", fontWeight: "600" }],
         "heading-sm": ["clamp(1.25rem, 1vw + 0.5rem, 1.5rem)", { lineHeight: "1.25", letterSpacing: "-0.005em", fontWeight: "600" }],
         "body-lg": ["1.125rem", { lineHeight: "1.6", fontWeight: "400" }],
-        "body": ["1rem", { lineHeight: "1.6", fontWeight: "400" }],
+        "body": ["1rem", { lineHeight: "1.5", fontWeight: "400" }],
         "body-sm": ["0.875rem", { lineHeight: "1.5", fontWeight: "400" }],
         "caption": ["0.75rem", { lineHeight: "1.4", fontWeight: "500" }],
         "micro": ["0.625rem", { lineHeight: "1.4", fontWeight: "500" }],
