@@ -81,7 +81,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           </div>
         </SheetHeader>
 
-        <div className="space-y-6">
+        <div className="flex flex-col gap-space-lg prose-width">
           {/* Amount */}
           <div className="rounded-lg border p-4">
             <p className="text-xs text-muted-foreground mb-1">Total Amount</p>
@@ -91,7 +91,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
 
           {/* Partial progress */}
           {(invoice.status === "partial" || invoice.amountPaid > 0) && (
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Payment progress</span>
                 <span className="font-mono font-tabular">{pct}%</span>
@@ -193,7 +193,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
             {invoice.payments.length === 0 && invoice.refunds.length === 0 ? (
               <p className="text-xs text-muted-foreground">No transactions yet</p>
             ) : (
-              <div className="space-y-3">
+              <div className="flex flex-col gap-space-sm">
                 {[
                   ...invoice.payments.map((p, idx) => ({
                     type: "payment" as const,
@@ -282,7 +282,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
           <Separator />
 
           {/* Info */}
-          <div className="space-y-2 text-xs">
+          <div className="flex flex-col gap-2 text-xs">
             {invoice.memo && <div className="flex gap-1"><span className="text-muted-foreground shrink-0">Memo:</span> <span className="break-words line-clamp-3">{invoice.memo}</span></div>}
             {invoice.referenceId && <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Reference:</span> <span className="font-mono truncate">{invoice.referenceId}</span></div>}
             <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Merchant:</span> <span className="font-mono truncate">{invoice.merchantAddress}</span></div>
@@ -295,7 +295,7 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                 return <div className="flex gap-1 min-w-0"><span className="text-muted-foreground shrink-0">Payer:</span> <span className="font-mono truncate">{payers[0]}</span></div>;
               }
               return (
-                <div className="space-y-1">
+                <div className="flex flex-col gap-1">
                   <span className="text-muted-foreground">Payers ({payers.length}):</span>
                   {payers.map((p) => (
                     <div key={p} className="flex gap-1 min-w-0 pl-2">
