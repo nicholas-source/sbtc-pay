@@ -592,7 +592,7 @@ function PaymentPage() {
       <Separator className="bg-border" />
 
       {/* Fee Breakdown */}
-      <div className="space-y-2 rounded-lg bg-muted p-3">
+      <div className="flex flex-col gap-2 rounded-lg bg-muted p-3">
         <p className="text-caption font-medium text-muted-foreground uppercase tracking-wider">Fee Breakdown</p>
         <div className="flex justify-between text-body-sm">
           <span className="text-muted-foreground">Amount</span>
@@ -620,7 +620,7 @@ function PaymentPage() {
       )}
 
       {/* Details */}
-      <div className="space-y-3">
+      <div className="flex flex-col gap-space-sm">
         <div className="flex justify-between text-body-sm">
           <span className="text-muted-foreground">Merchant</span>
           <span className="text-foreground font-mono text-caption">
@@ -636,7 +636,7 @@ function PaymentPage() {
         )}
 
         {invoice.amountPaid > 0 && (
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <div className="flex justify-between text-body-sm">
               <span className="text-muted-foreground">Paid</span>
               <span className="text-foreground">{paidPercent}%</span>
@@ -649,9 +649,9 @@ function PaymentPage() {
       <Separator className="bg-border" />
 
       {/* Payment action */}
-      <div className="space-y-4">
+      <div className="flex flex-col gap-space-md">
         {(invoice.allowPartial || invoice.allowOverpay) && (
-          <div className="space-y-2">
+          <div className="flex flex-col gap-2">
             <label className="text-caption text-muted-foreground">
               Payment amount ({tokenLabel(tt)})
               {invoice.allowPartial && !invoice.allowOverpay && (
@@ -679,7 +679,7 @@ function PaymentPage() {
         )}
 
         {!isConnected ? (
-          <div className="space-y-3">
+          <div className="flex flex-col gap-space-sm">
             {/* Testnet warning */}
             <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
               <span className="relative flex h-2 w-2">
@@ -781,9 +781,9 @@ export default PaymentPage;
 function PageShell({ children }: { children: React.ReactNode }) {
   return (
     <PageTransition>
-      <div className="flex min-h-svh items-center justify-center bg-background p-3 sm:p-4">
+      <div className="flex min-h-svh items-center justify-center bg-background p-fluid-md">
         <Card className="w-full max-w-md border-border">
-          <CardContent className="p-4 sm:p-6 md:p-8 space-y-6">
+          <CardContent className="p-4 sm:p-6 md:p-8 flex flex-col gap-space-lg">
             {/* Branding */}
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-6 w-6 text-primary" />
@@ -806,8 +806,8 @@ function PageShell({ children }: { children: React.ReactNode }) {
 
 function InvoiceHeader({ invoice }: { invoice: { id: string; memo: string } }) {
   return (
-    <div className="text-center space-y-1">
-      <h1 className="text-heading-sm text-foreground">Invoice #{invoice.id}</h1>
+    <div className="text-center flex flex-col gap-1">
+      <h1 className="text-heading-sm font-display text-foreground">Invoice #{invoice.id}</h1>
       {invoice.memo && (
         <p className="text-body-sm text-muted-foreground italic">"{invoice.memo}"</p>
       )}

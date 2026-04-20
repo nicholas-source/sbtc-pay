@@ -67,9 +67,9 @@ function InvoicesPage() {
 
   if (invoices.length === 0) {
     return (
-      <div className="space-y-8">
+      <div className="flex flex-col gap-fluid-lg">
         <div>
-          <h1 className="text-heading-lg text-foreground">Invoices</h1>
+          <h1 className="text-heading-lg font-display text-foreground">Invoices</h1>
           <p className="text-body-sm text-muted-foreground mt-1">Create and manage payment invoices</p>
         </div>
         <EmptyState
@@ -83,10 +83,10 @@ function InvoicesPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-fluid-lg">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-heading-lg text-foreground">Invoices</h1>
+          <h1 className="text-heading-lg font-display text-foreground">Invoices</h1>
           <p className="text-body-sm text-muted-foreground mt-1">Create and manage payment invoices</p>
         </div>
         <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ function InvoicesPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
         <StatCard label="Total Invoices" value={stats.total} displayValue={String(stats.total)} icon={FileText} change="" accent="primary" />
         <StatCard label="Pending Amount" value={stats.pendingUsd} displayValue={stats.pendingDisplay} unit="" usd={stats.pendingUsd > 0 ? `$${stats.pendingUsd.toFixed(2)}` : ""} icon={Clock} change="" accent="warning" />
         <StatCard label="Paid Amount" value={stats.paidUsd} displayValue={stats.paidDisplay} unit="" usd={stats.paidUsd > 0 ? `$${stats.paidUsd.toFixed(2)}` : ""} icon={CheckCircle} change="" accent="success" />
