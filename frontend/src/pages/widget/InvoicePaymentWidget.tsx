@@ -221,12 +221,12 @@ export default function InvoicePaymentWidget() {
       )}
 
       {!isConnected ? (
-        <Button className="w-full h-10 gap-2 font-semibold" onClick={() => connect()}>
+        <Button className="w-full h-11 gap-2 font-semibold" onClick={() => connect()}>
           <Wallet className="h-4 w-4" /> Connect Wallet
         </Button>
       ) : (
         <Button
-          className="w-full h-10 gap-2 font-semibold"
+          className="w-full h-11 gap-2 font-semibold"
           onClick={handlePay}
           disabled={payState === "confirming"}
         >
@@ -252,7 +252,7 @@ function WidgetShell({ children }: { children: React.ReactNode }) {
     <PageTransition>
       <div className="min-h-svh flex items-center justify-center p-4 bg-background">
         <Card className="w-full max-w-xs border-border">
-          <CardContent className="p-5 space-y-4">
+          <CardContent className="p-5 flex flex-col gap-space-md">
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-4 w-4 text-primary" />
               <span className="text-body font-bold text-primary">sBTC Pay</span>

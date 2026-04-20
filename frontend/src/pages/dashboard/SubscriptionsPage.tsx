@@ -86,11 +86,11 @@ function SubscriptionsPage() {
   }, [plans, subscribers]);
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-fluid-lg">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-heading-lg text-foreground">Subscriptions</h1>
+          <h1 className="text-heading-lg font-display text-foreground">Subscriptions</h1>
           <p className="text-body-sm text-muted-foreground mt-1">
             Manage recurring payment plans and subscribers.
           </p>
@@ -114,7 +114,7 @@ function SubscriptionsPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
             <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change={`${plans.filter(p => p.isActive).length} active`} accent="secondary" />
             <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change={`${subscribers.length} total`} accent="info" />
             <StatCard label="Monthly Revenue" value={stats.revenueUsd} displayValue={stats.revenueDisplay} unit="" usd={stats.revenueUsd > 0 ? `≈ $${stats.revenueUsd.toFixed(2)}` : ""} icon={TrendingUp} change={stats.revenueUsd > 0 ? "recurring" : ""} accent="success" />
@@ -124,7 +124,7 @@ function SubscriptionsPage() {
           <SubscriptionAnalyticsChart />
 
           {/* Plan Cards */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
             {plans.map((plan) => (
               <PlanCard key={plan.id} plan={plan} />
             ))}
