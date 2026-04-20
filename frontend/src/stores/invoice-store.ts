@@ -179,12 +179,68 @@ function blockHeightToDate(createdAt: string, createdAtBlock: number, expiresAtB
 }
 
 /**
+ * Run async tasks with a concurrency limit to avoid 429 rate limits from Hiro API.
+ */
+async function withConcurrencyLimit<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+  let idx = 0;
+
+  async function worker() {
+    while (idx < tasks.length) {
+      const i = idx++;
+      try {
+        results[i] = { status: 'fulfilled', value: await tasks[i]() };
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason };
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
+  return results;
+}
+
+// Reconciliation cooldown: skip expensive chain reads if we reconciled recently
+const RECONCILE_COOLDOWN_MS = 60_000; // 60 seconds
+let _lastReconcileTime = 0;
+let _reconcileInFlight: Promise<Invoice[]> | null = null;
+
+/**
  * Reconcile Supabase invoice data against on-chain contract state.
  * Filters out v3 ghost invoices and corrects stale amounts/status.
  * Detects client-side expiration (contract stores status=pending even after expiry block).
  * Falls back to Supabase data if chain reads fail entirely.
+ *
+ * Includes a 60s cooldown to avoid hammering the Hiro API, and dedup to prevent
+ * overlapping reconciliation from StrictMode or rapid refresh cycles.
  */
 async function reconcileWithChain(
+  invoices: Invoice[],
+  merchantPrincipal: string,
+  db: ReturnType<typeof supabaseWithWallet>,
+): Promise<Invoice[]> {
+  // Cooldown: skip chain reads if we reconciled recently
+  if (Date.now() - _lastReconcileTime < RECONCILE_COOLDOWN_MS) {
+    return invoices;
+  }
+
+  // Dedup: if reconciliation is already in flight, return current invoices
+  if (_reconcileInFlight) {
+    return _reconcileInFlight;
+  }
+
+  _reconcileInFlight = reconcileWithChainInner(invoices, merchantPrincipal, db);
+  try {
+    return await _reconcileInFlight;
+  } finally {
+    _reconcileInFlight = null;
+  }
+}
+
+async function reconcileWithChainInner(
   invoices: Invoice[],
   merchantPrincipal: string,
   db: ReturnType<typeof supabaseWithWallet>,
@@ -193,8 +249,9 @@ async function reconcileWithChain(
   if (chainable.length === 0) return invoices;
 
   const [chainResults, burnHeight] = await Promise.all([
-    Promise.allSettled(
-      chainable.map((inv) => getInvoiceOnChain(inv.dbId, merchantPrincipal)),
+    withConcurrencyLimit(
+      chainable.map((inv) => () => getInvoiceOnChain(inv.dbId, merchantPrincipal)),
+      3, // max 3 concurrent requests to avoid 429
     ),
     fetchBurnBlockHeight().catch(() => null as number | null),
   ]);
@@ -213,7 +270,9 @@ async function reconcileWithChain(
     const result = chainResults[i];
 
     if (result.status === "rejected" || !result.value) {
-      continue; // not found on-chain — ghost invoice
+      // Chain read failed (network error / 429) — keep the Supabase version
+      reconciled.push(inv);
+      continue;
     }
 
     const chain = result.value;
@@ -228,6 +287,7 @@ async function reconcileWithChain(
     let chainStatus = STATUS_MAP[chain.status] ?? "pending";
 
     // Client-side expiration: contract keeps status=pending even after expiry block
+    let resolvedStatusNum = chain.status;
     if (
       burnHeight !== null &&
       burnHeight > 0 &&
@@ -236,6 +296,7 @@ async function reconcileWithChain(
       (chainStatus === "pending" || chainStatus === "partial")
     ) {
       chainStatus = "expired";
+      resolvedStatusNum = 3; // expired = 3 in DB
     }
 
     if (
@@ -261,7 +322,7 @@ async function reconcileWithChain(
         data: {
           amount: chainAmount,
           amount_paid: chainAmountPaid,
-          status: chain.status,
+          status: resolvedStatusNum,
           memo: chain.memo,
           payer: chain.payer,
           token_type: chain.tokenType,
@@ -287,15 +348,28 @@ async function reconcileWithChain(
           // Use blockchain-resolved payments (with real txIds)
           const existingTxIds = new Set(inv.payments.map((p) => p.txId).filter(Boolean));
           const newEvents = chainEvents.filter((ev) => !existingTxIds.has(ev.txId));
-          inv.payments = [
-            ...inv.payments,
-            ...newEvents.map((ev) => ({
-              timestamp: ev.timestamp,
-              amount: ev.amount || gap,
-              txId: ev.txId,
-              payer: ev.payer || "",
-            })),
-          ];
+          const newPayments = newEvents.map((ev) => ({
+            timestamp: ev.timestamp,
+            amount: ev.amount || gap,
+            txId: ev.txId,
+            payer: ev.payer || "",
+          }));
+          inv.payments = [...inv.payments, ...newPayments];
+
+          // Persist to Supabase so future loads don't see the mismatch again
+          for (const p of newPayments) {
+            db.rpc("backfill_payment", {
+              p_invoice_id: inv.dbId,
+              p_payer: p.payer,
+              p_amount: p.amount,
+              p_tx_id: p.txId,
+              p_block_height: 0,
+              p_token_type: inv.tokenType,
+            }).then(({ error }) => {
+              if (error) console.warn(`[reconcile] backfill_payment failed for ${inv.id}:`, error.message);
+              else console.info(`[reconcile] Backfilled payment for invoice ${inv.id} (tx: ${p.txId})`);
+            });
+          }
         } else {
           // Last resort: synthesize from on-chain data without txId
           inv.payments = [
@@ -307,6 +381,15 @@ async function reconcileWithChain(
               payer: chain.payer || "",
             },
           ];
+          // Persist synthesized payment so the mismatch is resolved permanently
+          db.rpc("backfill_payment", {
+            p_invoice_id: inv.dbId,
+            p_payer: chain.payer || "",
+            p_amount: gap,
+            p_tx_id: "",
+            p_block_height: 0,
+            p_token_type: inv.tokenType,
+          }).catch(() => {}); // best-effort
         }
       }
     }
@@ -323,15 +406,28 @@ async function reconcileWithChain(
         if (refundEvents.length > 0) {
           const existingTxIds = new Set(inv.refunds.map((r) => r.txId).filter(Boolean));
           const newEvents = refundEvents.filter((ev) => !existingTxIds.has(ev.txId));
-          inv.refunds = [
-            ...inv.refunds,
-            ...newEvents.map((ev) => ({
-              timestamp: ev.timestamp,
-              amount: ev.amount || gap,
-              reason: ev.reason || "",
-              txId: ev.txId,
-            })),
-          ];
+          const newRefunds = newEvents.map((ev) => ({
+            timestamp: ev.timestamp,
+            amount: ev.amount || gap,
+            reason: ev.reason || "",
+            txId: ev.txId,
+          }));
+          inv.refunds = [...inv.refunds, ...newRefunds];
+
+          // Persist to Supabase so future loads don't see the mismatch again
+          for (const r of newRefunds) {
+            db.rpc("backfill_refund", {
+              p_invoice_id: inv.dbId,
+              p_amount: r.amount,
+              p_reason: r.reason,
+              p_tx_id: r.txId,
+              p_block_height: 0,
+              p_token_type: inv.tokenType,
+            }).then(({ error }) => {
+              if (error) console.warn(`[reconcile] backfill_refund failed for ${inv.id}:`, error.message);
+              else console.info(`[reconcile] Backfilled refund for invoice ${inv.id} (tx: ${r.txId})`);
+            });
+          }
         } else {
           // Last resort: synthesize from on-chain data without txId
           inv.refunds = [
@@ -343,6 +439,15 @@ async function reconcileWithChain(
               txId: "",
             },
           ];
+          // Persist synthesized refund so the mismatch is resolved permanently
+          db.rpc("backfill_refund", {
+            p_invoice_id: inv.dbId,
+            p_amount: gap,
+            p_reason: "",
+            p_tx_id: "",
+            p_block_height: 0,
+            p_token_type: inv.tokenType,
+          }).catch(() => {}); // best-effort
         }
       }
     }
@@ -357,6 +462,7 @@ async function reconcileWithChain(
 
   // Include optimistic invoices (dbId <= 0)
   const optimistic = invoices.filter((inv) => inv.dbId <= 0);
+  _lastReconcileTime = Date.now();
   return [...optimistic, ...reconciled];
 }
 

@@ -152,6 +152,10 @@ function contractErrorMsg(err: unknown): string {
   return msg;
 }
 
+// Reconciliation cooldown: skip expensive chain reads if we reconciled recently
+const SUB_RECONCILE_COOLDOWN_MS = 60_000; // 60 seconds
+let _subLastReconcileTime = 0;
+
 export const useSubscriptionStore = create<SubscriptionStore>()(
   persist(
     (set, get) => ({
@@ -248,12 +252,31 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
       }
 
       // Reconcile each subscriber with on-chain data (source of truth)
-      const chainResults = await Promise.allSettled(
-        subscribers.map((sub) => {
-          const numId = parseInt(sub.id.replace("SUB-", ""), 10);
-          return getSubOnChain(numId, merchantPrincipal);
-        }),
-      );
+      // Use concurrency limit to avoid 429 rate limits from Hiro API
+      // Skip if we reconciled within the last 60 seconds
+      const shouldReconcile = Date.now() - _subLastReconcileTime >= SUB_RECONCILE_COOLDOWN_MS;
+
+      const chainResults: PromiseSettledResult<Awaited<ReturnType<typeof getSubOnChain>>>[] = [];
+      if (shouldReconcile) {
+      const subTasks = subscribers.map((sub) => {
+        const numId = parseInt(sub.id.replace("SUB-", ""), 10);
+        return () => getSubOnChain(numId, merchantPrincipal);
+      });
+      // Process max 3 at a time
+      let taskIdx = 0;
+      async function subWorker() {
+        while (taskIdx < subTasks.length) {
+          const i = taskIdx++;
+          try {
+            chainResults[i] = { status: 'fulfilled', value: await subTasks[i]() };
+          } catch (reason) {
+            chainResults[i] = { status: 'rejected', reason } as PromiseRejectedResult;
+          }
+        }
+      }
+      await Promise.all(Array.from({ length: Math.min(3, subTasks.length) }, () => subWorker()));
+      _subLastReconcileTime = Date.now();
+      }
 
       const reconciledSubs: Subscriber[] = [];
       // Re-key plan map by plan ID for O(1) lookup during reconciliation
@@ -267,8 +290,8 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
         const sub = subscribers[i];
         const result = chainResults[i];
 
-        if (result.status === "rejected" || !result.value) {
-          reconciledSubs.push(sub); // chain unavailable, keep Supabase data
+        if (!result || result.status === "rejected" || !result.value) {
+          reconciledSubs.push(sub); // chain unavailable or cooldown, keep Supabase data
           continue;
         }
 

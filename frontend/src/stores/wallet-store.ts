@@ -1,15 +1,28 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import {
-  connect as stacksConnect,
-  disconnect as stacksDisconnect,
-  isConnected as stacksIsConnected,
-  getLocalStorage,
-  request as stacksRequest,
-} from '@stacks/connect';
 import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
 import { amountToUsd as amountToUsdFn } from '@/lib/constants';
-import { setAuthToken } from '@/lib/supabase/client';
+import { authenticateWallet, hasValidAuth, clearWalletAuth } from '@/lib/supabase/client';
+
+// Lazy-load @stacks/connect so the 1 MB WalletConnect SDK isn't in the initial bundle.
+// The module is cached after first import, so subsequent calls are instant.
+const loadStacksConnect = () => import('@stacks/connect');
+
+// ── Synchronous session restore from @stacks/connect's localStorage ────────
+// This lets us hydrate wallet state instantly on page load without importing
+// the 1 MB library. Key: "@stacks/connect" (set by the library itself).
+function getPersistedSession(): { address: string; publicKey: string | null } | null {
+  try {
+    const raw = localStorage.getItem('@stacks/connect');
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    const stxEntry = data?.addresses?.stx?.[0];
+    if (!stxEntry?.address) return null;
+    return { address: stxEntry.address, publicKey: stxEntry.publicKey ?? null };
+  } catch {
+    return null;
+  }
+}
 
 export type WalletProvider = 'leather' | 'xverse' | 'asigna' | null;
 export type Network = 'mainnet' | 'testnet';
@@ -95,12 +108,14 @@ interface WalletState {
   // Connection
   isConnected: boolean;
   isConnecting: boolean;
+  connectionChecked: boolean;
   provider: WalletProvider;
   address: string | null;
   publicKey: string | null;
   network: Network;
   connectionError: WalletError;
-  authToken: string | null;
+  /** Whether the wallet has a valid JWT for authenticated Supabase calls. */
+  isAuthenticated: boolean;
 
   // Balances (in base units: microSTX and sats)
   stxBalance: bigint;
@@ -112,8 +127,9 @@ interface WalletState {
 
   // Actions
   connect: () => Promise<void>;
-  disconnect: () => void;
+  disconnect: () => Promise<void>;
   checkConnection: () => Promise<void>;
+  /** Authenticate with Supabase via wallet signature (sign-once, 24h JWT). */
   authenticate: () => Promise<void>;
   fetchBalances: () => Promise<void>;
   fetchPrices: () => Promise<void>;
@@ -138,17 +154,23 @@ function extractPublicKey(addresses: Array<{ address: string; publicKey?: string
   return stxAddr?.publicKey || null;
 }
 
+// Hydrate wallet state synchronously from @stacks/connect localStorage
+const _restored = getPersistedSession();
+const _restoredAddress = _restored?.address ?? null;
+const _restoredConnected = !!_restoredAddress;
+
 export const useWalletStore = create<WalletState>()(
   persist(
     (set, get) => ({
-      isConnected: false,
+      isConnected: _restoredConnected,
       isConnecting: false,
+      connectionChecked: _restoredConnected, // if we have a session, skip the loading spinner
       provider: null,
-      address: null,
-      publicKey: null,
+      address: _restoredAddress,
+      publicKey: _restored?.publicKey ?? null,
       network: NETWORK_MODE,
       connectionError: null,
-      authToken: null,
+      isAuthenticated: _restoredAddress ? hasValidAuth(_restoredAddress) : false,
       stxBalance: BigInt(0),
       sbtcBalance: BigInt(0),
       balancesLoading: false,
@@ -159,7 +181,7 @@ export const useWalletStore = create<WalletState>()(
       connect: async () => {
         set({ isConnecting: true, connectionError: null });
         try {
-          // Use the new @stacks/connect API
+          const { connect: stacksConnect } = await loadStacksConnect();
           const response = await stacksConnect();
 
           if (response?.addresses && response.addresses.length > 0) {
@@ -173,6 +195,7 @@ export const useWalletStore = create<WalletState>()(
 
               if (!validateNetworkMatch(stxAddress, expectedNetwork)) {
                 // Network mismatch - disconnect and show error
+                const { disconnect: stacksDisconnect } = await loadStacksConnect();
                 stacksDisconnect();
                 set({
                   isConnected: false,
@@ -196,8 +219,10 @@ export const useWalletStore = create<WalletState>()(
                 connectionError: null,
               });
 
-              // Authenticate with wallet signature → JWT
-              get().authenticate();
+              // Authenticate with Supabase (sign-once → 24h JWT)
+              // If we already have a valid JWT, this is instant (no popup).
+              await get().authenticate();
+
               // Fetch balances after connecting (awaited so UI has real data)
               await get().fetchBalances();
               get().fetchPrices();
@@ -236,16 +261,17 @@ export const useWalletStore = create<WalletState>()(
         }
       },
 
-      disconnect: () => {
+      disconnect: async () => {
+        const { disconnect: stacksDisconnect } = await loadStacksConnect();
         stacksDisconnect();
-        setAuthToken(null);
+        clearWalletAuth();
         set({
           isConnected: false,
           isConnecting: false,
+          isAuthenticated: false,
           provider: null,
           address: null,
           publicKey: null,
-          authToken: null,
           stxBalance: BigInt(0),
           sbtcBalance: BigInt(0),
           balancesLoading: false,
@@ -254,90 +280,66 @@ export const useWalletStore = create<WalletState>()(
       },
 
       checkConnection: async () => {
-        // Check if we have a stored connection
-        if (stacksIsConnected()) {
-          const stored = getLocalStorage();
-          if (stored?.addresses?.stx?.[0]) {
-            const stxAddr = stored.addresses.stx[0];
-            
-            // Validate network matches
-            const expectedNetwork = NETWORK_MODE;
-            const detectedNetwork = detectNetworkFromAddress(stxAddr.address);
+        try {
+          const { isConnected: stacksIsConnected, getLocalStorage, disconnect: stacksDisconnect } = await loadStacksConnect();
 
-            if (!validateNetworkMatch(stxAddr.address, expectedNetwork)) {
-              // Network mismatch - disconnect stored session
-              stacksDisconnect();
+          if (stacksIsConnected()) {
+            const stored = getLocalStorage();
+            if (stored?.addresses?.stx?.[0]) {
+              const stxAddr = stored.addresses.stx[0];
+
+              // Validate network matches
+              const expectedNetwork = NETWORK_MODE;
+              const detectedNetwork = detectNetworkFromAddress(stxAddr.address);
+
+              if (!validateNetworkMatch(stxAddr.address, expectedNetwork)) {
+                stacksDisconnect();
+                set({
+                  isConnected: false,
+                  connectionChecked: true,
+                  address: null,
+                  publicKey: null,
+                  connectionError: {
+                    type: 'network_mismatch',
+                    detectedNetwork,
+                    expectedNetwork,
+                  },
+                });
+                return;
+              }
+
+              // Merge with any persisted publicKey (localStorage strips it,
+              // but we persist it in zustand)
+              const persistedPublicKey = get().publicKey;
+
               set({
-                isConnected: false,
-                address: null,
-                publicKey: null,
-                connectionError: {
-                  type: 'network_mismatch',
-                  detectedNetwork,
-                  expectedNetwork,
-                },
+                isConnected: true,
+                connectionChecked: true,
+                address: stxAddr.address,
+                publicKey: (stxAddr as { publicKey?: string }).publicKey || persistedPublicKey || null,
+                isAuthenticated: hasValidAuth(stxAddr.address),
+                connectionError: null,
               });
+
+              // Fetch balances and prices in parallel (non-blocking)
+              get().fetchBalances();
+              get().fetchPrices();
               return;
             }
-
-            set({
-              isConnected: true,
-              address: stxAddr.address,
-              publicKey: (stxAddr as { publicKey?: string }).publicKey || null,
-              connectionError: null,
-            });
-            // Authenticate if no token yet
-            if (!get().authToken) {
-              get().authenticate();
-            }
-            // Refresh balances (awaited so UI has real data)
-            await get().fetchBalances();
-            get().fetchPrices();
-          }
-        }
-      },
-
-      authenticate: async () => {
-        const { address, publicKey: storedPublicKey } = get();
-        if (!address || !storedPublicKey) return;
-
-        try {
-          // Build a timestamped message for signing
-          const message = `Sign in to sBTC Pay\nAddress: ${address}\nTimestamp: ${Date.now()}`;
-
-          // Request wallet signature — also extract the signing publicKey
-          const { signature, publicKey: signPublicKey } = await stacksRequest('stx_signMessage', { message });
-
-          // Prefer the publicKey from the signing response (matches the actual signing key)
-          const pubKeyToSend = signPublicKey || storedPublicKey;
-          if (signPublicKey && signPublicKey !== storedPublicKey) {
-            console.info('[wallet-auth] Signing pubkey differs from stored:', { signPublicKey: signPublicKey.slice(0, 12), storedPublicKey: storedPublicKey.slice(0, 12) });
           }
 
-          // Exchange for JWT via wallet-auth edge function
-          const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-          const res = await fetch(`${supabaseUrl}/functions/v1/wallet-auth`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
-            },
-            body: JSON.stringify({ message, signature, publicKey: pubKeyToSend, address }),
+          // @stacks/connect says not connected — clear persisted state too
+          set({
+            connectionChecked: true,
+            isConnected: false,
+            address: null,
+            publicKey: null,
           });
-
-          if (!res.ok) {
-            const data = await res.json().catch(() => ({ error: 'Auth request failed' }));
-            console.warn('[wallet-auth] Token exchange failed:', data.error, data.debug || '');
-            return; // Graceful degradation — falls back to x-wallet-address header
-          }
-
-          const { token } = await res.json();
-          set({ authToken: token });
-          setAuthToken(token);
-        } catch (err) {
-          // User may have declined the signature request — that's OK,
-          // we fall back to x-wallet-address header auth.
-          console.warn('[wallet-auth] Authentication skipped:', err instanceof Error ? err.message : err);
+        } catch (error) {
+          console.error('checkConnection failed:', error);
+          // On error, keep persisted state but mark check as done
+          // so the UI doesn't hang on the spinner forever
+          set({ connectionChecked: true });
         }
       },
 
@@ -345,31 +347,66 @@ export const useWalletStore = create<WalletState>()(
         set({ connectionError: null });
       },
 
+      authenticate: async () => {
+        const { address } = get();
+        if (!address) return;
+
+        // Already authenticated — skip (no popup)
+        if (hasValidAuth(address)) {
+          set({ isAuthenticated: true });
+          return;
+        }
+
+        try {
+          const { request } = await loadStacksConnect();
+          await authenticateWallet(address, async (message: string) => {
+            const result = await request('stx_signMessage', { message });
+            return { signature: result.signature };
+          });
+          set({ isAuthenticated: true });
+        } catch (err) {
+          console.warn("[wallet-auth] Authentication failed:", err);
+          // Don't block the user — they can still browse, but writes will fail.
+          // isAuthenticated stays false; UI can show a "sign in" prompt if needed.
+          set({ isAuthenticated: false });
+        }
+      },
+
       fetchBalances: async () => {
         const { address } = get();
         if (!address) return;
 
         set({ balancesLoading: true });
-        try {
-          // Fetch balances from Hiro API
-          const response = await fetch(
-            `${API_URL}/extended/v1/address/${address}/balances`
-          );
-          const data = await response.json();
 
-          // Extract STX balance (in microSTX)
-          const stxBalance = BigInt(data.stx?.balance || '0');
+        // Retry up to 3 times with exponential backoff
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const response = await fetch(
+              `${API_URL}/extended/v1/address/${address}/balances`
+            );
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const data = await response.json();
 
-          // Extract sBTC balance
-          const sbtcKey = `${SBTC_CONTRACT_ID}::sbtc-token`;
-          const sbtcBalance = BigInt(
-            data.fungible_tokens?.[sbtcKey]?.balance || '0'
-          );
+            // Extract STX balance (in microSTX)
+            const stxBalance = BigInt(data.stx?.balance || '0');
 
-          set({ stxBalance, sbtcBalance, balancesLoading: false });
-        } catch (error) {
-          console.error('Failed to fetch balances:', error);
-          set({ balancesLoading: false });
+            // Extract sBTC balance
+            const sbtcKey = `${SBTC_CONTRACT_ID}::sbtc-token`;
+            const sbtcBalance = BigInt(
+              data.fungible_tokens?.[sbtcKey]?.balance || '0'
+            );
+
+            set({ stxBalance, sbtcBalance, balancesLoading: false });
+            return; // Success — exit retry loop
+          } catch (error) {
+            if (attempt < 2) {
+              // Wait 1s, then 3s before retrying
+              await new Promise(r => setTimeout(r, (attempt + 1) * 1500));
+            } else {
+              console.error('Failed to fetch balances after 3 attempts:', error);
+              set({ balancesLoading: false });
+            }
+          }
         }
       },
 
@@ -389,7 +426,6 @@ export const useWalletStore = create<WalletState>()(
     {
       name: 'sbtc-pay-wallet',
       partialize: (state) => ({
-        // Only persist non-sensitive data
         network: state.network,
         btcPriceUsd: state.btcPriceUsd,
         stxPriceUsd: state.stxPriceUsd,

@@ -18,6 +18,24 @@ import {
 } from "@/lib/stacks/contract";
 import { supabase } from "@/lib/supabase/client";
 import { fetchBurnBlockHeight } from "@/lib/stacks/config";
+
+/** Run async tasks with concurrency limit to avoid 429s from Hiro API. */
+async function withConcurrency<T>(
+  tasks: (() => Promise<T>)[],
+  limit: number,
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = new Array(tasks.length);
+  let idx = 0;
+  async function worker() {
+    while (idx < tasks.length) {
+      const i = idx++;
+      try { results[i] = { status: 'fulfilled', value: await tasks[i]() }; }
+      catch (reason) { results[i] = { status: 'rejected', reason }; }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
+  return results;
+}
 import { isValidStacksAddress } from "@/lib/validators";
 
 export interface PlatformStats {
@@ -144,27 +162,26 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       }));
 
       // Reconcile with on-chain data (source of truth for name, status, volume)
-      const merchants = await Promise.all(
-        merchantsFromDb.map(async (m) => {
-          try {
-            const onChain = await getMerchantOnChain(m.address);
-            if (onChain) {
-              return {
-                ...m,
-                name: onChain.name || m.name,
-                isVerified: onChain.isVerified,
-                isSuspended: !onChain.isActive,
-                invoiceCount: onChain.invoiceCount,
-                totalVolumeSbtc: Number(onChain.totalReceivedSbtc),
-                totalVolumeStx: Number(onChain.totalReceivedStx),
-              };
-            }
-            return m;
-          } catch {
-            return m; // fallback to cached Supabase data
-          }
-        }),
+      const merchantResults = await withConcurrency(
+        merchantsFromDb.map((m) => () => getMerchantOnChain(m.address)),
+        3, // max 3 concurrent to avoid 429
       );
+      const merchants = merchantsFromDb.map((m, idx) => {
+        const result = merchantResults[idx];
+        if (result.status === 'fulfilled' && result.value) {
+          const onChain = result.value;
+          return {
+            ...m,
+            name: onChain.name || m.name,
+            isVerified: onChain.isVerified,
+            isSuspended: !onChain.isActive,
+            invoiceCount: onChain.invoiceCount,
+            totalVolumeSbtc: Number(onChain.totalReceivedSbtc),
+            totalVolumeStx: Number(onChain.totalReceivedStx),
+          };
+        }
+        return m; // fallback to cached Supabase data
+      });
 
       // Compute invoice status breakdown with client-side expiration detection
       const breakdown = { paid: 0, pending: 0, expired: 0, cancelled: 0, refunded: 0, partial: 0 };
@@ -200,8 +217,9 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         // Second pass: on-chain verification for all remaining pending/partial invoices
         if (stillPendingOrPartial.length > 0) {
           const senderAddr = walletAddress;
-          const chainResults = await Promise.allSettled(
-            stillPendingOrPartial.map((id) => getInvoiceOnChain(id, senderAddr)),
+          const chainResults = await withConcurrency(
+            stillPendingOrPartial.map((id) => () => getInvoiceOnChain(id, senderAddr)),
+            3, // max 3 concurrent to avoid 429
           );
           chainResults.forEach((result, idx) => {
             if (result.status === "fulfilled" && result.value) {
