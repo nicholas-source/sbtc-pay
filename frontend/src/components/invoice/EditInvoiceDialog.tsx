@@ -130,7 +130,7 @@ export default function EditInvoiceDialog({ invoice, open, onOpenChange }: Props
           <DialogDescription>Update amount, memo, or expiration. Requires an on-chain transaction.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-space-md">
             <FormField control={form.control} name="amount" render={({ field }) => (
               <FormItem>
                 <FormLabel>Amount ({tokenLabel(tt)})</FormLabel>

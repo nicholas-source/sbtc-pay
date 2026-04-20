@@ -130,7 +130,7 @@ export default function ActivityFeed() {
           {/* Timeline line */}
           <div className="absolute left-2.5 sm:left-4 top-0 bottom-0 w-px bg-border" />
 
-          <div className="space-y-1">
+          <div className="flex flex-col gap-1">
             {events.map((event, i) => {
               const Icon = iconMap[event.type];
               const stagger = i < 8 ? `stagger-${i + 1}` : "";
