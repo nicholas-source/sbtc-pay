@@ -37,7 +37,7 @@
     },
     "action": {
       "type": "http_post",
-      "url": "https://oggvlwdptcpwipxahhjn.supabase.co/functions/v1/chainhook-webhook"
+      "url": "https://kkkvlbdcgupesyzmmpqv.supabase.co/functions/v1/chainhook-webhook"
     },
     "options": {
       "decode_clarity_values": true,
