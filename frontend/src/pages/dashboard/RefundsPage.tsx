@@ -89,10 +89,10 @@ function RefundsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col gap-fluid-lg">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-heading-lg text-foreground">Refunds</h1>
+          <h1 className="text-heading-lg font-display text-foreground">Refunds</h1>
           <p className="text-body-sm text-muted-foreground mt-1">Track and manage all refund transactions.</p>
         </div>
         {flatRefunds.length > 0 && (
@@ -112,7 +112,7 @@ function RefundsPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
             <StatCard label="Total Refunds" value={stats.count} displayValue={stats.count.toString()} icon={RotateCcw} change="" accent="destructive" />
             <StatCard label="Total Refunded" value={stats.totalUsd} displayValue={stats.totalDisplay} unit="" usd={stats.totalUsd > 0 ? `$${stats.totalUsd.toFixed(2)}` : ""} icon={ArrowUpRight} change="" accent="warning" />
             <StatCard label="Invoices Affected" value={stats.uniqueInvoices} displayValue={stats.uniqueInvoices.toString()} icon={Receipt} change="" accent="info" />
