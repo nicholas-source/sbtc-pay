@@ -191,7 +191,7 @@ export default function CreateInvoiceDialog() {
           <DialogDescription>Fill in the details to generate a new payment invoice.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-space-md">
             <FormField control={form.control} name="amount" render={({ field }) => (
               <FormItem>
                 <FormLabel>Amount ({tokenLabel(tokenType)})</FormLabel>
