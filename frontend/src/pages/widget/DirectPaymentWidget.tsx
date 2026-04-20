@@ -118,7 +118,7 @@ export default function DirectPaymentWidget() {
       <PageTransition>
         <div className={`min-h-svh flex items-center justify-center p-4 ${theme === "dark" ? "bg-background" : "bg-white"}`}>
           <Card className="w-full max-w-sm border-border">
-            <CardContent className="p-6 space-y-4 text-center">
+            <CardContent className="p-6 flex flex-col gap-space-md text-center">
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Payment Submitted</p>
               <p className="text-body-sm text-muted-foreground">
@@ -143,7 +143,7 @@ export default function DirectPaymentWidget() {
     <PageTransition>
       <div className={`min-h-svh flex items-center justify-center p-4 ${theme === "dark" ? "bg-background" : "bg-white"}`}>
         <Card className="w-full max-w-sm border-border">
-          <CardContent className="p-6 space-y-5">
+          <CardContent className="p-6 flex flex-col gap-space-md">
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-5 w-5 text-primary" />
               <span className="text-heading-sm text-primary">sBTC Pay</span>
@@ -156,7 +156,7 @@ export default function DirectPaymentWidget() {
               </div>
             </div>
 
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <label className="text-caption text-muted-foreground">Amount ({tokenLabel(tokenType)})</label>
               <Input
                 type="number"
@@ -174,7 +174,7 @@ export default function DirectPaymentWidget() {
               <PriceStatusBadge />
             </div>
 
-            <div className="space-y-2">
+            <div className="flex flex-col gap-2">
               <label className="text-caption text-muted-foreground">Memo</label>
               <Input
                 placeholder="What's this for?"

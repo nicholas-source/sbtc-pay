@@ -109,7 +109,7 @@ export default function SubscriptionWidget() {
       <PageTransition>
         <div className="min-h-svh flex items-center justify-center p-4 bg-background">
           <Card className="w-full max-w-xs border-border">
-            <CardContent className="p-5 space-y-4 text-center">
+            <CardContent className="p-5 flex flex-col gap-space-md text-center">
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Subscribed!</p>
               <p className="text-body-sm text-muted-foreground">
@@ -119,7 +119,7 @@ export default function SubscriptionWidget() {
                 className="text-primary text-body-sm underline">
                 View subscription TX →
               </a>
-              <div className="border-t border-border pt-4 space-y-2">
+              <div className="border-t border-border pt-4 flex flex-col gap-2">
                 <p className="text-body-sm text-muted-foreground">
                   Your first payment is due now. Once the subscription TX confirms on-chain, make your first payment from the <strong>Customer Portal</strong>.
                 </p>
@@ -127,7 +127,7 @@ export default function SubscriptionWidget() {
                   Balance: {baseToHuman(Number(walletBalance), tokenType)} {tokenLabel(tokenType)}
                 </p>
                 <a href="/customer/subscriptions" className="inline-block">
-                  <Button className="w-full h-10 gap-2 font-semibold" variant="default">
+                  <Button className="w-full h-11 gap-2 font-semibold" variant="default">
                     <CreditCard className="h-4 w-4" /> Go to Customer Portal
                   </Button>
                 </a>
@@ -143,14 +143,14 @@ export default function SubscriptionWidget() {
     <PageTransition>
       <div className="min-h-svh flex items-center justify-center p-4 bg-background">
         <Card className="w-full max-w-xs border-border">
-          <CardContent className="p-5 space-y-4">
+          <CardContent className="p-5 flex flex-col gap-space-md">
             <div className="flex items-center justify-center gap-2">
               <Bitcoin className="h-4 w-4 text-primary" />
               <span className="text-body font-bold text-primary">sBTC Pay</span>
               <Badge variant="outline" className="text-micro border-stacks text-stacks">Subscribe</Badge>
             </div>
 
-            <div className="text-center space-y-1">
+            <div className="text-center flex flex-col gap-1">
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
               <p className="text-heading sm:text-sats text-primary font-tabular">{humanAmount} {tokenLabel(tokenType)}</p>
@@ -163,11 +163,11 @@ export default function SubscriptionWidget() {
             )}
 
             {!isConnected ? (
-              <Button className="w-full h-10 gap-2 font-semibold" onClick={() => connect()}>
+              <Button className="w-full h-11 gap-2 font-semibold" onClick={() => connect()}>
                 <Wallet className="h-4 w-4" /> Connect Wallet
               </Button>
             ) : balancesLoading ? (
-              <Button className="w-full h-10 gap-2 font-semibold" disabled>
+              <Button className="w-full h-11 gap-2 font-semibold" disabled>
                 <Loader2 className="h-4 w-4 animate-spin" /> Loading balance…
               </Button>
             ) : (
@@ -176,7 +176,7 @@ export default function SubscriptionWidget() {
                   Balance: {baseToHuman(Number(tokenType === 'stx' ? stxBalance : sbtcBalance), tokenType)} {tokenLabel(tokenType)}
                 </p>
                 <Button
-                  className="w-full h-10 gap-2 font-semibold"
+                  className="w-full h-11 gap-2 font-semibold"
                   onClick={handleSubscribe}
                   disabled={subState === "confirming"}
                 >
