@@ -24,14 +24,14 @@
   },
   "mainnet": {
     "version": "1",
-    "name": "sbtc-pay-v6-events-mainnet",
+    "name": "sbtc-pay-events-mainnet",
     "chain": "stacks",
     "network": "mainnet",
     "filters": {
       "events": [
         {
           "type": "contract_log",
-          "contract_identifier": "<MAINNET_DEPLOYER>.payment-v6"
+          "contract_identifier": "SPR54P37AA27XHMMTCDEW4YZFPFJX69162JR5CT4.sbtc-pay"
         }
       ]
     },
