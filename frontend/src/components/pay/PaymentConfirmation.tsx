@@ -205,7 +205,7 @@ export function PaymentConfirmation({
         </div>
 
         {/* Details */}
-        <div className="px-5 py-4 space-y-3 text-body-sm">
+        <div className="px-5 py-4 flex flex-col gap-space-sm text-body-sm">
           {invoiceId && (
             <div className="flex justify-between">
               <span className="text-muted-foreground receipt-muted">Invoice</span>
