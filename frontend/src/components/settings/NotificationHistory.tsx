@@ -40,7 +40,7 @@ export default function NotificationHistory() {
           </p>
         ) : (
           <ScrollArea className="max-h-72">
-            <div className="space-y-1">
+            <div className="flex flex-col gap-1">
               {logs.map((entry, i) => {
                 const cfg = eventConfig[entry.eventType];
                 const Icon = cfg.icon;
