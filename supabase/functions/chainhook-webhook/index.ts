@@ -1052,7 +1052,7 @@ async function handleSubscriptionPaused(data: Record<string, unknown>) {
 async function handleSubscriptionResumed(
   data: Record<string, unknown>,
   _txId: string,
-  blockHeight: number,
+  _blockHeight: number,
 ) {
   const subId = data["subscription-id"] as number;
 
@@ -1076,8 +1076,11 @@ async function handleSubscriptionResumed(
     }
   } catch (err) {
     console.warn("Failed to read on-chain subscription after resume:", err);
-    // Fallback: use blockHeight as approximation
-    nextPaymentAtBlock = blockHeight;
+    // Leave nextPaymentAtBlock null — keep the DB's existing value.
+    // Reconcile or the next subscription-payment event will correct it.
+    // Post-Nakamoto the Chainhook blockHeight is a Stacks block (~5s) while
+    // the contract measures time in burn blocks (~10min), so using it here
+    // would set next-payment-at ~120× too far in the future.
   }
 
   const updatePayload: Record<string, unknown> = { status: 0 };
