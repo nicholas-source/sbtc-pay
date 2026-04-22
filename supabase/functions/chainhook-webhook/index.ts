@@ -554,20 +554,32 @@ async function handlePaymentReceived(
 
   const tokenType = resolveTokenType(data);
 
-  // Insert payment record
-  const { error: paymentError } = await supabase.from("payments").insert({
-    invoice_id: invoiceId,
-    payment_index: paymentIndex,
-    payer: data.payer,
-    merchant_principal: data.merchant,
-    amount: data.amount,
-    fee: data.fee ?? 0,
-    merchant_received: data["merchant-received"] ?? 0,
-    block_height: data["block-height"] ?? blockHeight,
-    tx_id: txId,
-    token_type: tokenType,
-  });
-  if (paymentError) console.error("payment insert error:", paymentError);
+  // Insert payment record — upsert on tx_id so DLQ replay is idempotent.
+  // If the row already exists (replay after partial success), skip all side
+  // effects (invoice/merchant/platform updates) to avoid double-counting.
+  const { data: paymentInserted, error: paymentError } = await supabase
+    .from("payments")
+    .upsert({
+      invoice_id: invoiceId,
+      payment_index: paymentIndex,
+      payer: data.payer,
+      merchant_principal: data.merchant,
+      amount: data.amount,
+      fee: data.fee ?? 0,
+      merchant_received: data["merchant-received"] ?? 0,
+      block_height: data["block-height"] ?? blockHeight,
+      tx_id: txId,
+      token_type: tokenType,
+    }, { onConflict: "tx_id", ignoreDuplicates: true })
+    .select("id");
+  if (paymentError) {
+    console.error("payment upsert error:", paymentError);
+    return;
+  }
+  if (!paymentInserted || paymentInserted.length === 0) {
+    console.log(`payment already applied for tx ${txId.slice(0, 12)}… — skipping side effects`);
+    return;
+  }
 
   // Update invoice status
   const { error: invoiceError } = await supabase
@@ -633,17 +645,29 @@ async function handleDirectPayment(
 ) {
   const tokenType = resolveTokenType(data);
 
-  await supabase.from("direct_payments").insert({
-    payer: data.payer,
-    merchant_principal: data.merchant,
-    amount: data.amount,
-    fee: data.fee ?? 0,
-    merchant_received: data["merchant-received"] ?? 0,
-    memo: data.memo ?? "",
-    block_height: data["block-height"] ?? blockHeight,
-    tx_id: txId,
-    token_type: tokenType,
-  });
+  // Upsert on tx_id so DLQ replay is idempotent — skip stats updates on dup.
+  const { data: dpInserted, error: dpError } = await supabase
+    .from("direct_payments")
+    .upsert({
+      payer: data.payer,
+      merchant_principal: data.merchant,
+      amount: data.amount,
+      fee: data.fee ?? 0,
+      merchant_received: data["merchant-received"] ?? 0,
+      memo: data.memo ?? "",
+      block_height: data["block-height"] ?? blockHeight,
+      tx_id: txId,
+      token_type: tokenType,
+    }, { onConflict: "tx_id", ignoreDuplicates: true })
+    .select("id");
+  if (dpError) {
+    console.error("direct_payment upsert error:", dpError);
+    return;
+  }
+  if (!dpInserted || dpInserted.length === 0) {
+    console.log(`direct_payment already applied for tx ${txId.slice(0, 12)}… — skipping side effects`);
+    return;
+  }
 
   // Update merchant total received (per-token) — atomic increment
   const merchantRecv = (data["merchant-received"] ?? 0) as number;
@@ -764,21 +788,34 @@ async function handleRefundProcessed(
 ) {
   const tokenType = resolveTokenType(data);
 
-  // Insert refund record
-  await supabase.from("refunds").upsert(
-    {
-      id: data["refund-id"],
-      invoice_id: data["invoice-id"],
-      merchant_principal: data.merchant,
-      customer: data.customer,
-      amount: data.amount,
-      reason: data.reason ?? "",
-      processed_at_block: data["block-height"] ?? blockHeight,
-      tx_id: txId,
-      token_type: tokenType,
-    },
-    { onConflict: "id" },
-  );
+  // Insert refund record — ignoreDuplicates so DLQ replay is idempotent.
+  // If the refund row already exists (replay after partial success), skip all
+  // side effects (invoice/platform updates) to avoid double-counting.
+  const { data: refundInserted, error: refundError } = await supabase
+    .from("refunds")
+    .upsert(
+      {
+        id: data["refund-id"],
+        invoice_id: data["invoice-id"],
+        merchant_principal: data.merchant,
+        customer: data.customer,
+        amount: data.amount,
+        reason: data.reason ?? "",
+        processed_at_block: data["block-height"] ?? blockHeight,
+        tx_id: txId,
+        token_type: tokenType,
+      },
+      { onConflict: "id", ignoreDuplicates: true },
+    )
+    .select("id");
+  if (refundError) {
+    console.error("refund upsert error:", refundError);
+    return;
+  }
+  if (!refundInserted || refundInserted.length === 0) {
+    console.log(`refund already applied for id ${data["refund-id"]} — skipping side effects`);
+    return;
+  }
 
   // Update invoice — only set status=5 (refunded) if total refunded >= amount paid
   const invoiceId = data["invoice-id"] as number;
@@ -912,18 +949,31 @@ async function handleSubscriptionPayment(
   const subId = data["subscription-id"] as number;
   const tokenType = resolveTokenType(data);
 
-  await supabase.from("subscription_payments").insert({
-    subscription_id: subId,
-    subscriber: data.subscriber,
-    merchant_principal: data.merchant,
-    amount: data.amount,
-    fee: data.fee ?? 0,
-    merchant_received: data["merchant-received"] ?? 0,
-    payment_number: data["payments-made"] ?? 0,
-    block_height: data["block-height"] ?? blockHeight,
-    tx_id: txId,
-    token_type: tokenType,
-  });
+  // Upsert on tx_id so DLQ replay is idempotent — skip subscription/stats
+  // updates on dup to avoid double-counting.
+  const { data: spInserted, error: spError } = await supabase
+    .from("subscription_payments")
+    .upsert({
+      subscription_id: subId,
+      subscriber: data.subscriber,
+      merchant_principal: data.merchant,
+      amount: data.amount,
+      fee: data.fee ?? 0,
+      merchant_received: data["merchant-received"] ?? 0,
+      payment_number: data["payments-made"] ?? 0,
+      block_height: data["block-height"] ?? blockHeight,
+      tx_id: txId,
+      token_type: tokenType,
+    }, { onConflict: "tx_id", ignoreDuplicates: true })
+    .select("id");
+  if (spError) {
+    console.error("subscription_payment upsert error:", spError);
+    return;
+  }
+  if (!spInserted || spInserted.length === 0) {
+    console.log(`subscription_payment already applied for tx ${txId.slice(0, 12)}… — skipping side effects`);
+    return;
+  }
 
   // Get current subscription to compute next_payment_at
   const { data: sub } = await supabase.from("subscriptions")
