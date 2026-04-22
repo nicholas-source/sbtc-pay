@@ -8,7 +8,7 @@ import { useNotificationLogStore, type NotifEventKey } from "./notification-log-
 import { useWalletStore } from "./wallet-store";
 import { supabaseWithWallet } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
-import { fetchBurnBlockHeight, AVG_BLOCK_TIME_SECONDS } from "@/lib/stacks/config";
+import { fetchBurnBlockHeight, AVG_BLOCK_TIME_SECONDS, BURN_BLOCKS_PER_HOUR } from "@/lib/stacks/config";
 import {
   pauseSubscription as pauseSubOnChain,
   resumeSubscription as resumeSubOnChain,
@@ -77,11 +77,16 @@ function nextPayment(from: Date, interval: SubscriptionInterval): Date {
   }
 }
 
-// Map block interval to human interval
+// Burn blocks per day on the current network (network-aware via BURN_BLOCKS_PER_HOUR).
+const BURN_BLOCKS_PER_DAY = BURN_BLOCKS_PER_HOUR * 24;
+const WEEKLY_BLOCKS = BURN_BLOCKS_PER_DAY * 7;
+const MONTHLY_BLOCKS = BURN_BLOCKS_PER_DAY * 30;
+const YEARLY_BLOCKS = BURN_BLOCKS_PER_DAY * 365;
+
+// Map block interval to human interval — bucket by midpoint distance between the three canonical intervals.
 function blocksToInterval(blocks: number): SubscriptionInterval {
-  // ~10 min per block: weekly ≈ 1008, monthly ≈ 4320, yearly ≈ 52560
-  if (blocks <= 2000) return "weekly";
-  if (blocks <= 15000) return "monthly";
+  if (blocks <= (WEEKLY_BLOCKS + MONTHLY_BLOCKS) / 2) return "weekly";
+  if (blocks <= (MONTHLY_BLOCKS + YEARLY_BLOCKS) / 2) return "monthly";
   return "yearly";
 }
 
@@ -647,7 +652,7 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
 
       // Estimate next payment from block height (contract sets next-payment-at = burn-block-height + interval-blocks)
       const currentBlock = await fetchBurnBlockHeight().catch(() => 0);
-      const intervalBlocks = plan.interval === "weekly" ? 1008 : plan.interval === "monthly" ? 4320 : 52560;
+      const intervalBlocks = plan.interval === "weekly" ? WEEKLY_BLOCKS : plan.interval === "monthly" ? MONTHLY_BLOCKS : YEARLY_BLOCKS;
       const nextDate = currentBlock > 0
         ? estimateDateFromBlock(currentBlock + intervalBlocks, currentBlock)
         : nextPayment(new Date(), plan.interval);

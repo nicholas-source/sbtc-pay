@@ -9,17 +9,19 @@ import { formatAmount, amountToUsd, tokenLabel, baseToHuman } from "@/lib/consta
 import { PageTransition } from "@/components/layout/PageTransition";
 import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
-import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
+import { PAYMENT_CONTRACT, getExplorerTxUrl, BURN_BLOCKS_PER_HOUR, type TokenType } from "@/lib/stacks/config";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 
-// Map interval label → approximate block count (~10 min/block)
+// Interval label → burn block count, derived from the current network's block time
+// (mainnet ~10 min, testnet ~5 min — see BURN_BLOCKS_PER_HOUR).
+const BURN_BLOCKS_PER_DAY = BURN_BLOCKS_PER_HOUR * 24;
 const INTERVAL_BLOCKS: Record<string, number> = {
-  daily: 144,
-  weekly: 1008,
-  biweekly: 2016,
-  monthly: 4320,
-  quarterly: 12960,
-  yearly: 52560,
+  daily: BURN_BLOCKS_PER_DAY,
+  weekly: BURN_BLOCKS_PER_DAY * 7,
+  biweekly: BURN_BLOCKS_PER_DAY * 14,
+  monthly: BURN_BLOCKS_PER_DAY * 30,
+  quarterly: BURN_BLOCKS_PER_DAY * 90,
+  yearly: BURN_BLOCKS_PER_DAY * 365,
 };
 
 export default function SubscriptionWidget() {
