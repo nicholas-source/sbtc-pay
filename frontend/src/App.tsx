@@ -35,6 +35,26 @@ const InvoicePaymentWidget = lazy(() => import("./pages/widget/InvoicePaymentWid
 const SubscriptionWidget = lazy(() => import("./pages/widget/SubscriptionWidget"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
+// Docs
+const DocsLayout = lazy(() => import("./pages/docs/DocsLayout"));
+const DocsIntroduction = lazy(() => import("./pages/docs/pages/Introduction"));
+const DocsQuickstart = lazy(() => import("./pages/docs/pages/Quickstart"));
+const DocsInvoices = lazy(() => import("./pages/docs/pages/Invoices"));
+const DocsSubscriptions = lazy(() => import("./pages/docs/pages/Subscriptions"));
+const DocsRefunds = lazy(() => import("./pages/docs/pages/Refunds"));
+const DocsDashboard = lazy(() => import("./pages/docs/pages/Dashboard"));
+const DocsWidgets = lazy(() => import("./pages/docs/pages/Widgets"));
+const DocsWidgetParameters = lazy(() => import("./pages/docs/pages/WidgetParameters"));
+const DocsArchitecture = lazy(() => import("./pages/docs/pages/Architecture"));
+const DocsSettlement = lazy(() => import("./pages/docs/pages/Settlement"));
+const DocsTiming = lazy(() => import("./pages/docs/pages/Timing"));
+const DocsContract = lazy(() => import("./pages/docs/pages/Contract"));
+const DocsErrors = lazy(() => import("./pages/docs/pages/Errors"));
+const DocsFaq = lazy(() => import("./pages/docs/pages/Faq"));
+const DocsFees = lazy(() => import("./pages/docs/pages/Fees"));
+const DocsNotifications = lazy(() => import("./pages/docs/pages/Notifications"));
+const DocsStaticSiteExample = lazy(() => import("./pages/docs/pages/StaticSiteExample"));
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -58,6 +78,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/admin": "Admin | sBTC Pay",
   "/customer/subscriptions": "My Subscriptions | sBTC Pay",
   "/customer/payments": "My Payments | sBTC Pay",
+  "/docs": "Documentation | sBTC Pay",
 };
 
 // Scroll to top, move focus for screen readers, and set page title on route change
@@ -156,6 +177,27 @@ function AnimatedRoutes() {
 
         {/* Public payment page */}
         <Route path="/pay/:invoiceId" element={<ErrorBoundary><PaymentPage /></ErrorBoundary>} />
+
+        {/* Documentation */}
+        <Route path="/docs" element={<ErrorBoundary><DocsLayout /></ErrorBoundary>}>
+          <Route index element={<DocsIntroduction />} />
+          <Route path="quickstart" element={<DocsQuickstart />} />
+          <Route path="invoices" element={<DocsInvoices />} />
+          <Route path="subscriptions" element={<DocsSubscriptions />} />
+          <Route path="refunds" element={<DocsRefunds />} />
+          <Route path="dashboard" element={<DocsDashboard />} />
+          <Route path="notifications" element={<DocsNotifications />} />
+          <Route path="fees" element={<DocsFees />} />
+          <Route path="widgets" element={<DocsWidgets />} />
+          <Route path="widget-parameters" element={<DocsWidgetParameters />} />
+          <Route path="examples/static-site" element={<DocsStaticSiteExample />} />
+          <Route path="architecture" element={<DocsArchitecture />} />
+          <Route path="settlement" element={<DocsSettlement />} />
+          <Route path="timing" element={<DocsTiming />} />
+          <Route path="contract" element={<DocsContract />} />
+          <Route path="errors" element={<DocsErrors />} />
+          <Route path="faq" element={<DocsFaq />} />
+        </Route>
 
         <Route path="*" element={<NotFound />} />
       </Routes>
