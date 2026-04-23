@@ -44,6 +44,7 @@ export default function LandingNavbar() {
         <nav aria-label="Main navigation" className="hidden md:flex items-center gap-8 text-body-sm text-muted-foreground">
           <a href="#features" className="hover:text-foreground transition-colors">Features</a>
           <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <Link to="/docs" className="hover:text-foreground transition-colors">Docs</Link>
           <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
         </nav>
 
@@ -78,6 +79,7 @@ export default function LandingNavbar() {
             <div className="container flex flex-col py-3 gap-1">
               <a href="#features" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Features</a>
               <a href="#pricing" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Pricing</a>
+              <Link to="/docs" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Docs</Link>
               <Link to="/dashboard" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Dashboard</Link>
               <div className="pt-3 border-t border-border/50">
                 <WalletButton />
