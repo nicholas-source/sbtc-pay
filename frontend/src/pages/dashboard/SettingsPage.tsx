@@ -27,6 +27,7 @@ import { Loader2, ShieldCheck, Copy, Bell } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 import NotificationHistory from "@/components/settings/NotificationHistory";
+import WebhookDelivery from "@/components/settings/WebhookDelivery";
 
 const schema = z.object({
   name: z.string().trim()
@@ -242,6 +243,9 @@ function SettingsPage() {
           </Form>
         </CardContent>
       </Card>
+
+      {/* Webhook delivery (on-chain webhook URL) */}
+      <WebhookDelivery />
 
       {/* Notifications */}
       <Card>
