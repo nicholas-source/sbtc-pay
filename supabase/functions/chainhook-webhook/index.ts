@@ -40,6 +40,66 @@ const [CONTRACT_ADDRESS, CONTRACT_NAME] = CONTRACT_ID.split(".");
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+// Internal token for authenticating to merchant-webhook-sender function.
+// Set INTERNAL_WEBHOOK_TOKEN on both this function and merchant-webhook-sender
+// to the same value; otherwise the sender accepts service-role auth too.
+const INTERNAL_WEBHOOK_TOKEN = Deno.env.get("INTERNAL_WEBHOOK_TOKEN") ?? SUPABASE_SERVICE_ROLE_KEY;
+
+// Resolve the merchant principal for an event, either from the event payload
+// or by looking up the subscription/invoice row it references.
+async function resolveMerchantPrincipal(
+  eventType: string,
+  data: Record<string, unknown>,
+): Promise<string | null> {
+  if (typeof data.merchant === "string") return data.merchant;
+
+  // Subscription lifecycle events (paused / resumed / cancelled) don't
+  // carry the merchant principal — look it up on the row.
+  if (eventType.startsWith("subscription-") && data["subscription-id"] != null) {
+    const { data: sub } = await supabase
+      .from("subscriptions")
+      .select("merchant_principal")
+      .eq("id", data["subscription-id"] as number)
+      .maybeSingle();
+    return sub?.merchant_principal ?? null;
+  }
+
+  return null;
+}
+
+// Fire the outbound merchant webhook for an event. Non-blocking: we don't
+// await the HTTP response; the sender function handles delivery + retries.
+async function fireMerchantWebhook(
+  eventType: string,
+  data: Record<string, unknown>,
+  txId: string,
+  blockHeight: number,
+): Promise<void> {
+  try {
+    const merchantPrincipal = await resolveMerchantPrincipal(eventType, data);
+    if (!merchantPrincipal) return;
+
+    const senderUrl = `${SUPABASE_URL}/functions/v1/merchant-webhook-sender`;
+    // Fire-and-forget — don't await the fetch; chainhook doesn't need to wait.
+    fetch(senderUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${INTERNAL_WEBHOOK_TOKEN}`,
+      },
+      body: JSON.stringify({
+        merchantPrincipal,
+        eventType,
+        data,
+        txId,
+        blockHeight,
+      }),
+    }).catch((e) => console.warn("merchant webhook enqueue failed:", e));
+  } catch (e) {
+    console.warn("fireMerchantWebhook error:", e);
+  }
+}
+
 // =============================================
 // Dead-Letter Queue (DLQ) — events that fail processing
 // are saved here for manual replay. NEVER throws.
@@ -1239,6 +1299,8 @@ Deno.serve(async (req: Request) => {
           if (handler) {
             try {
               await handler(data, txId, blockHeight);
+              // Successfully indexed — fire outbound merchant webhook (fire-and-forget)
+              await fireMerchantWebhook(eventType, data, txId, blockHeight);
             } catch (handlerError) {
               console.error(`Handler error for ${eventType}:`, handlerError);
               // Save to dead-letter queue for manual replay — NEVER return 500
