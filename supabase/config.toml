@@ -13,3 +13,12 @@ verify_jwt = false
 # not Supabase JWTs, so keep JWT verification off.
 [functions.wallet-auth]
 verify_jwt = false
+
+# Merchant webhook sender is called internally by chainhook-webhook using an
+# INTERNAL_WEBHOOK_TOKEN (not a Supabase JWT), so bypass gateway JWT check.
+[functions.merchant-webhook-sender]
+verify_jwt = false
+
+# Merchant webhook admin is called from the frontend with a wallet-auth JWT
+# (proper Supabase-signed token), so gateway JWT verification stays on.
+# The function also decodes `sub` to scope actions to the caller's merchant.
