@@ -10,15 +10,12 @@ CREATE TABLE IF NOT EXISTS platform_config (
   value text NOT NULL,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
-
 ALTER TABLE platform_config ENABLE ROW LEVEL SECURITY;
-
 -- Anyone can read config (owner address is not secret — it's on-chain)
 DROP POLICY IF EXISTS "Public read platform config" ON platform_config;
 CREATE POLICY "Public read platform config"
   ON platform_config FOR SELECT
   USING (true);
-
 -- Only service_role can modify (webhook updates on ownership transfer)
 -- No INSERT/UPDATE/DELETE policies needed — service_role bypasses RLS
 
@@ -36,7 +33,6 @@ AS $$
       AND value = public.requesting_wallet_address()
   );
 $$;
-
 -- ═══════════════════════════════════════════════════════════════════
 -- Admin read policies: contract owner can read ALL rows
 -- ═══════════════════════════════════════════════════════════════════
@@ -46,43 +42,36 @@ DROP POLICY IF EXISTS "Admin read all merchants" ON merchants;
 CREATE POLICY "Admin read all merchants"
   ON merchants FOR SELECT
   USING (public.is_platform_admin());
-
 -- Invoices: admin reads all
 DROP POLICY IF EXISTS "Admin read all invoices" ON invoices;
 CREATE POLICY "Admin read all invoices"
   ON invoices FOR SELECT
   USING (public.is_platform_admin());
-
 -- Payments: admin reads all
 DROP POLICY IF EXISTS "Admin read all payments" ON payments;
 CREATE POLICY "Admin read all payments"
   ON payments FOR SELECT
   USING (public.is_platform_admin());
-
 -- Refunds: admin reads all
 DROP POLICY IF EXISTS "Admin read all refunds" ON refunds;
 CREATE POLICY "Admin read all refunds"
   ON refunds FOR SELECT
   USING (public.is_platform_admin());
-
 -- Direct payments: admin reads all
 DROP POLICY IF EXISTS "Admin read all direct payments" ON direct_payments;
 CREATE POLICY "Admin read all direct payments"
   ON direct_payments FOR SELECT
   USING (public.is_platform_admin());
-
 -- Subscriptions: admin reads all
 DROP POLICY IF EXISTS "Admin read all subscriptions" ON subscriptions;
 CREATE POLICY "Admin read all subscriptions"
   ON subscriptions FOR SELECT
   USING (public.is_platform_admin());
-
 -- Subscription payments: admin reads all
 DROP POLICY IF EXISTS "Admin read all subscription payments" ON subscription_payments;
 CREATE POLICY "Admin read all subscription payments"
   ON subscription_payments FOR SELECT
   USING (public.is_platform_admin());
-
 -- ═══════════════════════════════════════════════════════════════════
 -- Seed initial contract owner (update this after ownership transfers)
 -- The chainhook webhook should call:
