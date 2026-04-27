@@ -26,17 +26,13 @@ BEGIN
   END IF;
 END;
 $function$;
-
 -- Drop old 2-arg overload
 DROP FUNCTION IF EXISTS public.increment_merchant_received(text, bigint);
-
 -- Revoke anon/authenticated/public from privileged functions
 REVOKE EXECUTE ON FUNCTION public.increment_merchant_received(text, bigint, text) FROM anon, authenticated, PUBLIC;
 GRANT EXECUTE ON FUNCTION public.increment_merchant_received(text, bigint, text) TO service_role;
-
 REVOKE EXECUTE ON FUNCTION public.increment_platform_stat(text, bigint) FROM anon, authenticated, PUBLIC;
 GRANT EXECUTE ON FUNCTION public.increment_platform_stat(text, bigint) TO service_role;
-
 -- sync_merchant_cache: remove PUBLIC, keep anon/authenticated (frontend needs it)
 REVOKE EXECUTE ON FUNCTION public.sync_merchant_cache(integer, text, text, text, text, text, boolean, boolean, bigint) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.sync_merchant_cache(integer, text, text, text, text, text, boolean, boolean, bigint) TO anon, authenticated, service_role;
