@@ -6,9 +6,7 @@
 
 ALTER TABLE public.payments
   ADD CONSTRAINT payments_tx_id_key UNIQUE (tx_id);
-
 ALTER TABLE public.direct_payments
   ADD CONSTRAINT direct_payments_tx_id_key UNIQUE (tx_id);
-
 ALTER TABLE public.subscription_payments
   ADD CONSTRAINT subscription_payments_tx_id_key UNIQUE (tx_id);
