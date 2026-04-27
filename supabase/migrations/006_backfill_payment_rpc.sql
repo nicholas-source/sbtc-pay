@@ -77,13 +77,6 @@ BEGIN
   RETURN 'inserted';
 END;
 $$;
-
--- Ensure refunds.id has an auto-increment default
-CREATE SEQUENCE IF NOT EXISTS refunds_id_seq;
-SELECT setval('refunds_id_seq', COALESCE((SELECT MAX(id) FROM refunds), 0) + 1);
-ALTER TABLE refunds ALTER COLUMN id SET DEFAULT nextval('refunds_id_seq');
-ALTER SEQUENCE refunds_id_seq OWNED BY refunds.id;
-
 -- Similarly for refund backfill
 CREATE OR REPLACE FUNCTION public.backfill_refund(
   p_invoice_id   integer,
@@ -102,10 +95,9 @@ DECLARE
   v_merchant   text;
   v_caller     text;
   v_exists     boolean;
-  v_payer      text;
 BEGIN
-  -- 1. Verify the invoice exists and get its merchant + payer
-  SELECT merchant_principal, COALESCE(payer, '') INTO v_merchant, v_payer
+  -- 1. Verify the invoice exists and get its merchant
+  SELECT merchant_principal INTO v_merchant
     FROM invoices
    WHERE id = p_invoice_id;
 
@@ -130,22 +122,18 @@ BEGIN
     END IF;
   END IF;
 
-  -- 4. Insert (id auto-generated, customer from invoice payer, processed_at_block from p_block_height)
+  -- 4. Insert
   INSERT INTO refunds (
-    invoice_id, merchant_principal, customer, amount, reason,
-    processed_at_block, tx_id, token_type
+    invoice_id, merchant_principal, amount, reason, tx_id, token_type
   ) VALUES (
-    p_invoice_id, v_merchant, v_payer, p_amount,
-    COALESCE(p_reason, ''), p_block_height, NULLIF(p_tx_id, ''), p_token_type
+    p_invoice_id, v_merchant, p_amount, COALESCE(p_reason, ''), NULLIF(p_tx_id, ''), p_token_type
   );
 
   RETURN 'inserted';
 END;
 $$;
-
 -- Restrict execution to authenticated/anon roles (not public)
 REVOKE ALL ON FUNCTION public.backfill_payment FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.backfill_payment TO anon, authenticated, service_role;
-
 REVOKE ALL ON FUNCTION public.backfill_refund FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.backfill_refund TO anon, authenticated, service_role;
