@@ -42,7 +42,6 @@ BEGIN
   END IF;
 END;
 $$;
-
 -- Restrict to service_role only (webhook uses service_role key)
 REVOKE ALL ON FUNCTION increment_platform_stats FROM PUBLIC;
 REVOKE ALL ON FUNCTION increment_platform_stats FROM anon;
