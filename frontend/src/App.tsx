@@ -10,6 +10,7 @@ import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 const CommandPalette = lazy(() => import("@/components/dashboard/CommandPalette"));
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import InvoicesSkeleton from "@/components/dashboard/InvoicesSkeleton";
+import TransactionsSkeleton from "@/components/dashboard/TransactionsSkeleton";
 import RefundsSkeleton from "@/components/dashboard/RefundsSkeleton";
 import SubscriptionsSkeleton from "@/components/dashboard/SubscriptionsSkeleton";
 import SettingsSkeleton from "@/components/dashboard/SettingsSkeleton";
@@ -26,6 +27,7 @@ const RefundsPage = lazy(() => import("./pages/dashboard/RefundsPage"));
 const SubscriptionsPage = lazy(() => import("./pages/dashboard/SubscriptionsPage"));
 const SettingsPage = lazy(() => import("./pages/dashboard/SettingsPage"));
 const WidgetGeneratorPage = lazy(() => import("./pages/dashboard/WidgetGeneratorPage"));
+const TransactionsPage = lazy(() => import("./pages/dashboard/TransactionsPage"));
 const AdminPage = lazy(() => import("./pages/admin/AdminPage"));
 const CustomerSubscriptions = lazy(() => import("./pages/customer/CustomerSubscriptions"));
 const CustomerPayments = lazy(() => import("./pages/customer/CustomerPayments"));
@@ -75,6 +77,7 @@ const ROUTE_TITLES: Record<string, string> = {
   "/dashboard/subscriptions": "Subscriptions | sBTC Pay",
   "/dashboard/settings": "Settings | sBTC Pay",
   "/dashboard/widget": "Widget Generator | sBTC Pay",
+  "/dashboard/transactions": "Transactions | sBTC Pay",
   "/admin": "Admin | sBTC Pay",
   "/customer/subscriptions": "My Subscriptions | sBTC Pay",
   "/customer/payments": "My Payments | sBTC Pay",
@@ -159,6 +162,7 @@ function AnimatedRoutes() {
           <Route path="subscriptions" element={<Suspense fallback={<SubscriptionsSkeleton />}><SubscriptionsPage /></Suspense>} />
           <Route path="settings" element={<Suspense fallback={<SettingsSkeleton />}><SettingsPage /></Suspense>} />
           <Route path="widget" element={<Suspense fallback={<DashboardSkeleton />}><WidgetGeneratorPage /></Suspense>} />
+          <Route path="transactions" element={<Suspense fallback={<TransactionsSkeleton />}><TransactionsPage /></Suspense>} />
         </Route>
 
         {/* Admin — requires connected wallet; ownership enforced on-chain + UI */}
