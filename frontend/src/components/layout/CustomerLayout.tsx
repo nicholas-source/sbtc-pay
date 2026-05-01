@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Outlet, NavLink } from "react-router-dom";
-import { Bitcoin, Repeat, CreditCard } from "lucide-react";
+import { Repeat, CreditCard } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { WalletButton } from "@/components/wallet/WalletButton";
 import { useWalletStore } from "@/stores/wallet-store";
@@ -26,9 +26,11 @@ export default function CustomerLayout() {
       <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-30">
         <div className="mx-auto max-w-4xl flex items-center justify-between px-3 sm:px-4 h-14 sm:h-16">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <Bitcoin className="h-4 w-4 text-primary-foreground" />
-            </div>
+            <img
+              src="/favicon.png"
+              className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl object-contain"
+              alt="sBTC Pay"
+            />
             <span className="text-lg font-bold text-foreground">sBTC Pay</span>
           </div>
 
