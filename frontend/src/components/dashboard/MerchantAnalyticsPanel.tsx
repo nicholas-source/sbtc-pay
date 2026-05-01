@@ -1,15 +1,16 @@
 /**
- * MerchantAnalyticsPanel — per-merchant analytics using invoice-store data.
+ * MerchantAnalyticsPanel — per-merchant analytics using store data.
  *
- * Mirrors the structure of PlatformAnalyticsPanel but reads from the local
- * invoice-store (already hydrated from Supabase by DashboardLayout) rather
- * than issuing direct Supabase queries.  Adapts Invoice objects to the shared
- * PaymentRow / InvoiceRow shapes so the same pure builder functions are reused.
+ * Reads from invoice-store (invoice payments) and subscription-store
+ * (subscription billing cycle payments), both already hydrated from Supabase
+ * by DashboardLayout.  Adapts them to the shared PaymentRow / InvoiceRow
+ * shapes so the same pure builder functions are reused.
  *
  * Three tabs:
- *   • Volume    — daily payment counts by token (stacked bar chart)
- *   • Conversions — invoices created vs paid per day (composed chart + rate line)
- *   • Token Mix — sBTC / STX distribution (donut + stat cards)
+ *   • Volume      — daily payment counts by token, invoices + subscriptions
+ *   • Conversions — invoices created vs paid (subscription-only merchants see
+ *                   an empty state here, which is correct — CR is invoice concept)
+ *   • Token Mix   — sBTC / STX distribution across all payment types
  */
 
 import { useMemo, useState } from "react";
@@ -29,6 +30,7 @@ import {
 } from "@/lib/analytics";
 import { formatSbtcCompact, formatStxCompact } from "@/lib/constants";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
+import { useSubscriptionStore, type Subscriber, type SubscriptionPlan } from "@/stores/subscription-store";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -57,13 +59,34 @@ function toPaymentRows(invoices: Invoice[]): PaymentRow[] {
   return invoices.flatMap((inv) =>
     inv.payments.map((p) => ({
       amount: p.amount,
-      fee: null,                           // per-payment fee not stored locally
+      fee: null,
       token_type: inv.tokenType ?? "sbtc",
       created_at: p.timestamp instanceof Date
         ? p.timestamp.toISOString()
         : String(p.timestamp),
     })),
   );
+}
+
+/**
+ * Flatten subscription billing-cycle payments into PaymentRow shape.
+ * Plan token type is looked up via the planId → plan map.
+ */
+function toSubscriptionPaymentRows(
+  subscribers: Subscriber[],
+  planMap: Map<string, SubscriptionPlan>,
+): PaymentRow[] {
+  return subscribers.flatMap((sub) => {
+    const tokenType = planMap.get(sub.planId)?.tokenType ?? "sbtc";
+    return sub.payments.map((p) => ({
+      amount: p.amount,
+      fee: null,
+      token_type: tokenType,
+      created_at: p.timestamp instanceof Date
+        ? p.timestamp.toISOString()
+        : String(p.timestamp),
+    }));
+  });
 }
 
 function toInvoiceRows(invoices: Invoice[]): InvoiceRow[] {
@@ -177,12 +200,16 @@ function ConversionTooltip({ active, payload, label }: {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function MerchantAnalyticsPanel() {
-  const invoices = useInvoiceStore((s) => s.invoices);
-  const isLoading = useInvoiceStore((s) => s.isLoading);
+  const invoices    = useInvoiceStore((s) => s.invoices);
+  const isLoading   = useInvoiceStore((s) => s.isLoading);
+  const subscribers = useSubscriptionStore((s) => s.subscribers);
+  const plans       = useSubscriptionStore((s) => s.plans);
   const [range, setRange] = useState<TimeRange>("30d");
   const days = RANGE_DAYS[range];
 
-  // Cut the invoice list to those within the selected window (using createdAt)
+  // Stable plan lookup map (planId → plan)
+  const planMap = useMemo(() => new Map(plans.map((p) => [p.id, p])), [plans]);
+
   const cutoff = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() - days);
@@ -197,7 +224,18 @@ export function MerchantAnalyticsPanel() {
     [invoices, cutoff],
   );
 
-  const paymentRows  = useMemo(() => toPaymentRows(windowInvoices),  [windowInvoices]);
+  // Subscription payments within the window (keyed by the payment's own timestamp)
+  const windowSubPaymentRows = useMemo(() => {
+    const allRows = toSubscriptionPaymentRows(subscribers, planMap);
+    return allRows.filter((r) => new Date(r.created_at) >= cutoff);
+  }, [subscribers, planMap, cutoff]);
+
+  const invoicePaymentRows = useMemo(() => toPaymentRows(windowInvoices), [windowInvoices]);
+  // All payment rows: invoices + subscription billings
+  const paymentRows  = useMemo(
+    () => [...invoicePaymentRows, ...windowSubPaymentRows],
+    [invoicePaymentRows, windowSubPaymentRows],
+  );
   const invoiceRows  = useMemo(() => toInvoiceRows(windowInvoices),  [windowInvoices]);
   const volume       = useMemo(() => buildVolume(paymentRows, days),       [paymentRows, days]);
   const conversions  = useMemo(() => buildConversions(invoiceRows, days),  [invoiceRows, days]);
@@ -206,6 +244,7 @@ export function MerchantAnalyticsPanel() {
   const hasPayments  = paymentRows.length > 0;
   const hasInvoices  = invoiceRows.length > 0;
   const totalPayments = paymentRows.length;
+  const subPaymentCount = windowSubPaymentRows.length;
 
   // Invoice status breakdown for token-mix tab
   const statusCounts = useMemo(() => {
@@ -474,6 +513,12 @@ export function MerchantAnalyticsPanel() {
                         })}
                       </div>
                     </div>
+                  )}
+                  {/* Subscription payment source label */}
+                  {subPaymentCount > 0 && (
+                    <p className="text-center text-caption text-muted-foreground">
+                      Includes {subPaymentCount} subscription billing{subPaymentCount !== 1 ? "s" : ""}
+                    </p>
                   )}
                 </div>
               </div>
