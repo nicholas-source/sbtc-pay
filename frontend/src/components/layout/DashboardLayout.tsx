@@ -14,6 +14,7 @@ import {
   X,
   Code2,
   Home,
+  ArrowLeftRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
@@ -29,6 +30,7 @@ import { useAdminStore } from "@/stores/admin-store";
 const navItems = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true },
   { to: "/dashboard/invoices", icon: FileText, label: "Invoices" },
+  { to: "/dashboard/transactions", icon: ArrowLeftRight, label: "Transactions" },
   { to: "/dashboard/refunds", icon: RefreshCcw, label: "Refunds" },
   { to: "/dashboard/subscriptions", icon: Repeat, label: "Subscriptions" },
   { to: "/dashboard/widget", icon: Code2, label: "Widgets" },
