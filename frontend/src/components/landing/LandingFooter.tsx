@@ -1,4 +1,3 @@
-import { Bitcoin } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const footerLinks = {
@@ -29,9 +28,11 @@ export default function LandingFooter() {
           {/* Brand column */}
           <div className="col-span-2 md:col-span-1 flex flex-col gap-space-md">
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Bitcoin className="h-4 w-4 text-primary-foreground" />
-              </div>
+              <img
+                src="/favicon.png"
+                className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-xl object-contain"
+                alt="sBTC Pay"
+              />
               <span className="text-lg font-bold text-foreground">sBTC Pay</span>
             </div>
             <p className="text-body-sm text-muted-foreground max-w-xs">
