@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { AlertTriangle, Bitcoin, Wallet, Loader2, Check } from "lucide-react";
+import { AlertTriangle, Wallet, Loader2, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -145,7 +145,7 @@ export default function DirectPaymentWidget() {
         <Card className="w-full max-w-sm border-border">
           <CardContent className="p-6 flex flex-col gap-space-md">
             <div className="flex items-center justify-center gap-2">
-              <Bitcoin className="h-5 w-5 text-primary" />
+              <img src="/favicon.png" className="h-8 w-8 shrink-0 rounded-xl object-contain" alt="" aria-hidden="true" />
               <span className="text-heading-sm text-primary">sBTC Pay</span>
               <Badge variant="outline" className="text-micro border-stacks text-stacks">Widget</Badge>
             </div>
