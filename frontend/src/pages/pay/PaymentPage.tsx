@@ -785,8 +785,8 @@ function PageShell({ children }: { children: React.ReactNode }) {
         <Card className="w-full max-w-md border-border">
           <CardContent className="p-4 sm:p-6 md:p-8 flex flex-col gap-space-lg">
             {/* Branding */}
-            <div className="flex items-center justify-center gap-2">
-              <Bitcoin className="h-6 w-6 text-primary" />
+            <div className="flex items-center justify-center gap-2.5">
+              <img src="/favicon.png" className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-2xl object-contain" alt="" aria-hidden="true" />
               <span className="text-heading-sm text-primary">sBTC Pay</span>
               <Badge
                 variant="outline"
