@@ -28,6 +28,7 @@ import { cn } from "@/lib/utils";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { IndexerHealthPanel } from "@/components/admin/IndexerHealthPanel";
 import { PlatformPaymentsFeed } from "@/components/admin/PlatformPaymentsFeed";
+import { PlatformAnalyticsPanel } from "@/components/admin/PlatformAnalyticsPanel";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -172,6 +173,9 @@ export default function AdminPage() {
         <StatCard label="Total Volume" value={[stats.totalVolumeSbtc > 0 ? `${formatAmount(stats.totalVolumeSbtc, 'sbtc')} sBTC` : '', stats.totalVolumeStx > 0 ? `${formatAmount(stats.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={TrendingUp} accent="success" />
         <StatCard label="Fees Collected" value={[stats.feesCollectedSbtc > 0 ? `${formatAmount(stats.feesCollectedSbtc, 'sbtc')} sBTC` : '', stats.feesCollectedStx > 0 ? `${formatAmount(stats.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={Bitcoin} accent="warning" />
       </div>
+
+      {/* Analytics */}
+      <PlatformAnalyticsPanel />
 
       {/* Contract Controls */}
       <Card className={cn(!isContractOwner && !isLoading && "opacity-60")}>
