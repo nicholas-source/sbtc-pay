@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { eachDayOfInterval, format, subDays } from "date-fns";
+import { format, subDays } from "date-fns";
 import { AlertTriangle, BarChart2, RefreshCw } from "lucide-react";
 import {
   BarChart, Bar, ComposedChart, Area, Line,
@@ -11,37 +11,20 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
 import { supabase } from "@/lib/supabase/client";
+import {
+  buildVolume, buildConversions, buildMix,
+  type PaymentRow, type InvoiceRow,
+  type DailyVolume, type DailyConversion, type TokenMix,
+} from "@/lib/analytics";
 import { formatSbtcCompact, formatStxCompact } from "@/lib/constants";
+import { STATUS_MAP } from "@/stores/invoice-store";
 import { cn } from "@/lib/utils";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
+// DailyVolume, DailyConversion, TokenMix, PaymentRow, InvoiceRow re-exported
+// from @/lib/analytics; only panel-specific types defined here.
 
 type TimeRange = "7d" | "30d" | "90d";
-
-interface DailyVolume {
-  date: string;
-  sbtc: number;     // payment count (sBTC)
-  stx: number;      // payment count (STX)
-  sbtcVol: number;  // raw sats
-  stxVol: number;   // raw microSTX
-}
-
-interface DailyConversion {
-  date: string;
-  paid: number;
-  other: number;    // total - paid (pending / expired / cancelled)
-  total: number;
-  rate: number;     // 0–100
-}
-
-interface TokenMix {
-  sbtcCount: number;
-  stxCount: number;
-  sbtcVol: number;
-  stxVol: number;
-  sbtcFees: number;
-  stxFees: number;
-}
 
 interface Analytics {
   volume: DailyVolume[];
@@ -49,9 +32,6 @@ interface Analytics {
   mix: TokenMix;
   truncated: boolean; // true if either query hit the row limit
 }
-
-type PaymentRow  = { amount: number; fee: number | null; token_type: string; created_at: string };
-type InvoiceRow  = { status: string; created_at: string };
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -75,81 +55,6 @@ const conversionConfig = {
   other: { label: "Other",  color: "hsl(var(--muted-foreground))" },
   rate:  { label: "Rate %", color: "hsl(var(--info))"    },
 } satisfies ChartConfig;
-
-// ── Data builders ─────────────────────────────────────────────────────────────
-
-function buildVolume(payments: PaymentRow[], days: number): DailyVolume[] {
-  const now   = new Date();
-  const start = subDays(now, days - 1);
-  const useShort = days <= 7;
-
-  const map = new Map<string, DailyVolume>();
-  eachDayOfInterval({ start, end: now }).forEach((d) => {
-    const key   = format(d, "yyyy-MM-dd");
-    const label = useShort ? format(d, "EEE") : format(d, "MMM d");
-    map.set(key, { date: label, sbtc: 0, stx: 0, sbtcVol: 0, stxVol: 0 });
-  });
-
-  for (const p of payments) {
-    const key = format(new Date(p.created_at), "yyyy-MM-dd");
-    const pt  = map.get(key);
-    if (!pt) continue;
-    if (p.token_type === "stx") { pt.stx++;  pt.stxVol  += p.amount; }
-    else                        { pt.sbtc++; pt.sbtcVol += p.amount; }
-  }
-
-  return [...map.values()];
-}
-
-function buildConversions(invoices: InvoiceRow[], days: number): DailyConversion[] {
-  const now   = new Date();
-  const start = subDays(now, days - 1);
-  const useShort = days <= 7;
-
-  // Store both the formatted label and the accumulator so we never re-parse
-  // the key string back to a Date (which would interpret it as UTC midnight,
-  // shifting labels by one day for users west of UTC).
-  const map = new Map<string, { label: string; paid: number; total: number }>();
-  eachDayOfInterval({ start, end: now }).forEach((d) => {
-    const key   = format(d, "yyyy-MM-dd");
-    const label = useShort ? format(d, "EEE") : format(d, "MMM d");
-    map.set(key, { label, paid: 0, total: 0 });
-  });
-
-  for (const inv of invoices) {
-    const key = format(new Date(inv.created_at), "yyyy-MM-dd");
-    const pt  = map.get(key);
-    if (!pt) continue;
-    pt.total++;
-    if (inv.status === "paid") pt.paid++;
-  }
-
-  return [...map.values()].map((c) => ({
-    date:  c.label,
-    paid:  c.paid,
-    other: c.total - c.paid,
-    total: c.total,
-    rate:  c.total > 0 ? Math.round((c.paid / c.total) * 100) : 0,
-  }));
-}
-
-function buildMix(payments: PaymentRow[]): TokenMix {
-  return payments.reduce<TokenMix>(
-    (acc, p) => {
-      if (p.token_type === "stx") {
-        acc.stxCount++;
-        acc.stxVol   += p.amount;
-        acc.stxFees  += p.fee ?? 0;
-      } else {
-        acc.sbtcCount++;
-        acc.sbtcVol  += p.amount;
-        acc.sbtcFees += p.fee ?? 0;
-      }
-      return acc;
-    },
-    { sbtcCount: 0, stxCount: 0, sbtcVol: 0, stxVol: 0, sbtcFees: 0, stxFees: 0 },
-  );
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -300,7 +205,11 @@ export function PlatformAnalyticsPanel() {
       if (invoicesRes.error) throw invoicesRes.error;
 
       const payments: PaymentRow[] = paymentsRes.data ?? [];
-      const invoices: InvoiceRow[] = invoicesRes.data ?? [];
+      // Supabase stores status as a numeric contract code; map to string label
+      const invoices: InvoiceRow[] = (invoicesRes.data ?? []).map((r) => ({
+        status: STATUS_MAP[r.status] ?? "pending",
+        created_at: r.created_at,
+      }));
       const truncated =
         payments.length === QUERY_LIMIT || invoices.length === QUERY_LIMIT;
 

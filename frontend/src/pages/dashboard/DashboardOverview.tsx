@@ -6,6 +6,7 @@ import MerchantRegistration from "@/components/dashboard/MerchantRegistration";
 import StatCard from "@/components/dashboard/StatCard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
+import { MerchantAnalyticsPanel } from "@/components/dashboard/MerchantAnalyticsPanel";
 import { amountToUsd, formatAmount } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
@@ -70,6 +71,7 @@ function DashboardOverview() {
       </div>
 
       <RevenueChart />
+      <MerchantAnalyticsPanel />
       <ActivityFeed />
     </div>
   );
