@@ -143,12 +143,22 @@ function mapDbInvoice(
     payerAddress: row.payer || "",
     createdAt: new Date(row.created_at),
     expiresAt: blockHeightToDate(row.created_at, row.created_at_block, row.expires_at_block),
-    payments: payments.map((p) => ({
-      timestamp: new Date(p.created_at),
-      amount: p.amount,
-      txId: p.tx_id || "",
-      payer: p.payer || "",
-    })),
+    payments: (() => {
+      const mapped = payments.map((p) => ({
+        timestamp: new Date(p.created_at),
+        amount: p.amount,
+        txId: p.tx_id || "",
+        payer: p.payer || "",
+      }));
+      // Deduplicate: if a synthesized entry (txId="") exists alongside a real entry
+      // (txId != "") for the same amount, drop the synthesized one. This happens when
+      // the reconciler's last-resort backfill races with the chainhook webhook inserting
+      // the actual confirmed tx, leaving both rows in Supabase.
+      const realTxAmounts = new Set(
+        mapped.filter((p) => p.txId).map((p) => p.amount)
+      );
+      return mapped.filter((p) => p.txId || !realTxAmounts.has(p.amount));
+    })(),
     refunds: refunds.map((r) => ({
       timestamp: new Date(r.created_at),
       amount: r.amount,
