@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { eachDayOfInterval, format, subDays } from "date-fns";
 import { AlertTriangle, BarChart2, RefreshCw } from "lucide-react";
 import {
@@ -47,6 +47,7 @@ interface Analytics {
   volume: DailyVolume[];
   conversions: DailyConversion[];
   mix: TokenMix;
+  truncated: boolean; // true if either query hit the row limit
 }
 
 type PaymentRow  = { amount: number; fee: number | null; token_type: string; created_at: string };
@@ -55,6 +56,8 @@ type InvoiceRow  = { status: string; created_at: string };
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const RANGE_DAYS: Record<TimeRange, number> = { "7d": 7, "30d": 30, "90d": 90 };
+// Generous limit — signals clearly if exceeded rather than silently truncating
+const QUERY_LIMIT = 5000;
 
 const SKELETON_HEIGHTS = [35, 60, 25, 80, 50, 70, 40, 90, 55, 30, 75, 45];
 
@@ -103,9 +106,14 @@ function buildConversions(invoices: InvoiceRow[], days: number): DailyConversion
   const start = subDays(now, days - 1);
   const useShort = days <= 7;
 
-  const map = new Map<string, { paid: number; total: number }>();
+  // Store both the formatted label and the accumulator so we never re-parse
+  // the key string back to a Date (which would interpret it as UTC midnight,
+  // shifting labels by one day for users west of UTC).
+  const map = new Map<string, { label: string; paid: number; total: number }>();
   eachDayOfInterval({ start, end: now }).forEach((d) => {
-    map.set(format(d, "yyyy-MM-dd"), { paid: 0, total: 0 });
+    const key   = format(d, "yyyy-MM-dd");
+    const label = useShort ? format(d, "EEE") : format(d, "MMM d");
+    map.set(key, { label, paid: 0, total: 0 });
   });
 
   for (const inv of invoices) {
@@ -116,8 +124,8 @@ function buildConversions(invoices: InvoiceRow[], days: number): DailyConversion
     if (inv.status === "paid") pt.paid++;
   }
 
-  return [...map.entries()].map(([key, c]) => ({
-    date:  useShort ? format(new Date(key), "EEE") : format(new Date(key), "MMM d"),
+  return [...map.values()].map((c) => ({
+    date:  c.label,
     paid:  c.paid,
     other: c.total - c.paid,
     total: c.total,
@@ -257,8 +265,15 @@ export function PlatformAnalyticsPanel() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading]     = useState(true);
   const [error, setError]         = useState<string | null>(null);
+  // Abort controller ref — cancels stale in-flight fetches on rapid range changes
+  const abortRef = useRef<AbortController | null>(null);
 
   const load = useCallback(async () => {
+    // Cancel any previous in-flight fetch
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setError(null);
     try {
@@ -269,32 +284,47 @@ export function PlatformAnalyticsPanel() {
         supabase
           .from("payments")
           .select("amount, fee, token_type, created_at")
-          .gte("created_at", since),
+          .gte("created_at", since)
+          .limit(QUERY_LIMIT),
         supabase
           .from("invoices")
           .select("status, created_at")
-          .gte("created_at", since),
+          .gte("created_at", since)
+          .limit(QUERY_LIMIT),
       ]);
+
+      // Ignore result if this request was superseded
+      if (controller.signal.aborted) return;
 
       if (paymentsRes.error) throw paymentsRes.error;
       if (invoicesRes.error) throw invoicesRes.error;
 
       const payments: PaymentRow[] = paymentsRes.data ?? [];
       const invoices: InvoiceRow[] = invoicesRes.data ?? [];
+      const truncated =
+        payments.length === QUERY_LIMIT || invoices.length === QUERY_LIMIT;
 
       setAnalytics({
         volume:      buildVolume(payments, days),
         conversions: buildConversions(invoices, days),
         mix:         buildMix(payments),
+        truncated,
       });
     } catch {
-      setError("Failed to load analytics. Please try again.");
+      if (!controller.signal.aborted) {
+        setError("Failed to load analytics. Please try again.");
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [timeRange]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    return () => { abortRef.current?.abort(); };
+  }, [load]);
 
   // Derived summary values
   const totalPayments = analytics ? analytics.mix.sbtcCount + analytics.mix.stxCount : 0;
@@ -363,6 +393,13 @@ export function PlatformAnalyticsPanel() {
           </div>
         )}
 
+        {analytics?.truncated && !error && (
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-warning/30 bg-warning/10 px-3 py-2 text-body-sm text-warning">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Volume is very high — charts show the first {QUERY_LIMIT.toLocaleString()} records. Totals may be understated.
+          </div>
+        )}
+
         <Tabs defaultValue="volume">
           <TabsList className="mb-6">
             <TabsTrigger value="volume">Volume</TabsTrigger>
@@ -419,31 +456,32 @@ export function PlatformAnalyticsPanel() {
                   </span>
                 </div>
 
-                {/* Period summary */}
-                <div className="grid grid-cols-3 gap-3 border-t border-border pt-4">
-                  <div className="text-center">
-                    <p className="font-mono-nums text-heading-sm text-foreground">
-                      {totalPayments}
-                    </p>
-                    <p className="text-caption text-muted-foreground">Total Payments</p>
-                  </div>
-                  {analytics!.mix.sbtcVol > 0 && (
-                    <div className="text-center">
-                      <p className="font-mono-nums text-heading-sm text-primary">
-                        {formatSbtcCompact(analytics!.mix.sbtcVol)}
-                      </p>
-                      <p className="text-caption text-muted-foreground">sBTC Volume</p>
+                {/* Period summary — columns flex to actual token presence */}
+                {(() => {
+                  const hasSbtc = analytics!.mix.sbtcVol > 0;
+                  const hasStx  = analytics!.mix.stxVol > 0;
+                  const colClass = hasSbtc && hasStx ? "grid-cols-3" : hasSbtc || hasStx ? "grid-cols-2" : "grid-cols-1";
+                  return (
+                    <div className={`grid gap-3 border-t border-border pt-4 ${colClass}`}>
+                      <div className="text-center">
+                        <p className="font-mono-nums text-heading-sm text-foreground">{totalPayments}</p>
+                        <p className="text-caption text-muted-foreground">Total Payments</p>
+                      </div>
+                      {hasSbtc && (
+                        <div className="text-center">
+                          <p className="font-mono-nums text-heading-sm text-primary">{formatSbtcCompact(analytics!.mix.sbtcVol)}</p>
+                          <p className="text-caption text-muted-foreground">sBTC Volume</p>
+                        </div>
+                      )}
+                      {hasStx && (
+                        <div className="text-center">
+                          <p className="font-mono-nums text-heading-sm text-secondary">{formatStxCompact(analytics!.mix.stxVol)}</p>
+                          <p className="text-caption text-muted-foreground">STX Volume</p>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  {analytics!.mix.stxVol > 0 && (
-                    <div className="text-center">
-                      <p className="font-mono-nums text-heading-sm text-secondary">
-                        {formatStxCompact(analytics!.mix.stxVol)}
-                      </p>
-                      <p className="text-caption text-muted-foreground">STX Volume</p>
-                    </div>
-                  )}
-                </div>
+                  );
+                })()}
               </div>
             )}
           </TabsContent>
