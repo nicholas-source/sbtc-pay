@@ -240,10 +240,9 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                               className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
                             >
                               Tx: {truncateAddress(entry.txId)}
+                              <span className="text-success font-sans not-italic ml-1">✓ Confirmed</span>
                             </a>
-                          ) : (
-                            <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     ) : (
@@ -267,10 +266,9 @@ export default function InvoiceDetail({ invoice: invoiceProp, open, onOpenChange
                               className="text-xs text-primary font-mono truncate mt-0.5 block hover:underline"
                             >
                               Tx: {truncateAddress(entry.txId)}
+                              <span className="text-success font-sans not-italic ml-1">✓ Confirmed</span>
                             </a>
-                          ) : (
-                            <p className="text-xs text-success mt-0.5 font-medium">✓ Confirmed</p>
-                          )}
+                          ) : null}
                         </div>
                       </div>
                     ),
