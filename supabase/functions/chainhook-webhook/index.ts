@@ -1311,6 +1311,17 @@ Deno.serve(async (req: Request) => {
           }
         }
       }
+
+      // Heartbeat: one row per block so Indexer Health can measure pipeline lag
+      // regardless of contract activity level. Idempotent — ignored on replay.
+      await supabase.from("events").upsert({
+        event_type: "heartbeat",
+        tx_id: `heartbeat-${blockHeight}`,
+        block_height: blockHeight,
+        block_hash: blockHash,
+        contract_identifier: CONTRACT_ID,
+        payload: { type: "heartbeat", block_height: blockHeight },
+      }, { onConflict: "tx_id,event_type", ignoreDuplicates: true });
     }
 
     // Handle rollbacks — delete events and associated data at rolled-back blocks
