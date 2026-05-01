@@ -12,7 +12,6 @@ import {
   Shield,
   Menu,
   X,
-  Bitcoin,
   Code2,
   Home,
 } from "lucide-react";
@@ -109,10 +108,18 @@ export function DashboardLayout() {
         )}
       >
         {/* Logo */}
-        <Link to="/" className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4 hover:bg-sidebar-accent transition-colors">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary">
-            <Bitcoin className="h-5 w-5 text-primary-foreground" />
-          </div>
+        <Link
+          to="/"
+          className={cn(
+            "flex h-16 items-center border-b border-sidebar-border px-4 hover:bg-sidebar-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
+            sidebarOpen ? "gap-3 justify-start" : "gap-0 justify-center"
+          )}
+        >
+          <img
+            src="/favicon.png"
+            className="h-10 w-10 shrink-0 rounded-xl object-contain"
+            alt="sBTC Pay home"
+          />
           {sidebarOpen && (
             <motion.span
               initial={{ opacity: 0 }}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Bitcoin, ExternalLink, Menu, X } from "lucide-react";
+import { ExternalLink, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DocsSidebar } from "./components/DocsSidebar";
@@ -38,8 +38,12 @@ export default function DocsLayout() {
             </SheetTrigger>
             <SheetContent side="left" className="w-80 overflow-y-auto border-border bg-background p-0">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
-                <Link to="/docs" className="flex items-center gap-2" onClick={() => setMobileOpen(false)}>
-                  <Bitcoin className="h-4 w-4 text-primary" />
+                <Link
+                  to="/docs"
+                  className="flex items-center gap-2 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <img src="/favicon.png" className="h-7 w-7 shrink-0 rounded-lg object-contain" alt="" aria-hidden="true" />
                   <span className="font-semibold">sBTC Pay Docs</span>
                 </Link>
                 <button
@@ -57,8 +61,11 @@ export default function DocsLayout() {
             </SheetContent>
           </Sheet>
 
-          <Link to="/docs" className="flex items-center gap-2">
-            <Bitcoin className="h-4 w-4 text-primary" />
+          <Link
+            to="/docs"
+            className="flex items-center gap-2 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            <img src="/favicon.png" className="h-7 w-7 shrink-0 rounded-lg object-contain" alt="" aria-hidden="true" />
             <span className="font-semibold tracking-tight">sBTC Pay</span>
             <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
               Docs
