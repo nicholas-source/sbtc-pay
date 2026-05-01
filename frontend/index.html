@@ -3,9 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
-    <link rel="apple-touch-icon" href="/favicon.png" />
+    <!-- Favicons — all sizes served from the same PNG; browser picks the best fit -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
+    <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
+    <!-- Apple touch icons -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/favicon.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/favicon.png" />
+    <!-- Windows / PWA -->
+    <meta name="msapplication-TileImage" content="/favicon.png" />
+    <meta name="msapplication-TileColor" content="#F97316" />
+    <meta name="theme-color" content="#F97316" />
     <title>sBTC Pay — Bitcoin Payments on Stacks</title>
     <meta name="description" content="Enterprise-grade Bitcoin payment infrastructure. Invoicing, subscriptions, and embeddable widgets — built on Stacks, secured by Bitcoin." />
 
