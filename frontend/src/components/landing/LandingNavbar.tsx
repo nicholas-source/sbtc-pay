@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { Bitcoin, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { WalletButton } from "@/components/wallet/WalletButton";
 
@@ -33,10 +33,15 @@ export default function LandingNavbar() {
     <header aria-label="Site header" className="fixed top-0 inset-x-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/80">
       <div className="container flex h-14 sm:h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-2">
-          <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-primary">
-            <Bitcoin className="h-4 w-4 text-primary-foreground" />
-          </div>
+        <Link
+          to="/"
+          className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        >
+          <img
+            src="/favicon.png"
+            className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl object-contain"
+            alt="sBTC Pay home"
+          />
           <span className="text-base font-bold leading-none">sBTC Pay</span>
         </Link>
 
