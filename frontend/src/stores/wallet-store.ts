@@ -211,20 +211,31 @@ export const useWalletStore = create<WalletState>()(
                 return;
               }
 
+              // balancesLoading flips to true here (not later in fetchBalances) so
+              // payment widgets gate the Pay button through the entire authenticate
+              // → fetch chain. Without this, there's a window where isConnected=true
+              // but balance is still its initial 0n, and clicking Pay reads zero
+              // and shows a spurious "insufficient funds" toast.
               set({
                 isConnected: true,
                 isConnecting: false,
                 address: stxAddress,
                 publicKey,
                 connectionError: null,
+                balancesLoading: true,
               });
 
-              // Authenticate with Supabase (sign-once → 24h JWT)
-              // If we already have a valid JWT, this is instant (no popup).
-              await get().authenticate();
-
-              // Fetch balances after connecting (awaited so UI has real data)
-              await get().fetchBalances();
+              try {
+                // Authenticate with Supabase (sign-once → 24h JWT)
+                // If we already have a valid JWT, this is instant (no popup).
+                await get().authenticate();
+                // Fetch balances after connecting (awaited so UI has real data)
+                await get().fetchBalances();
+              } finally {
+                // Defensive: if authenticate or fetchBalances throws,
+                // make sure the UI doesn't get stuck on "Loading balance…"
+                if (get().balancesLoading) set({ balancesLoading: false });
+              }
               get().fetchPrices();
             } else {
               set({
