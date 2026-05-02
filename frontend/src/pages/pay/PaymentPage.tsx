@@ -29,7 +29,7 @@ function PaymentPage() {
   // Try local store first (merchant viewing their own invoice)
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
   const addConfirmedPayment = useInvoiceStore((s) => s.addConfirmedPayment);
-  const { isConnected, isConnecting, address, sbtcBalance, stxBalance, connect, connectionError, clearError, fetchBalances } = useWalletStore();
+  const { isConnected, isConnecting, address, sbtcBalance, stxBalance, balancesLoading, connect, connectionError, clearError, fetchBalances } = useWalletStore();
 
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
@@ -416,7 +416,7 @@ function PaymentPage() {
       setPaymentState("error");
       toast.error(message);
     }
-  }, [invoice, effectivePayAmount, paymentState, invoiceExpired, isBlockchainInvoice, blockchainInvoiceId, address, fetchBalances]);
+  }, [invoice, effectivePayAmount, paymentState, invoiceExpired, isBlockchainInvoice, blockchainInvoiceId, address, stxBalance, sbtcBalance, fetchBalances]);
 
   // --- Loading ---
   if (invoiceLoading) {
@@ -609,8 +609,19 @@ function PaymentPage() {
         </div>
       </div>
 
-      {/* Balance Check */}
-      {isConnected && (
+      {/* Balance Check — show "Loading…" during the connect → auth → fetch chain
+          so we don't flash "Insufficient" with a stale 0 balance before the
+          real amount has been read from the chain. */}
+      {isConnected && balancesLoading && (
+        <div className="flex items-center justify-between rounded-lg p-3 text-body-sm bg-muted/40 border border-border">
+          <span className="text-muted-foreground">Your {tokenLabel(tt)}:</span>
+          <span className="font-tabular text-muted-foreground inline-flex items-center gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Checking balance…
+          </span>
+        </div>
+      )}
+      {isConnected && !balancesLoading && (
         <div className={`flex items-center justify-between rounded-lg p-3 text-body-sm ${hasSufficient ? "bg-success/10 border border-success/30" : "bg-destructive/10 border border-destructive/30"}`}>
           <span className="text-muted-foreground">Your {tokenLabel(tt)}:</span>
           <span className={`font-tabular ${hasSufficient ? "text-success" : "text-destructive"}`}>
@@ -726,9 +737,13 @@ function PaymentPage() {
           <Button
             className="w-full h-12 text-body font-semibold gap-2"
             onClick={handlePay}
-            disabled={paymentState !== "idle" || !hasSufficient || invoiceExpired}
+            disabled={paymentState !== "idle" || balancesLoading || !hasSufficient || invoiceExpired}
           >
-            <Bitcoin className="h-5 w-5" />Pay {formatAmount(effectivePayAmount, tt)} {tokenLabel(tt)}
+            {balancesLoading ? (
+              <><Loader2 className="h-5 w-5 animate-spin" />Checking balance…</>
+            ) : (
+              <><Bitcoin className="h-5 w-5" />Pay {formatAmount(effectivePayAmount, tt)} {tokenLabel(tt)}</>
+            )}
           </Button>
         )}
 
