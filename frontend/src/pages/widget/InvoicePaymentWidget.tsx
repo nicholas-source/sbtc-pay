@@ -130,7 +130,7 @@ export default function InvoicePaymentWidget() {
       setPayState("error");
       toast.error(readable || msg);
     }
-  }, [invoice, payState, isConnected, address, connect]);
+  }, [invoice, payState, isConnected, address, connect, stxBalance, sbtcBalance]);
 
   if (loading) {
     return (
