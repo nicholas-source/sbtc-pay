@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { useMerchantStore, defaultNotificationSettings } from "@/stores/merchant-store";
+import { useMerchantStore } from "@/stores/merchant-store";
 
 // Mock contract calls so store tests don't need a wallet/network
 vi.mock("@/lib/stacks/contract", () => ({
@@ -25,7 +25,6 @@ describe("merchant-store", () => {
         webhookUrl: "",
         isVerified: false,
         isRegistered: true,
-        notifications: { ...defaultNotificationSettings },
       });
 
       const { profile } = useMerchantStore.getState();
@@ -46,7 +45,6 @@ describe("merchant-store", () => {
         webhookUrl: "",
         isVerified: false,
         isRegistered: true,
-        notifications: { ...defaultNotificationSettings },
       });
 
       clearProfile();
@@ -65,7 +63,6 @@ describe("merchant-store", () => {
         webhookUrl: "",
         isVerified: false,
         isRegistered: true,
-        notifications: { ...defaultNotificationSettings },
       });
 
       await updateProfile({ name: "New Name" });
@@ -79,35 +76,6 @@ describe("merchant-store", () => {
       const { updateProfile } = useMerchantStore.getState();
       updateProfile({ name: "No-op" });
       expect(useMerchantStore.getState().profile).toBeNull();
-    });
-  });
-
-  describe("updateNotifications", () => {
-    it("updates notification settings", () => {
-      const { setProfile, updateNotifications } = useMerchantStore.getState();
-      setProfile({
-        id: "ST123",
-        name: "Test",
-        description: "",
-        logoUrl: "",
-        webhookUrl: "",
-        isVerified: false,
-        isRegistered: true,
-        notifications: { ...defaultNotificationSettings },
-      });
-
-      const newSettings = {
-        ...defaultNotificationSettings,
-        email: "test@example.com",
-        events: { ...defaultNotificationSettings.events, renewal: false },
-      };
-
-      updateNotifications(newSettings);
-
-      const { profile } = useMerchantStore.getState();
-      expect(profile!.notifications.email).toBe("test@example.com");
-      expect(profile!.notifications.events.renewal).toBe(false);
-      expect(profile!.notifications.events.cancellation).toBe(true); // unchanged
     });
   });
 
