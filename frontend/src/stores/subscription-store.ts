@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { addWeeks, addMonths, addYears } from "date-fns";
-import { toast } from "sonner";
 import type { Payment } from "./invoice-store";
-import { useMerchantStore } from "./merchant-store";
-import { useNotificationLogStore, type NotifEventKey } from "./notification-log-store";
 import { useWalletStore } from "./wallet-store";
 import { supabaseWithWallet } from "@/lib/supabase/client";
 import type { Tables } from "@/lib/supabase/types";
@@ -106,39 +103,6 @@ function estimateDateFromBlock(targetBlock: number, currentBlock: number): Date 
   const blockDelta = targetBlock - currentBlock;
   const msDelta = blockDelta * AVG_BLOCK_TIME_SECONDS * 1000;
   return new Date(Date.now() + msDelta);
-}
-
-function notifyEvent(eventKey: NotifEventKey, label: string) {
-  const profile = useMerchantStore.getState().profile;
-  if (!profile?.notifications) return;
-  if (!profile.notifications.events[eventKey]) return;
-
-  const hasEmail = !!profile.notifications.email;
-  const hasWebhook = !!profile.notifications.webhookUrl;
-
-  // Attempt real webhook delivery if configured
-  if (hasWebhook) {
-    const webhookUrl = profile.notifications.webhookUrl;
-    fetch(webhookUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        event: eventKey,
-        label,
-        merchant: profile.id,
-        timestamp: new Date().toISOString(),
-      }),
-    }).then(() => {
-      toast.success(`Webhook delivered: ${label}`);
-    }).catch(() => {
-      toast.warning(`Webhook delivery failed for: ${label}`, {
-        description: "The endpoint may be unreachable or blocked by CORS.",
-      });
-    });
-  }
-
-  const channel: "email" | "webhook" | "both" = hasEmail && hasWebhook ? "both" : hasEmail ? "email" : "webhook";
-  useNotificationLogStore.getState().addLog({ eventType: eventKey, label, timestamp: new Date(), channel });
 }
 
 /** Extract numeric on-chain ID from store ID like "SUB-42" */
@@ -551,7 +515,6 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           sub.id === id && sub.status === "active" ? { ...sub, status: "paused" as SubscriberStatus } : sub
         ),
       }));
-      notifyEvent("pauseResume", "Subscription Paused");
     } catch (err) {
       throw new Error(contractErrorMsg(err));
     } finally {
@@ -593,7 +556,6 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           };
         }),
       }));
-      notifyEvent("pauseResume", "Subscription Resumed");
     } catch (err) {
       throw new Error(contractErrorMsg(err));
     } finally {
@@ -615,7 +577,6 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
           sub.id === id && sub.status !== "cancelled" ? { ...sub, status: "cancelled" as SubscriberStatus } : sub
         ),
       }));
-      notifyEvent("cancellation", "Subscription Cancelled");
     } catch (err) {
       throw new Error(contractErrorMsg(err));
     } finally {
@@ -668,8 +629,6 @@ export const useSubscriptionStore = create<SubscriptionStore>()(
             : existing
         ),
       }));
-
-      notifyEvent("renewal", "Renewal Processed");
     } catch (err) {
       throw new Error(contractErrorMsg(err));
     } finally {
