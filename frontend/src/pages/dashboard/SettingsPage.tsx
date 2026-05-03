@@ -8,8 +8,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,12 +19,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { useMerchantStore, type NotificationSettings, type NotificationEvents } from "@/stores/merchant-store";
+import { useMerchantStore } from "@/stores/merchant-store";
 import { CONTRACT_LIMITS } from "@/lib/stacks/contract";
-import { Loader2, ShieldCheck, Copy, Bell } from "lucide-react";
+import { Loader2, ShieldCheck, Copy } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import NotificationHistory from "@/components/settings/NotificationHistory";
 import WebhookDelivery from "@/components/settings/WebhookDelivery";
 
 const schema = z.object({
@@ -47,14 +44,8 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 function SettingsPage() {
-  const { profile, updateProfile, updateNotifications, clearProfile } = useMerchantStore();
+  const { profile, updateProfile, clearProfile } = useMerchantStore();
   const [saving, setSaving] = useState(false);
-  const [savingNotif, setSavingNotif] = useState(false);
-  const [notifEmail, setNotifEmail] = useState(profile?.notifications?.email ?? "");
-  const [notifWebhook, setNotifWebhook] = useState(profile?.notifications?.webhookUrl ?? "");
-  const [notifEvents, setNotifEvents] = useState<NotificationEvents>(
-    profile?.notifications?.events ?? { renewal: true, cancellation: true, failedPayment: true, newSubscriber: true, pauseResume: true }
-  );
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -98,51 +89,6 @@ function SettingsPage() {
       setSaving(false);
     }
   };
-
-  const handleSaveNotifications = async () => {
-    // Validate email if provided
-    const trimmedEmail = notifEmail.trim();
-    if (trimmedEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      toast.error("Invalid email address");
-      return;
-    }
-    // Validate webhook URL if provided
-    const trimmedWebhook = notifWebhook.trim();
-    if (trimmedWebhook) {
-      try {
-        const url = new URL(trimmedWebhook);
-        if (!['http:', 'https:'].includes(url.protocol)) {
-          toast.error("Webhook URL must use http or https");
-          return;
-        }
-      } catch {
-        toast.error("Invalid webhook URL");
-        return;
-      }
-    }
-    setSavingNotif(true);
-    try {
-      await updateNotifications({ email: trimmedEmail, webhookUrl: trimmedWebhook, events: notifEvents });
-      toast.success("Notification settings saved");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to save notification settings";
-      toast.error(message);
-    } finally {
-      setSavingNotif(false);
-    }
-  };
-
-  const toggleEvent = (key: keyof NotificationEvents) => {
-    setNotifEvents((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
-
-  const eventToggles: { key: keyof NotificationEvents; label: string; description: string }[] = [
-    { key: "renewal", label: "Renewal Processed", description: "Notify when a recurring payment is successfully collected" },
-    { key: "cancellation", label: "Subscription Cancelled", description: "Notify when a subscriber cancels their plan" },
-    { key: "failedPayment", label: "Payment Failed", description: "Notify when a payment attempt fails" },
-    { key: "newSubscriber", label: "New Subscriber", description: "Notify when someone subscribes to a plan" },
-    { key: "pauseResume", label: "Pause / Resume", description: "Notify when a subscriber pauses or resumes" },
-  ];
 
   const copyId = async () => {
     try {
@@ -246,62 +192,6 @@ function SettingsPage() {
 
       {/* Webhook delivery (on-chain webhook URL) */}
       <WebhookDelivery />
-
-      {/* Notifications */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-heading-sm flex items-center gap-2">
-            <Bell className="h-5 w-5" /> Notifications
-          </CardTitle>
-          <CardDescription>Configure alerts for subscription events.</CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-space-md">
-          <div className="flex flex-col gap-space-sm">
-            <div>
-              <Label htmlFor="notif-email">Email Address</Label>
-              <Input
-                id="notif-email"
-                type="email"
-                placeholder="notifications@example.com"
-                value={notifEmail}
-                onChange={(e) => setNotifEmail(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="notif-webhook">Webhook URL</Label>
-              <Input
-                id="notif-webhook"
-                type="url"
-                placeholder="https://example.com/webhook"
-                value={notifWebhook}
-                onChange={(e) => setNotifWebhook(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <Separator />
-          <div className="flex flex-col gap-space-sm">
-            {eventToggles.map(({ key, label, description }) => (
-              <div key={key} className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">{label}</p>
-                  <p className="text-caption text-muted-foreground">{description}</p>
-                </div>
-                <Switch checked={notifEvents[key]} onCheckedChange={() => toggleEvent(key)} disabled={savingNotif} />
-              </div>
-            ))}
-          </div>
-          <Separator />
-          <Button onClick={handleSaveNotifications} disabled={savingNotif}>
-            {savingNotif && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Save Notification Settings
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Notification History */}
-      <NotificationHistory />
 
       {/* Danger Zone */}
       <Card className="border-destructive/30">
