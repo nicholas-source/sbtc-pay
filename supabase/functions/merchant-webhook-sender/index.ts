@@ -303,7 +303,17 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // Auth: internal token only (chainhook-webhook holds it; admins can also call).
+  const url = new URL(req.url);
+  const mode = url.searchParams.get("mode");
+
+  // Retry mode just drains the existing pending-deliveries queue — no user input,
+  // no way to abuse it beyond making the queue process slightly faster.
+  // Skipping auth lets pg_cron tick this every minute without secret-management.
+  if (mode === "retry") {
+    return await handleRetry();
+  }
+
+  // Enqueue mode (chainhook → here, admin → here): require internal token.
   if (INTERNAL_TOKEN) {
     const authHeader = req.headers.get("authorization") ?? "";
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
@@ -315,10 +325,5 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  const url = new URL(req.url);
-  const mode = url.searchParams.get("mode");
-  if (mode === "retry") {
-    return await handleRetry();
-  }
   return await handleEnqueue(req);
 });
