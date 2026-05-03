@@ -2,52 +2,6 @@ import { create } from 'zustand';
 import { supabaseWithWallet } from "@/lib/supabase/client";
 import { registerMerchant as registerMerchantOnChain, updateMerchantProfile as updateMerchantOnChain, getMerchant as getMerchantOnChain, waitForTransaction } from "@/lib/stacks/contract";
 import { toast } from "sonner";
-import { useNotificationLogStore } from "./notification-log-store";
-
-export interface NotificationEvents {
-  renewal: boolean;
-  cancellation: boolean;
-  failedPayment: boolean;
-  newSubscriber: boolean;
-  pauseResume: boolean;
-}
-
-export interface NotificationSettings {
-  email: string;
-  webhookUrl: string;
-  events: NotificationEvents;
-}
-
-export const defaultNotificationSettings: NotificationSettings = {
-  email: '',
-  webhookUrl: '',
-  events: {
-    renewal: true,
-    cancellation: true,
-    failedPayment: true,
-    newSubscriber: true,
-    pauseResume: true,
-  },
-};
-
-// --- localStorage persistence for notification settings ---
-const NOTIF_SETTINGS_PREFIX = "sbtc-pay-notif-settings-";
-
-function saveNotifSettings(principal: string, settings: NotificationSettings) {
-  try {
-    localStorage.setItem(`${NOTIF_SETTINGS_PREFIX}${principal}`, JSON.stringify(settings));
-  } catch { /* quota exceeded — silently skip */ }
-}
-
-function loadNotifSettings(principal: string): NotificationSettings {
-  try {
-    const raw = localStorage.getItem(`${NOTIF_SETTINGS_PREFIX}${principal}`);
-    if (!raw) return { ...defaultNotificationSettings };
-    return JSON.parse(raw) as NotificationSettings;
-  } catch {
-    return { ...defaultNotificationSettings };
-  }
-}
 
 export interface MerchantProfile {
   id: string;
@@ -57,7 +11,6 @@ export interface MerchantProfile {
   webhookUrl: string;
   isVerified: boolean;
   isRegistered: boolean;
-  notifications: NotificationSettings;
 }
 
 interface MerchantState {
@@ -71,7 +24,6 @@ interface MerchantState {
   fetchMerchant: (principal: string) => Promise<void>;
   registerMerchant: (data: { name: string; description: string; logoUrl: string; webhookUrl: string }) => Promise<void>;
   updateProfile: (data: Partial<Pick<MerchantProfile, 'name' | 'description' | 'logoUrl' | 'webhookUrl'>>) => Promise<void>;
-  updateNotifications: (settings: NotificationSettings) => Promise<void>;
 }
 
 export const useMerchantStore = create<MerchantState>((set, get) => ({
@@ -104,12 +56,8 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
         webhookUrl: onChain.webhookUrl ?? '',
         isVerified: onChain.isVerified,
         isRegistered: true,
-        notifications: loadNotifSettings(principal),
       };
       set({ profile, isLoading: false });
-
-      // Load persisted notification logs for this merchant
-      useNotificationLogStore.getState().loadForMerchant(principal);
 
       // Sync on-chain data → Supabase via RPC (bypasses RLS with SECURITY DEFINER)
       supabaseWithWallet(principal)
@@ -154,7 +102,6 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
         webhookUrl: data.webhookUrl,
         isVerified: false,
         isRegistered: true,
-        notifications: { ...defaultNotificationSettings },
       };
       set({ profile, isRegistering: false });
     } catch (error) {
@@ -246,14 +193,6 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
     });
     } finally {
       set({ isUpdating: false });
-    }
-  },
-
-  updateNotifications: async (settings) => {
-    const current = get().profile;
-    if (current) {
-      set({ profile: { ...current, notifications: settings } });
-      saveNotifSettings(current.id, settings);
     }
   },
 }));
