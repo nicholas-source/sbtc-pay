@@ -79,6 +79,17 @@ export default function WebhookDelivery() {
     if (profile?.id) loadDeliveries();
   }, [profile?.id, loadDeliveries]);
 
+  // Poll every 5s while the page is visible so new deliveries show up without
+  // a manual refresh. Skips polling when the tab is hidden to avoid wasting
+  // requests on backgrounded tabs.
+  useEffect(() => {
+    if (!profile?.id) return;
+    const interval = setInterval(() => {
+      if (!document.hidden) loadDeliveries();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [profile?.id, loadDeliveries]);
+
   const handleRegenerate = async () => {
     setRegenerating(true);
     try {
