@@ -44,6 +44,9 @@ export default function WidgetGeneratorPage() {
 
   const addressError = merchantAddress && !isValidStacksAddress(merchantAddress.trim()) ? "Invalid Stacks address" : "";
 
+  // embed base: prefer explicit env var so copied code never contains localhost
+  const embedBase = import.meta.env.VITE_APP_URL?.replace(/\/$/, '') || window.location.origin;
+
   const previewUrl = useMemo(() => {
     const base = window.location.origin;
     switch (widgetType) {
@@ -70,7 +73,33 @@ export default function WidgetGeneratorPage() {
     }
   }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme, tokenType]);
 
-  const embedCode = `<iframe src="${previewUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:420px;" allow="clipboard-write"></iframe>`;
+  // embed URL uses the production base so copied snippets are always correct
+  const embedUrl = useMemo(() => {
+    switch (widgetType) {
+      case "direct": {
+        const params = new URLSearchParams();
+        if (amount) params.set("amount", String(humanToBaseUnits(Number(amount), tokenType)));
+        if (memo) params.set("memo", memo);
+        if (theme) params.set("theme", theme);
+        if (tokenType !== "sbtc") params.set("token", tokenType);
+        return `${embedBase}/widget/${merchantAddress}?${params.toString()}`;
+      }
+      case "invoice": {
+        const id = invoiceId.replace(/^INV-/i, "").trim();
+        return `${embedBase}/widget/invoice/${id || "0"}`;
+      }
+      case "subscription": {
+        const params = new URLSearchParams();
+        if (planName) params.set("plan", planName);
+        if (amount) params.set("amount", String(humanToBaseUnits(Number(amount), tokenType)));
+        if (interval) params.set("interval", interval);
+        if (tokenType !== "sbtc") params.set("token", tokenType);
+        return `${embedBase}/widget/subscribe/${merchantAddress}?${params.toString()}`;
+      }
+    }
+  }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme, tokenType, embedBase]);
+
+  const embedCode = `<iframe src="${embedUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:420px;" allow="clipboard-write"></iframe>`;
 
   const copyEmbed = async () => {
     try {
@@ -198,8 +227,11 @@ export default function WidgetGeneratorPage() {
                   <Select value={interval} onValueChange={setInterval}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
                       <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="biweekly">Every 2 Weeks</SelectItem>
                       <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
                       <SelectItem value="yearly">Yearly</SelectItem>
                     </SelectContent>
                   </Select>
