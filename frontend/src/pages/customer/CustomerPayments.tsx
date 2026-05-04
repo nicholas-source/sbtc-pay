@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { format } from "date-fns";
-import { Inbox, ExternalLink, Bitcoin } from "lucide-react";
+import { Inbox, ExternalLink, Bitcoin, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { useInvoiceStore } from "@/stores/invoice-store";
@@ -29,6 +30,9 @@ export default function CustomerPayments() {
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
+  const [visibleCount, setVisibleCount] = useState(25);
+
+  const PAGE_SIZE = 25;
 
   const allPayments = useMemo(() => {
     const rows: PaymentRow[] = [];
@@ -105,7 +109,7 @@ export default function CustomerPayments() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {allPayments.map((p) => (
+                  {allPayments.slice(0, visibleCount).map((p) => (
                     <TableRow key={p.id}>
                       <TableCell className="font-medium text-foreground max-w-[120px] sm:max-w-[200px] truncate">{p.label}</TableCell>
                       <TableCell>
@@ -128,6 +132,19 @@ export default function CustomerPayments() {
                 </TableBody>
               </Table>
             </ScrollableTable>
+            {allPayments.length > visibleCount && (
+              <div className="flex justify-center py-4 border-t border-border">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setVisibleCount((c) => c + PAGE_SIZE)}
+                  className="gap-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Load more ({allPayments.length - visibleCount} remaining)
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

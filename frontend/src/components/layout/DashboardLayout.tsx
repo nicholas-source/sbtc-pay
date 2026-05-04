@@ -15,6 +15,7 @@ import {
   Code2,
   Home,
   ArrowLeftRight,
+  Search,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/stores/ui-store";
@@ -175,8 +176,34 @@ export function DashboardLayout() {
           )}
         </nav>
 
+        {/* Command palette shortcut hint */}
+        <div className="px-2 pt-2 border-t border-sidebar-border">
+          <button
+            onClick={() =>
+              document.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true, cancelable: true })
+              )
+            }
+            aria-label="Open command palette"
+            className={cn(
+              "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-body-sm font-medium transition-colors focus-ring",
+              "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <Search className="h-5 w-5 shrink-0" />
+            {sidebarOpen && (
+              <>
+                <span className="flex-1 text-left">Commands</span>
+                <kbd className="hidden lg:inline-flex items-center gap-0.5 rounded border border-sidebar-border bg-sidebar px-1 py-0.5 font-mono text-micro text-muted-foreground">
+                  ⌘K
+                </kbd>
+              </>
+            )}
+          </button>
+        </div>
+
         {/* Home link at bottom */}
-        <div className="px-2 py-2 border-t border-sidebar-border">
+        <div className="px-2 py-2">
           <Link
             to="/"
             className={cn(
