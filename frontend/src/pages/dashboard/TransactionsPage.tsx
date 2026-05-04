@@ -140,7 +140,11 @@ export default function TransactionsPage() {
       );
 
       setRows(pageIndex === 0 ? merged : (prev) => [...prev, ...merged]);
-      setHasMore(merged.length === PAGE_SIZE * 2);
+      // hasMore is true if either table returned a full page — they are independent cursors
+      setHasMore(
+        (paymentsRes.data?.length ?? 0) >= PAGE_SIZE ||
+        (directRes.data?.length ?? 0) >= PAGE_SIZE
+      );
     } catch (err) {
       console.error("Failed to load transactions:", err);
     } finally {

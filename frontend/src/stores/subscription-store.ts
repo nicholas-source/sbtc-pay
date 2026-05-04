@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { addWeeks, addMonths, addYears } from "date-fns";
+import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 import type { Payment } from "./invoice-store";
 import { useWalletStore } from "./wallet-store";
 import { supabaseWithWallet } from "@/lib/supabase/client";
@@ -16,7 +16,7 @@ import {
 } from "@/lib/stacks/contract";
 import type { TokenType } from "@/lib/stacks/config";
 
-export type SubscriptionInterval = "weekly" | "monthly" | "yearly";
+export type SubscriptionInterval = "daily" | "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
 export type SubscriberStatus = "active" | "paused" | "cancelled";
 
 export interface SubscriptionPlan {
@@ -68,22 +68,31 @@ function generatePlanId(): string {
 
 function nextPayment(from: Date, interval: SubscriptionInterval): Date {
   switch (interval) {
-    case "weekly": return addWeeks(from, 1);
-    case "monthly": return addMonths(from, 1);
-    case "yearly": return addYears(from, 1);
+    case "daily":    return addDays(from, 1);
+    case "weekly":   return addWeeks(from, 1);
+    case "biweekly": return addWeeks(from, 2);
+    case "monthly":  return addMonths(from, 1);
+    case "quarterly":return addMonths(from, 3);
+    case "yearly":   return addYears(from, 1);
   }
 }
 
 // Burn blocks per day on the current network (network-aware via BURN_BLOCKS_PER_HOUR).
 const BURN_BLOCKS_PER_DAY = BURN_BLOCKS_PER_HOUR * 24;
-const WEEKLY_BLOCKS = BURN_BLOCKS_PER_DAY * 7;
-const MONTHLY_BLOCKS = BURN_BLOCKS_PER_DAY * 30;
-const YEARLY_BLOCKS = BURN_BLOCKS_PER_DAY * 365;
+const DAILY_BLOCKS     = BURN_BLOCKS_PER_DAY;
+const WEEKLY_BLOCKS    = BURN_BLOCKS_PER_DAY * 7;
+const BIWEEKLY_BLOCKS  = BURN_BLOCKS_PER_DAY * 14;
+const MONTHLY_BLOCKS   = BURN_BLOCKS_PER_DAY * 30;
+const QUARTERLY_BLOCKS = BURN_BLOCKS_PER_DAY * 90;
+const YEARLY_BLOCKS    = BURN_BLOCKS_PER_DAY * 365;
 
-// Map block interval to human interval — bucket by midpoint distance between the three canonical intervals.
+// Map block interval to human interval — bucket by midpoint between adjacent intervals.
 function blocksToInterval(blocks: number): SubscriptionInterval {
-  if (blocks <= (WEEKLY_BLOCKS + MONTHLY_BLOCKS) / 2) return "weekly";
-  if (blocks <= (MONTHLY_BLOCKS + YEARLY_BLOCKS) / 2) return "monthly";
+  if (blocks <= (DAILY_BLOCKS    + WEEKLY_BLOCKS)    / 2) return "daily";
+  if (blocks <= (WEEKLY_BLOCKS   + BIWEEKLY_BLOCKS)  / 2) return "weekly";
+  if (blocks <= (BIWEEKLY_BLOCKS + MONTHLY_BLOCKS)   / 2) return "biweekly";
+  if (blocks <= (MONTHLY_BLOCKS  + QUARTERLY_BLOCKS) / 2) return "monthly";
+  if (blocks <= (QUARTERLY_BLOCKS + YEARLY_BLOCKS)   / 2) return "quarterly";
   return "yearly";
 }
 

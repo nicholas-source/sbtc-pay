@@ -29,8 +29,11 @@ function SubscriptionsPage() {
         (s) => s.planId === plan.id && s.status === "active"
       ).length;
       let monthly = plan.amount * count;
-      if (plan.interval === "weekly") monthly *= 4;
-      if (plan.interval === "yearly") monthly /= 12;
+      if (plan.interval === "daily")     monthly *= 30;
+      if (plan.interval === "weekly")    monthly *= 4;
+      if (plan.interval === "biweekly")  monthly *= 2;
+      if (plan.interval === "quarterly") monthly /= 3;
+      if (plan.interval === "yearly")    monthly /= 12;
       if (plan.tokenType === 'stx') stxRevenue += monthly;
       else sbtcRevenue += monthly;
     });

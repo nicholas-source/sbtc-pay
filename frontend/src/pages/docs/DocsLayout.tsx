@@ -86,7 +86,7 @@ export default function DocsLayout() {
               Dashboard
             </Link>
             <Button asChild size="sm" className="gap-1.5">
-              <a href="https://github.com/" target="_blank" rel="noopener noreferrer">
+              <a href="https://github.com/nicholas-source/sbtc-pay" target="_blank" rel="noopener noreferrer">
                 GitHub <ExternalLink className="h-3 w-3" />
               </a>
             </Button>

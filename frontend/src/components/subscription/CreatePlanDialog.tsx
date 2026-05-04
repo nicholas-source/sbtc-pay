@@ -24,7 +24,7 @@ const schema = z.object({
   name: z.string().trim().min(1, "Plan name is required").max(CONTRACT_LIMITS.SUBSCRIPTION_NAME, `Max ${CONTRACT_LIMITS.SUBSCRIPTION_NAME} characters`),
   description: z.string().max(CONTRACT_LIMITS.DESCRIPTION, `Max ${CONTRACT_LIMITS.DESCRIPTION} characters`).optional().default(""),
   amount: z.coerce.number().positive("Amount must be greater than 0"),
-  interval: z.enum(["weekly", "monthly", "yearly"]),
+  interval: z.enum(["daily", "weekly", "biweekly", "monthly", "quarterly", "yearly"]),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -152,8 +152,11 @@ export default function CreatePlanDialog() {
                       <SelectTrigger><SelectValue /></SelectTrigger>
                     </FormControl>
                     <SelectContent>
+                      <SelectItem value="daily">Daily</SelectItem>
                       <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="biweekly">Every 2 Weeks</SelectItem>
                       <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="quarterly">Quarterly</SelectItem>
                       <SelectItem value="yearly">Yearly</SelectItem>
                     </SelectContent>
                   </Select>
