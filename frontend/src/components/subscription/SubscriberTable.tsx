@@ -18,6 +18,10 @@ import { ScrollableTable } from "@/components/ui/scrollable-table";
 import {
   Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious,
 } from "@/components/ui/pagination";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useSubscriptionStore, type SubscriberStatus } from "@/stores/subscription-store";
 import { formatAmount, tokenLabel } from "@/lib/constants";
 
@@ -46,6 +50,7 @@ export default function SubscriberTable({ planId }: Props) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | SubscriberStatus>("all");
   const [currentPage, setCurrentPage] = useState(1);
+  const [cancelTarget, setCancelTarget] = useState<string | null>(null);
 
   const plan = useSubscriptionStore((s) => s.plans.find((p) => p.id === planId));
   const tt = plan?.tokenType ?? 'sbtc';
@@ -85,8 +90,11 @@ export default function SubscriberTable({ planId }: Props) {
 
   const pause = async (id: string) => { try { await pauseRaw(id); toast.success("Subscription paused"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to pause"); } };
   const resume = async (id: string) => { try { await resumeRaw(id); toast.success("Subscription resumed"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to resume"); } };
-  const cancel = async (id: string) => {
-    if (!window.confirm("Cancel this subscription? This is an on-chain action and cannot be undone.")) return;
+  const cancel = (id: string) => setCancelTarget(id);
+  const confirmCancel = async () => {
+    if (!cancelTarget) return;
+    const id = cancelTarget;
+    setCancelTarget(null);
     try { await cancelRaw(id); toast.success("Subscription cancelled"); } catch (e) { toast.error(e instanceof Error ? e.message : "Failed to cancel"); }
   };
 
@@ -337,6 +345,26 @@ export default function SubscriberTable({ planId }: Props) {
           )}
         </>
       )}
+
+      <AlertDialog open={cancelTarget !== null} onOpenChange={(v) => { if (!v) setCancelTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel subscription?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This is an on-chain action and cannot be undone. The subscriber will lose access at the end of the current billing period.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setCancelTarget(null)}>Keep Active</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={confirmCancel}
+            >
+              Cancel Subscription
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

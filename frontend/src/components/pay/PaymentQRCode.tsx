@@ -11,11 +11,11 @@ export function PaymentQRCode({ value }: Props) {
       <div className="rounded-lg bg-white p-2.5 sm:p-3">
         <QRCodeSVG
           value={value}
-          size={140}
+          size={200}
           level="M"
           bgColor="#ffffff"
           fgColor="#0a0a0f"
-          className="h-[100px] w-[100px] sm:h-[120px] sm:w-[120px] md:h-[140px] md:w-[140px]"
+          className="h-[160px] w-[160px] sm:h-[180px] sm:w-[180px] md:h-[200px] md:w-[200px]"
         />
       </div>
     </div>

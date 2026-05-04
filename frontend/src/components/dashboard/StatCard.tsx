@@ -29,7 +29,7 @@ interface StatCardProps {
   unit?: string;
   usd?: string;
   icon: LucideIcon;
-  change: string;
+  change?: string;
   accent?: AccentColor;
   compact?: boolean;
 }
@@ -53,7 +53,7 @@ export default function StatCard({ label, displayValue, unit, usd, icon: Icon, c
         </div>
         <div className="mt-1 flex items-center gap-2 text-caption">
           {usd && <span className="text-muted-foreground">{usd}</span>}
-          <span className="text-success">{change}</span>
+          {change && <span className="text-success">{change}</span>}
         </div>
       </CardContent>
     </Card>

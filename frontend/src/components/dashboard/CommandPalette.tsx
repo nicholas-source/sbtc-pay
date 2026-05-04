@@ -22,6 +22,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { useWalletStore } from "@/stores/wallet-store";
+import { useUIStore } from "@/stores/ui-store";
 import { toast } from "sonner";
 import { NETWORK_MODE } from "@/lib/stacks/config";
 
@@ -29,6 +30,7 @@ export default function CommandPalette() {
   const [open, setOpen] = useState(false);
   const navigate = useNavigate();
   const { connect, clearError, isConnected } = useWalletStore();
+  const setCreateInvoiceOpen = useUIStore((s) => s.setCreateInvoiceOpen);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -112,7 +114,7 @@ export default function CommandPalette() {
           }}>
             <Wallet className="mr-2 h-4 w-4" /> Connect Wallet
           </CommandItem>
-          <CommandItem onSelect={() => go("/dashboard/invoices")}>
+          <CommandItem onSelect={() => { setOpen(false); navigate("/dashboard/invoices"); setCreateInvoiceOpen(true); }}>
             <Plus className="mr-2 h-4 w-4" /> Create Invoice
           </CommandItem>
           <CommandItem onSelect={() => go("/customer/payments")}>

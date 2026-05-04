@@ -3,6 +3,7 @@ import { FileText, Clock, CheckCircle, Download } from "lucide-react";
 import { format } from "date-fns";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
 import CreateInvoiceDialog from "@/components/invoice/CreateInvoiceDialog";
+import { useUIStore } from "@/stores/ui-store";
 import InvoiceTable from "@/components/invoice/InvoiceTable";
 import InvoiceDetail from "@/components/invoice/InvoiceDetail";
 import StatCard from "@/components/dashboard/StatCard";
@@ -18,6 +19,8 @@ function InvoicesPage() {
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const createInvoiceOpen = useUIStore((s) => s.createInvoiceOpen);
+  const setCreateInvoiceOpen = useUIStore((s) => s.setCreateInvoiceOpen);
 
   const stats = useMemo(() => {
     const pending = invoices.filter((i) => i.status === "pending" || i.status === "partial");
@@ -94,7 +97,7 @@ function InvoicesPage() {
             <Download className="mr-1 h-4 w-4" />
             Export CSV
           </Button>
-          <CreateInvoiceDialog />
+          <CreateInvoiceDialog open={createInvoiceOpen} onOpenChange={setCreateInvoiceOpen} />
         </div>
       </div>
 

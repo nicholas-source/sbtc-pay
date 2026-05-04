@@ -17,7 +17,7 @@ import type { TokenType } from "@/lib/constants";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type TxKind = "invoice" | "direct";
+type TxKind = "invoice" | "direct" | "subscription";
 
 interface TxRow {
   id: string; // "p-{id}" or "d-{id}"
@@ -62,10 +62,12 @@ function KindBadge({ kind }: { kind: TxKind }) {
         "text-micro",
         kind === "invoice"
           ? "border-info/40 text-info bg-info/10"
-          : "border-muted-foreground/30 text-muted-foreground"
+          : kind === "subscription"
+            ? "border-secondary/40 text-secondary bg-secondary/10"
+            : "border-muted-foreground/30 text-muted-foreground"
       )}
     >
-      {kind === "invoice" ? "Invoice" : "Direct"}
+      {kind === "invoice" ? "Invoice" : kind === "subscription" ? "Subscription" : "Direct"}
     </Badge>
   );
 }
@@ -91,7 +93,7 @@ export default function TransactionsPage() {
       const from = pageIndex * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
 
-      const [paymentsRes, directRes] = await Promise.all([
+      const [paymentsRes, directRes, subPaymentsRes] = await Promise.all([
         client
           .from("payments")
           .select("id, amount, fee, merchant_received, payer, tx_id, block_height, created_at, token_type, invoice_id")
@@ -101,6 +103,12 @@ export default function TransactionsPage() {
         client
           .from("direct_payments")
           .select("id, amount, fee, merchant_received, payer, tx_id, block_height, created_at, token_type, memo")
+          .eq("merchant_principal", address)
+          .order("block_height", { ascending: false })
+          .range(from, to),
+        client
+          .from("subscription_payments")
+          .select("id, amount, fee, merchant_received, subscriber, tx_id, block_height, created_at, token_type, subscription_id")
           .eq("merchant_principal", address)
           .order("block_height", { ascending: false })
           .range(from, to),
@@ -134,16 +142,30 @@ export default function TransactionsPage() {
         memo: r.memo ?? undefined,
       }));
 
+      const subRows: TxRow[] = (subPaymentsRes.data ?? []).map((r) => ({
+        id: `sp-${r.id}`,
+        kind: "subscription",
+        tokenType: (r.token_type === "stx" ? "stx" : "sbtc") as TokenType,
+        amount: r.amount,
+        fee: r.fee ?? 0,
+        merchantReceived: r.merchant_received ?? r.amount,
+        payer: r.subscriber,
+        txId: r.tx_id,
+        blockHeight: r.block_height,
+        createdAt: r.created_at,
+      }));
+
       // Merge and sort by block height descending
-      const merged = [...invoiceRows, ...directRows].sort(
+      const merged = [...invoiceRows, ...directRows, ...subRows].sort(
         (a, b) => b.blockHeight - a.blockHeight
       );
 
       setRows(pageIndex === 0 ? merged : (prev) => [...prev, ...merged]);
-      // hasMore is true if either table returned a full page — they are independent cursors
+      // hasMore is true if any table returned a full page — they are independent cursors
       setHasMore(
         (paymentsRes.data?.length ?? 0) >= PAGE_SIZE ||
-        (directRes.data?.length ?? 0) >= PAGE_SIZE
+        (directRes.data?.length ?? 0) >= PAGE_SIZE ||
+        (subPaymentsRes.data?.length ?? 0) >= PAGE_SIZE
       );
     } catch (err) {
       console.error("Failed to load transactions:", err);
@@ -202,7 +224,7 @@ export default function TransactionsPage() {
             Transactions
           </h1>
           <p className="text-body-sm text-muted-foreground mt-1">
-            All on-chain payments received — invoice and direct.
+            All on-chain payments received — invoice, subscription, and direct.
           </p>
         </div>
         <Button

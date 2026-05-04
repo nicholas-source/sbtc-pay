@@ -27,6 +27,7 @@ interface PlanCardProps {
 export default function PlanCard({ plan }: PlanCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [deactivateOpen, setDeactivateOpen] = useState(false);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const togglePlan = useSubscriptionStore((s) => s.togglePlan);
   const deletePlan = useSubscriptionStore((s) => s.deletePlan);
@@ -95,9 +96,10 @@ export default function PlanCard({ plan }: PlanCardProps) {
             checked={plan.isActive}
             onCheckedChange={() => {
               if (plan.isActive && hasActiveSubs) {
-                if (!window.confirm(`This plan has ${activeCount} active subscriber${activeCount > 1 ? 's' : ''}. Deactivating will prevent new sign-ups. Continue?`)) return;
+                setDeactivateOpen(true);
+              } else {
+                togglePlan(plan.id);
               }
-              togglePlan(plan.id);
             }}
             aria-label="Toggle plan"
           />
@@ -173,6 +175,26 @@ export default function PlanCard({ plan }: PlanCardProps) {
           </div>
         )}
       </CardContent>
+
+      <AlertDialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate "{plan.name}"?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This plan has {activeCount} active subscriber{activeCount > 1 ? 's' : ''}. Deactivating will prevent new sign-ups but won’t cancel existing subscriptions.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep Active</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => togglePlan(plan.id)}
+            >
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

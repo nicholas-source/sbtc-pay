@@ -1,4 +1,4 @@
-import { useWalletStore, useFormattedSbtcBalance, useSbtcBalanceInUsd, useFormattedStxBalance } from "@/stores/wallet-store";
+import { useWalletStore, useFormattedSbtcBalance, useSbtcBalanceInUsd, useFormattedStxBalance, useLivePrices } from "@/stores/wallet-store";
 import { Button } from "@/components/ui/button";
 import { Wallet, ChevronDown, LogOut, Copy, RefreshCw, Loader2 } from "lucide-react";
 import {
@@ -21,6 +21,9 @@ export function WalletButton() {
   const sbtcBalance = useFormattedSbtcBalance();
   const sbtcUsd = useSbtcBalanceInUsd();
   const stxBalance = useFormattedStxBalance();
+  const { stxPriceUsd } = useLivePrices();
+  const stxRaw = useWalletStore((s) => s.stxBalance);
+  const stxUsd = stxPriceUsd !== null ? ((Number(stxRaw) / 1_000_000) * stxPriceUsd).toFixed(2) : '—';
   const handleConnect = async () => {
     clearError();
     await connect();
@@ -114,7 +117,10 @@ export function WalletButton() {
           </div>
           <div className="flex justify-between text-body-sm">
             <span className="text-muted-foreground">STX</span>
-            <span className="font-mono-nums font-semibold">{stxBalance}</span>
+            <div className="text-right">
+              <div className="font-mono-nums font-semibold">{stxBalance} STX</div>
+              <div className="text-caption text-muted-foreground">≈ ${stxUsd}</div>
+            </div>
           </div>
         </div>
         <DropdownMenuSeparator />

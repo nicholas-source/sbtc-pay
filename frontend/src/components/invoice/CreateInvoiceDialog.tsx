@@ -73,9 +73,19 @@ function presetToBlocks(preset: string, customDate?: Date): number {
   }
 }
 
-export default function CreateInvoiceDialog() {
+interface CreateInvoiceDialogProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export default function CreateInvoiceDialog({ open: controlledOpen, onOpenChange: controlledOnChange }: CreateInvoiceDialogProps = {}) {
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = (v: boolean) => {
+    setInternalOpen(v);
+    controlledOnChange?.(v);
+  };
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [expirationPreset, setExpirationPreset] = useState("7d");
   const [customDate, setCustomDate] = useState<Date>();
