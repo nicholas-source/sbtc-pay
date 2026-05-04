@@ -1,5 +1,5 @@
 import { useCallback, useMemo } from "react";
-import { Layers, Users, TrendingUp, Download } from "lucide-react";
+import { Layers, Users, TrendingUp, Download, Info } from "lucide-react";
 import { format } from "date-fns";
 import StatCard from "@/components/dashboard/StatCard";
 import SubscriptionAnalyticsChart from "@/components/subscription/SubscriptionAnalyticsChart";
@@ -108,12 +108,22 @@ function SubscriptionsPage() {
       </div>
 
       {plans.length === 0 ? (
-        <EmptyState
-          icon={Layers}
-          title="No subscription plans"
-          description="Create your first recurring payment plan to start collecting recurring payments."
-          action={<CreatePlanDialog />}
-        />
+        subscribers.length > 0 ? (
+          <EmptyState
+            icon={Info}
+            title="On-chain subscribers detected"
+            description={`${subscribers.length} subscriber${subscribers.length !== 1 ? "s" : ""} found on-chain. Create a plan to manage them and display analytics in the dashboard.`}
+            action={<CreatePlanDialog />}
+            accent="secondary"
+          />
+        ) : (
+          <EmptyState
+            icon={Layers}
+            title="No subscription plans"
+            description="Create your first recurring payment plan to start collecting recurring payments."
+            action={<CreatePlanDialog />}
+          />
+        )
       ) : (
         <>
           {/* Stats */}

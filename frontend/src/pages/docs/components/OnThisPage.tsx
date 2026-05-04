@@ -23,54 +23,89 @@ export function OnThisPage({ contentKey }: { contentKey: string }) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
   // Collect headings after the page renders
+  // Use rAF so Suspense-lazy content has finished painting before we query
   useEffect(() => {
-    const root = document.querySelector(".docs-prose");
-    if (!root) {
-      setHeadings([]);
-      return;
-    }
+    let rafId: number;
+    let timeoutId: ReturnType<typeof setTimeout>;
 
-    const nodes = Array.from(root.querySelectorAll("h2, h3"));
-    const collected: Heading[] = [];
-    const used = new Set<string>();
-
-    for (const node of nodes) {
-      const el = node as HTMLHeadingElement;
-      const text = el.textContent?.trim() ?? "";
-      if (!text) continue;
-
-      let id = el.id || slugify(text);
-      // Ensure uniqueness within the page
-      let suffix = 2;
-      let unique = id;
-      while (used.has(unique)) {
-        unique = `${id}-${suffix++}`;
+    const collect = () => {
+      const root = document.querySelector(".docs-prose");
+      if (!root) {
+        setHeadings([]);
+        setActiveId(null);
+        return;
       }
-      id = unique;
-      used.add(id);
 
-      if (!el.id) el.id = id;
-      collected.push({
-        id,
-        text,
-        level: el.tagName === "H3" ? 3 : 2,
-      });
-    }
+      const nodes = Array.from(root.querySelectorAll("h2, h3"));
+      const collected: Heading[] = [];
+      const used = new Set<string>();
 
-    setHeadings(collected);
+      for (const node of nodes) {
+        const el = node as HTMLHeadingElement;
+        const text = el.textContent?.trim() ?? "";
+        if (!text) continue;
+
+        let id = el.id || slugify(text);
+        // Ensure uniqueness within the page
+        let suffix = 2;
+        let unique = id;
+        while (used.has(unique)) {
+          unique = `${id}-${suffix++}`;
+        }
+        id = unique;
+        used.add(id);
+
+        if (!el.id) el.id = id;
+        collected.push({
+          id,
+          text,
+          level: el.tagName === "H3" ? 3 : 2,
+        });
+      }
+
+      setHeadings(collected);
+      // Pre-select the first heading so the TOC is never blank on load
+      if (collected.length > 0) setActiveId(collected[0].id);
+    };
+
+    // Double-rAF ensures the browser has painted after Suspense resolves
+    rafId = requestAnimationFrame(() => {
+      rafId = requestAnimationFrame(collect);
+    });
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(timeoutId);
+    };
   }, [contentKey]);
 
   // Scroll-spy: track which heading is in view
+  // When a heading leaves the top of the viewport, keep it active until
+  // the next one enters so the TOC never goes blank mid-scroll.
   useEffect(() => {
     if (headings.length === 0) return;
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const visible = entries
+        // Find headings newly entering the observation zone
+        const entering = entries
           .filter((e) => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible.length > 0) {
-          setActiveId(visible[0].target.id);
+
+        if (entering.length > 0) {
+          setActiveId(entering[0].target.id);
+          return;
+        }
+
+        // Nothing is entering — figure out which heading the user scrolled past
+        // by finding the last heading whose top is above the fold
+        const above = headings
+          .map((h) => document.getElementById(h.id))
+          .filter((el): el is HTMLElement => !!el)
+          .filter((el) => el.getBoundingClientRect().top < 80);
+
+        if (above.length > 0) {
+          setActiveId(above[above.length - 1].id);
         }
       },
       {
