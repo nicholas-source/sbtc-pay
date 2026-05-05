@@ -1,9 +1,21 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bitcoin, ArrowRight } from "lucide-react";
+import { useWalletStore } from "@/stores/wallet-store";
 
 export default function CtaSection() {
+  const { isConnected, connect } = useWalletStore();
+  const navigate = useNavigate();
+
+  const handleStart = () => {
+    if (isConnected) {
+      navigate("/dashboard");
+    } else {
+      connect();
+    }
+  };
+
   return (
     <section className="py-16 sm:py-20 md:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5 pointer-events-none" />
@@ -27,11 +39,9 @@ export default function CtaSection() {
             in under a minute.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button size="lg" className="gap-2 h-12 px-8 text-base w-full sm:w-auto" asChild>
-              <Link to="/dashboard">
-                <Bitcoin className="h-4 w-4" />
-                Start Accepting Payments
-              </Link>
+            <Button size="lg" className="gap-2 h-12 px-8 text-base w-full sm:w-auto" onClick={handleStart}>
+              <Bitcoin className="h-4 w-4" />
+              {isConnected ? "Open Dashboard" : "Connect Wallet to Start"}
             </Button>
             <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
               <Link to="/docs">

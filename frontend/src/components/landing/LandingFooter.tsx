@@ -9,6 +9,8 @@ const footerLinks = {
   ],
   Resources: [
     { label: "Documentation", href: "/docs" },
+    { label: "How it works", href: "#how-it-works" },
+    { label: "FAQ", href: "#faq" },
     { label: "Quickstart", href: "/docs/quickstart" },
     { label: "Architecture", href: "/docs/architecture" },
     { label: "GitHub", href: "https://github.com/nicholas-source/sbtc-pay" },

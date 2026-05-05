@@ -1,7 +1,8 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Bitcoin, ArrowRight, Clock } from "lucide-react";
+import { useWalletStore } from "@/stores/wallet-store";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
@@ -13,6 +14,17 @@ const fadeUp = {
 };
 
 export default function HeroSection() {
+  const { isConnected, connect } = useWalletStore();
+  const navigate = useNavigate();
+
+  const handleGetStarted = () => {
+    if (isConnected) {
+      navigate("/dashboard");
+    } else {
+      connect();
+    }
+  };
+
   return (
     <section id="main-content" className="relative pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-44 lg:pb-32 bg-grid">
       <div className="container relative">
@@ -48,14 +60,12 @@ export default function HeroSection() {
           </motion.p>
 
           <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center gap-2.5 sm:gap-3 md:gap-4">
-            <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" asChild>
-              <Link to="/dashboard">
-                Get Started
-                <ArrowRight className="h-4 w-4" />
-              </Link>
+            <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" onClick={handleGetStarted}>
+              Get Started
+              <ArrowRight className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
-              <a href="#features">Learn More</a>
+              <a href="#how-it-works">How it works</a>
             </Button>
           </motion.div>
 

@@ -1,14 +1,50 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { WalletButton } from "@/components/wallet/WalletButton";
+import { useWalletStore } from "@/stores/wallet-store";
+import { cn } from "@/lib/utils";
+
+const NAV_SECTIONS = [
+  { label: "Features", href: "#features", id: "features" },
+  { label: "How it works", href: "#how-it-works", id: "how-it-works" },
+  { label: "Pricing", href: "#pricing", id: "pricing" },
+] as const;
 
 export default function LandingNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState("");
+  const { isConnected, connect } = useWalletStore();
+  const navigate = useNavigate();
 
   const closeMenu = () => setMobileOpen(false);
+
+  const handleGetStarted = () => {
+    closeMenu();
+    if (isConnected) {
+      navigate("/dashboard");
+    } else {
+      connect();
+    }
+  };
+
+  // Scroll-spy: highlight nav link for the section in the top third of the viewport
+  useEffect(() => {
+    const sectionIds = NAV_SECTIONS.map((s) => s.id);
+    const observers = sectionIds.map((id) => {
+      const el = document.getElementById(id);
+      if (!el) return null;
+      const obs = new IntersectionObserver(
+        ([entry]) => { if (entry.isIntersecting) setActiveSection(id); },
+        { rootMargin: "-20% 0px -70% 0px" },
+      );
+      obs.observe(el);
+      return obs;
+    });
+    return () => observers.forEach((o) => o?.disconnect());
+  }, []);
 
   // Close mobile nav on Escape
   useEffect(() => {
@@ -48,16 +84,25 @@ export default function LandingNavbar() {
 
         {/* Desktop nav */}
         <nav aria-label="Main navigation" className="hidden md:flex items-center gap-8 text-body-sm text-muted-foreground">
-          <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-          <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          {NAV_SECTIONS.map((s) => (
+            <a
+              key={s.id}
+              href={s.href}
+              className={cn(
+                "transition-colors hover:text-foreground",
+                activeSection === s.id ? "text-foreground font-medium" : "",
+              )}
+            >
+              {s.label}
+            </a>
+          ))}
           <Link to="/docs" className="hover:text-foreground transition-colors">Docs</Link>
-          <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
         </nav>
 
-        {/* Desktop wallet + CTA (hidden on mobile) */}
+        {/* Desktop wallet + CTA */}
         <div className="hidden md:flex items-center gap-2.5">
-          <Button size="sm" asChild>
-            <Link to="/dashboard">Get Started</Link>
+          <Button size="sm" onClick={handleGetStarted}>
+            {isConnected ? "Dashboard" : "Get Started"}
           </Button>
           <WalletButton />
         </div>
@@ -86,13 +131,20 @@ export default function LandingNavbar() {
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
             <div className="container flex flex-col py-3 gap-1">
-              <a href="#features" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Features</a>
-              <a href="#pricing" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Pricing</a>
+              {NAV_SECTIONS.map((s) => (
+                <a
+                  key={s.id}
+                  href={s.href}
+                  onClick={closeMenu}
+                  className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center"
+                >
+                  {s.label}
+                </a>
+              ))}
               <Link to="/docs" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Docs</Link>
-              <Link to="/dashboard" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Dashboard</Link>
               <div className="pt-3 border-t border-border/50 flex flex-col gap-2">
-                <Button className="w-full" asChild>
-                  <Link to="/dashboard" onClick={closeMenu}>Get Started</Link>
+                <Button className="w-full" onClick={handleGetStarted}>
+                  {isConnected ? "Open Dashboard" : "Get Started"}
                 </Button>
                 <WalletButton />
               </div>
