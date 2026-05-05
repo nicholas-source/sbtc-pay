@@ -1,8 +1,9 @@
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
+import { useWalletStore } from "@/stores/wallet-store";
 
 const checkpoints = [
   "0.5% platform fee — the lowest in crypto payments",
@@ -13,6 +14,17 @@ const checkpoints = [
 ];
 
 export default function PricingSection() {
+  const { isConnected, connect } = useWalletStore();
+  const navigate = useNavigate();
+
+  const handleStart = () => {
+    if (isConnected) {
+      navigate("/dashboard");
+    } else {
+      connect();
+    }
+  };
+
   return (
     <section id="pricing" className="py-12 sm:py-16 md:py-24 relative">
       <div className="absolute inset-0 bg-surface-1/50" />
@@ -64,11 +76,9 @@ export default function PricingSection() {
                 ))}
               </div>
 
-              <Button size="lg" className="w-full mt-8 h-12 gap-2 text-base" asChild>
-                <Link to="/dashboard">
-                  Start Accepting Payments
-                  <ArrowRight className="h-4 w-4" />
-                </Link>
+              <Button size="lg" className="w-full mt-8 h-12 gap-2 text-base" onClick={handleStart}>
+                {isConnected ? "Open Dashboard" : "Start Accepting Payments"}
+                <ArrowRight className="h-4 w-4" />
               </Button>
             </CardContent>
           </Card>
