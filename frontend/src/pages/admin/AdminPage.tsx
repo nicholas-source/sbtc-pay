@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { format } from "date-fns";
 import {
@@ -69,6 +70,8 @@ function StatCard({ label, value, icon: Icon, accent = "primary" }: { label: str
 
 export default function AdminPage() {
 
+  const navigate = useNavigate();
+  const hasFetchStarted = useRef(false);
   const { address } = useWalletStore();
   const {
     contractPaused, toggleContractPause, feeBps, updateFeeBps,
@@ -80,7 +83,10 @@ export default function AdminPage() {
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
 
   useEffect(() => {
-    if (address) fetchAdminData(address);
+    if (address) {
+      hasFetchStarted.current = true;
+      fetchAdminData(address);
+    }
   }, [address, fetchAdminData]);
 
   const [newFeeBps, setNewFeeBps] = useState(feeBps.toString());
@@ -102,6 +108,33 @@ export default function AdminPage() {
   useEffect(() => {
     setNewFeeRecipient(feeRecipient);
   }, [feeRecipient]);
+
+  // Gate: once the initial fetch completes, block non-owners from viewing the panel
+  if (hasFetchStarted.current && !isLoading && !isContractOwner) {
+    return (
+      <div className="mx-auto max-w-7xl flex flex-col items-center justify-center gap-fluid-lg p-fluid-md lg:p-fluid-lg min-h-[60vh]">
+        <Card className="border-destructive/30 bg-destructive/5 max-w-md w-full">
+          <CardContent className="flex flex-col items-center gap-4 py-8 text-center">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/15">
+              <Shield className="h-6 w-6 text-destructive" />
+            </div>
+            <div>
+              <h2 className="text-heading-sm font-display text-foreground">Access Restricted</h2>
+              <p className="text-body-sm text-muted-foreground mt-2">
+                This panel is only accessible to the contract owner.
+                {address && (
+                  <> Your connected wallet (<code className="font-mono text-caption">{address.slice(0, 8)}…{address.slice(-4)}</code>) is not the owner.</>
+                )}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
+              Back to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto max-w-7xl flex flex-col gap-fluid-lg p-fluid-md lg:p-fluid-lg">
@@ -131,17 +164,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Non-owner warning — admin actions are disabled but page is viewable */}
-      {!isContractOwner && !isLoading && (
-        <Card className="border-warning/30 bg-warning/5">
-          <CardContent className="flex items-center gap-3 py-4">
-            <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
-            <p className="text-body-sm text-foreground">
-              Your connected wallet is not the contract owner. Admin actions require the owner wallet.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+
 
       {/* Platform Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-space-md">
@@ -230,7 +253,7 @@ export default function AdminPage() {
       <PlatformAnalyticsPanel />
 
       {/* Contract Controls */}
-      <Card className={cn(!isContractOwner && !isLoading && "opacity-60")}>
+      <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-heading-sm">Contract Controls</CardTitle>
           <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)} aria-label={showSettings ? "Hide advanced settings" : "Show advanced settings"} aria-expanded={showSettings}>
