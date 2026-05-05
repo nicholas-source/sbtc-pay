@@ -16,6 +16,7 @@ const NAV_SECTIONS = [
 export default function LandingNavbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [activeSection, setActiveSection] = useState("");
+  const [heroVisible, setHeroVisible] = useState(true);
   const { isConnected, connect } = useWalletStore();
   const navigate = useNavigate();
 
@@ -44,6 +45,18 @@ export default function LandingNavbar() {
       return obs;
     });
     return () => observers.forEach((o) => o?.disconnect());
+  }, []);
+
+  // Hide "Get Started" while the hero is in the viewport — eliminates duplicate CTA
+  useEffect(() => {
+    const hero = document.getElementById("main-content");
+    if (!hero) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setHeroVisible(entry.isIntersecting),
+      { threshold: 0 },
+    );
+    obs.observe(hero);
+    return () => obs.disconnect();
   }, []);
 
   // Close mobile nav on Escape
@@ -101,9 +114,20 @@ export default function LandingNavbar() {
 
         {/* Desktop wallet + CTA */}
         <div className="hidden md:flex items-center gap-2.5">
-          <Button size="sm" onClick={handleGetStarted}>
-            {isConnected ? "Dashboard" : "Get Started"}
-          </Button>
+          <AnimatePresence>
+            {!heroVisible && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+              >
+                <Button size="sm" onClick={handleGetStarted}>
+                  {isConnected ? "Dashboard" : "Get Started"}
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
           <WalletButton />
         </div>
 
