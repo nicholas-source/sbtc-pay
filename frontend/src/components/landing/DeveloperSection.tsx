@@ -99,7 +99,7 @@ export default function DeveloperSection() {
               </div>
               {/* Code */}
               <pre className="p-5 text-caption font-mono overflow-x-auto leading-6">
-                <span className="text-muted-foreground/70">{`<!-- Embed sBTC Pay in any webpage -->\n`}</span>
+                <span className="text-muted-foreground/50">{`<!-- Embed sBTC Pay in any webpage -->\n`}</span>
                 <span className="text-secondary">{`<iframe\n`}</span>
                 <span className="text-foreground">{`  src`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"https://sbtcpay.com/widget/invoice?id=inv_28f4a3"`}</span>{`\n`}
                 <span className="text-foreground">{`  width`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"420"`}</span>{`\n`}

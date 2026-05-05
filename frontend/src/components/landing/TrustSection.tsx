@@ -19,7 +19,7 @@ export default function TrustSection() {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <p className="text-caption text-muted-foreground/60 uppercase tracking-widest shrink-0">
+          <p className="text-caption text-muted-foreground uppercase tracking-widest shrink-0">
             Powered by
           </p>
           <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-2">

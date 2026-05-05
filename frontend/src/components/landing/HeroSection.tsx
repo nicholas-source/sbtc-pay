@@ -17,7 +17,7 @@ export default function HeroSection() {
     <section id="main-content" className="relative pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-44 lg:pb-32 bg-grid">
       <div className="container relative">
         <motion.div
-          className="mx-auto max-w-3xl text-center"
+          className="mx-auto max-w-4xl text-center"
           initial="hidden"
           animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
@@ -43,8 +43,8 @@ export default function HeroSection() {
             custom={2}
             className="mt-6 text-body-lg text-muted-foreground max-w-xl mx-auto"
           >
-            Enterprise-grade invoicing with partial payments, refunds, recurring subscriptions,
-            and embeddable widgets — all trustlessly on the blockchain.
+            Enterprise-grade invoicing with partial payments, refunds, recurring
+            subscriptions, and embeddable widgets — settled directly to your wallet on Bitcoin.
           </motion.p>
 
           <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center gap-2.5 sm:gap-3 md:gap-4">

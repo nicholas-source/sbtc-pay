@@ -62,12 +62,12 @@ export default function LandingNavbar() {
           <WalletButton />
         </div>
 
-        {/* Mobile hamburger */}
+        {/* Mobile hamburger — 44 × 44px touch target per WCAG 2.5.5 */}
         <button
           type="button"
           aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
-          className="md:hidden inline-flex items-center justify-center rounded-md h-10 w-10 -mr-2 text-muted-foreground hover:text-foreground transition-colors"
+          className="md:hidden inline-flex items-center justify-center rounded-md h-11 w-11 -mr-2 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           onClick={() => setMobileOpen((v) => !v)}
         >
           {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
