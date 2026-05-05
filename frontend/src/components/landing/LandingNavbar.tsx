@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
 import { WalletButton } from "@/components/wallet/WalletButton";
 
 export default function LandingNavbar() {
@@ -53,8 +54,11 @@ export default function LandingNavbar() {
           <Link to="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link>
         </nav>
 
-        {/* Desktop wallet (hidden on mobile) */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* Desktop wallet + CTA (hidden on mobile) */}
+        <div className="hidden md:flex items-center gap-2.5">
+          <Button size="sm" asChild>
+            <Link to="/dashboard">Get Started</Link>
+          </Button>
           <WalletButton />
         </div>
 
@@ -86,7 +90,10 @@ export default function LandingNavbar() {
               <a href="#pricing" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Pricing</a>
               <Link to="/docs" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Docs</Link>
               <Link to="/dashboard" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Dashboard</Link>
-              <div className="pt-3 border-t border-border/50">
+              <div className="pt-3 border-t border-border/50 flex flex-col gap-2">
+                <Button className="w-full" asChild>
+                  <Link to="/dashboard" onClick={closeMenu}>Get Started</Link>
+                </Button>
                 <WalletButton />
               </div>
             </div>
