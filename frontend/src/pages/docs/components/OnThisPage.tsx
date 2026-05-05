@@ -26,7 +26,7 @@ export function OnThisPage({ contentKey }: { contentKey: string }) {
   // Use rAF so Suspense-lazy content has finished painting before we query
   useEffect(() => {
     let rafId: number;
-    let timeoutId: ReturnType<typeof setTimeout>;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
     const collect = () => {
       const root = document.querySelector(".docs-prose");
