@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ export default function LandingNavbar() {
   const [heroVisible, setHeroVisible] = useState(true);
   const { isConnected, connect } = useWalletStore();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const closeMenu = () => setMobileOpen(false);
 
@@ -85,6 +86,7 @@ export default function LandingNavbar() {
         {/* Logo */}
         <Link
           to="/"
+          onClick={() => { if (location.pathname === "/") window.scrollTo({ top: 0, behavior: "smooth" }); }}
           className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <img

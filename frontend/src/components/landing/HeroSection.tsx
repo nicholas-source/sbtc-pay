@@ -62,7 +62,7 @@ export default function HeroSection() {
 
           <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center gap-2.5 sm:gap-3 md:gap-4">
             <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" onClick={handleGetStarted}>
-              Get Started
+              {isConnected ? "Open Dashboard" : "Get Started"}
               <ArrowRight className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
