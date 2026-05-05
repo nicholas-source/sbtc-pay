@@ -221,9 +221,9 @@ export default function CreateInvoiceDialog({ open: controlledOpen, onOpenChange
 
             {/* Token Type Selector */}
             <div>
-              <label className="text-sm font-medium">Token</label>
+              <label id="token-type-label" className="text-sm font-medium">Token</label>
               <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="token-type-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sbtc">sBTC</SelectItem>
                   <SelectItem value="stx">STX</SelectItem>
@@ -248,9 +248,9 @@ export default function CreateInvoiceDialog({ open: controlledOpen, onOpenChange
             )} />
 
             <div>
-              <label className="text-sm font-medium">Expiration</label>
+              <label id="expiration-label" className="text-sm font-medium">Expiration</label>
               <Select value={expirationPreset} onValueChange={setExpirationPreset}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="mt-1.5" aria-labelledby="expiration-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {expirationPresets.map((p) => (
                     <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>

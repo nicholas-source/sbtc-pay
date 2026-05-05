@@ -287,7 +287,7 @@ function ScenarioDots({
   onSelect: (i: number) => void;
 }) {
   return (
-    <div className="flex items-center justify-center gap-2 mt-4" role="tablist">
+    <div className="flex items-center justify-center gap-0 mt-2" role="tablist">
       {Array.from({ length: count }).map((_, i) => (
         <button
           key={i}
@@ -296,13 +296,17 @@ function ScenarioDots({
           aria-label={`Go to scenario ${i + 1}`}
           aria-selected={i === active}
           onClick={() => onSelect(i)}
-          className={cn(
-            "rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-            i === active
-              ? "w-5 h-1.5 bg-primary"
-              : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60",
-          )}
-        />
+          className="flex items-center justify-center w-[44px] h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-md"
+        >
+          <span
+            className={cn(
+              "rounded-full transition-all duration-300 block",
+              i === active
+                ? "w-5 h-1.5 bg-primary"
+                : "w-1.5 h-1.5 bg-muted-foreground/30 hover:bg-muted-foreground/60",
+            )}
+          />
+        </button>
       ))}
     </div>
   );
