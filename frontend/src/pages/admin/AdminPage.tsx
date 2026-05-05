@@ -5,7 +5,7 @@ import {
   Shield, Pause, Play, Settings, Users, FileText, Repeat,
   TrendingUp, AlertTriangle, ArrowRightLeft,
   Bitcoin, ChevronDown, ChevronUp, BadgeCheck, Ban, Loader2,
-  Copy, ExternalLink, Search,
+  Copy, ExternalLink, Search, RefreshCw, CheckCircle2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,8 @@ import {
 import { useAdminStore } from "@/stores/admin-store";
 import { useWalletStore } from "@/stores/wallet-store";
 import { getExplorerAddressUrl } from "@/lib/stacks/config";
-import { formatAmount } from "@/lib/constants";
+import { formatAmount, amountToUsd } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
@@ -73,9 +74,10 @@ export default function AdminPage() {
     contractPaused, toggleContractPause, feeBps, updateFeeBps,
     feeRecipient, updateFeeRecipient, pendingOwner, currentOwner,
     initiateOwnershipTransfer, cancelOwnershipTransfer, acceptOwnership,
-    merchants, stats, verifyMerchant, suspendMerchant,
+    merchants, stats, verifyMerchant, suspendMerchant, unsuspendMerchant,
     isLoading, pendingAction, fetchAdminData, isContractOwner,
   } = useAdminStore();
+  const { btcPriceUsd, stxPriceUsd } = useLivePrices();
 
   useEffect(() => {
     if (address) fetchAdminData(address);
@@ -118,6 +120,14 @@ export default function AdminPage() {
           <Badge variant="outline" className={contractPaused ? "border-destructive text-destructive" : "border-success text-success"}>
             {contractPaused ? "Contract Paused" : "Contract Active"}
           </Badge>
+          <button
+            onClick={() => address && fetchAdminData(address)}
+            disabled={isLoading || !address}
+            aria-label="Refresh admin data"
+            className="rounded-lg p-2 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors focus-ring disabled:opacity-40"
+          >
+            <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+          </button>
         </div>
       </div>
 
@@ -170,8 +180,50 @@ export default function AdminPage() {
           </CardContent>
         </Card>
         <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
-        <StatCard label="Total Volume" value={[stats.totalVolumeSbtc > 0 ? `${formatAmount(stats.totalVolumeSbtc, 'sbtc')} sBTC` : '', stats.totalVolumeStx > 0 ? `${formatAmount(stats.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={TrendingUp} accent="success" />
-        <StatCard label="Fees Collected" value={[stats.feesCollectedSbtc > 0 ? `${formatAmount(stats.feesCollectedSbtc, 'sbtc')} sBTC` : '', stats.feesCollectedStx > 0 ? `${formatAmount(stats.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'} icon={Bitcoin} accent="warning" />
+        <Card className="card-accent-success animate-fade-slide-up">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-body-sm font-medium text-muted-foreground">Total Volume</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success">
+              <TrendingUp className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="font-mono-nums text-sats text-foreground">
+              {[stats.totalVolumeSbtc > 0 ? `${formatAmount(stats.totalVolumeSbtc, 'sbtc')} sBTC` : '', stats.totalVolumeStx > 0 ? `${formatAmount(stats.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'}
+            </div>
+            {(stats.totalVolumeSbtc > 0 || stats.totalVolumeStx > 0) && (
+              <div className="text-caption text-muted-foreground mt-1">
+                ≈ ${(
+                  (stats.totalVolumeSbtc > 0 ? parseFloat(amountToUsd(stats.totalVolumeSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0) +
+                  (stats.totalVolumeStx > 0 ? parseFloat(amountToUsd(stats.totalVolumeStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+                ).toFixed(2)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+        <Card className="card-accent-warning animate-fade-slide-up">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-body-sm font-medium text-muted-foreground">Fees Collected</CardTitle>
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/15 text-warning">
+              <Bitcoin className="h-4 w-4" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="font-mono-nums text-sats text-foreground">
+              {[stats.feesCollectedSbtc > 0 ? `${formatAmount(stats.feesCollectedSbtc, 'sbtc')} sBTC` : '', stats.feesCollectedStx > 0 ? `${formatAmount(stats.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'}
+            </div>
+            {(stats.feesCollectedSbtc > 0 || stats.feesCollectedStx > 0) && (
+              <div className="text-caption text-muted-foreground mt-1">
+                ≈ ${
+                  (
+                    (stats.feesCollectedSbtc > 0 ? parseFloat(amountToUsd(stats.feesCollectedSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0) +
+                    (stats.feesCollectedStx > 0 ? parseFloat(amountToUsd(stats.feesCollectedStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+                  ).toFixed(2)
+                }
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Analytics */}
@@ -505,14 +557,43 @@ export default function AdminPage() {
                           </AlertDialog>
                         )}
                         {m.isSuspended && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="text-caption text-destructive/60 italic px-2 cursor-help">Suspended</span>
-                            </TooltipTrigger>
-                            <TooltipContent side="top" className="max-w-[160px] sm:max-w-[200px] text-center">
-                              Merchant must self-reactivate via their own wallet
-                            </TooltipContent>
-                          </Tooltip>
+                          <AlertDialog>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
+                                    disabled={!isContractOwner || !!pendingAction}
+                                    aria-label={`Reinstate ${m.name}`}
+                                  >
+                                    {pendingAction === `unsuspend-${m.id}` ? (
+                                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                      <CheckCircle2 className="h-3.5 w-3.5" />
+                                    )}
+                                    <span className="hidden lg:inline">Reinstate</span>
+                                  </Button>
+                                </AlertDialogTrigger>
+                              </TooltipTrigger>
+                              <TooltipContent side="top">Lift suspension</TooltipContent>
+                            </Tooltip>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Reinstate {m.name}?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This will lift the admin suspension on <span className="font-mono text-foreground">{m.address.slice(0, 8)}…{m.address.slice(-6)}</span>, allowing them to create invoices and receive payments again.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => unsuspendMerchant(m.id)}>
+                                  Reinstate Merchant
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </TableCell>

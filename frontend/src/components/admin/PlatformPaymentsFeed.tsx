@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { AlertTriangle, ArrowRightLeft, ExternalLink, Layers, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, ArrowRightLeft, ChevronDown, ExternalLink, Layers, RefreshCw, Search } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,8 +34,11 @@ export function PlatformPaymentsFeed() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [tokenFilter, setTokenFilter] = useState<"all" | "sbtc" | "stx">("all");
+  const [limit, setLimit] = useState(50);
 
-  const load = useCallback(async () => {
+  const PAGE_SIZE = 50;
+
+  const load = useCallback(async (fetchLimit = limit) => {
     setLoading(true);
     setError(null);
     try {
@@ -43,7 +46,7 @@ export function PlatformPaymentsFeed() {
         .from("payments")
         .select("id, amount, fee, merchant_received, payer, tx_id, block_height, created_at, token_type, invoice_id, merchant_principal")
         .order("block_height", { ascending: false })
-        .limit(50);
+        .limit(fetchLimit);
       setRows(
         (data ?? []).map((r) => ({
           id: `p-${r.id}`,
@@ -65,7 +68,7 @@ export function PlatformPaymentsFeed() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [limit]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -255,9 +258,27 @@ export function PlatformPaymentsFeed() {
             </Table>
           </ScrollableTable>
           {filtered.length > 0 && (
-            <p className="text-caption text-muted-foreground pt-2">
-              Showing {filtered.length}{filtered.length < rows.length ? ` of ${rows.length}` : rows.length === 50 ? " (50 max)" : ""}
-            </p>
+            <div className="flex items-center justify-between pt-2">
+              <p className="text-caption text-muted-foreground">
+                Showing {filtered.length}{filtered.length < rows.length ? ` of ${rows.length}` : rows.length === limit ? ` (${limit} loaded)` : ""}
+              </p>
+              {rows.length === limit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  onClick={() => {
+                    const next = limit + PAGE_SIZE;
+                    setLimit(next);
+                    load(next);
+                  }}
+                  className="gap-2"
+                >
+                  <ChevronDown className="h-4 w-4" />
+                  Load more
+                </Button>
+              )}
+            </div>
           )}
         </TooltipProvider>
       </CardContent>

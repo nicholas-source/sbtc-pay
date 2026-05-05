@@ -12,6 +12,7 @@ import {
   acceptOwnership as acceptOwnershipOnChain,
   verifyMerchant as verifyOnChain,
   suspendMerchant as suspendOnChain,
+  unsuspendMerchant as unsuspendOnChain,
   getMerchant as getMerchantOnChain,
   getInvoice as getInvoiceOnChain,
   CONTRACT_ERRORS,
@@ -89,6 +90,7 @@ interface AdminState {
   acceptOwnership: () => Promise<void>;
   verifyMerchant: (id: string) => Promise<void>;
   suspendMerchant: (id: string) => Promise<void>;
+  unsuspendMerchant: (id: string) => Promise<void>;
 }
 
 /** Map contract error codes to user-friendly messages */
@@ -143,11 +145,21 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
       const config = configResult.status === "fulfilled" ? configResult.value : null;
 
-      // Fetch ALL merchants (admin needs full visibility, no wallet-scoped RLS)
-      const { data: merchantRows } = await supabase
-        .from("merchants")
-        .select("*")
-        .order("id", { ascending: false });
+      // Fetch ALL merchants in pages to avoid Supabase 1000-row default limit
+      const MERCHANT_PAGE = 500;
+      let merchantRows: Array<Record<string, unknown>> = [];
+      let from = 0;
+      while (true) {
+        const { data } = await supabase
+          .from("merchants")
+          .select("*")
+          .order("id", { ascending: false })
+          .range(from, from + MERCHANT_PAGE - 1);
+        if (!data || data.length === 0) break;
+        merchantRows = merchantRows.concat(data);
+        if (data.length < MERCHANT_PAGE) break;
+        from += MERCHANT_PAGE;
+      }
 
       const merchantsFromDb: MerchantEntry[] = (merchantRows ?? []).map((m) => ({
         id: `M-${m.id}`,
@@ -396,6 +408,24 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         merchants: s.merchants.map((m) => (m.id === id ? { ...m, isSuspended: true } : m)),
       }));
       toast.success(`${merchant.name} suspended`);
+    } catch (err) {
+      toast.error(contractErrorMsg(err));
+    } finally {
+      set({ pendingAction: null });
+    }
+  },
+
+  unsuspendMerchant: async (id) => {
+    const merchant = get().merchants.find((m) => m.id === id);
+    if (!merchant) return;
+    set({ pendingAction: `unsuspend-${id}` });
+    try {
+      toast.info("Please confirm in your wallet");
+      await unsuspendOnChain(merchant.address);
+      set((s) => ({
+        merchants: s.merchants.map((m) => (m.id === id ? { ...m, isSuspended: false } : m)),
+      }));
+      toast.success(`${merchant.name} reinstated`);
     } catch (err) {
       toast.error(contractErrorMsg(err));
     } finally {

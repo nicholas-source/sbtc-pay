@@ -908,6 +908,20 @@ export async function suspendMerchant(merchantAddress: string): Promise<{ txId: 
   return { txId: requireTxId(response) };
 }
 
+/**
+ * Unsuspend a merchant (owner only)
+ */
+export async function unsuspendMerchant(merchantAddress: string): Promise<{ txId: string }> {
+  const response = await request('stx_callContract', {
+    contract: PAYMENT_CONTRACT_TYPED,
+    functionName: 'unsuspend-merchant',
+    functionArgs: [Cl.principal(merchantAddress)],
+    network: NETWORK_MODE,
+  });
+
+  return { txId: requireTxId(response) };
+}
+
 // ============================================
 // TRANSACTION MONITORING
 // ============================================
