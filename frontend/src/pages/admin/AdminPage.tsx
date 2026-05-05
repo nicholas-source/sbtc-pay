@@ -27,6 +27,7 @@ import { formatAmount, amountToUsd } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 import { IndexerHealthPanel } from "@/components/admin/IndexerHealthPanel";
 import { PlatformPaymentsFeed } from "@/components/admin/PlatformPaymentsFeed";
@@ -90,10 +91,23 @@ export default function AdminPage() {
   }, [address, fetchAdminData]);
 
   const [newFeeBps, setNewFeeBps] = useState(feeBps.toString());
+  const [feeBpsError, setFeeBpsError] = useState<string | null>(null);
   const [newFeeRecipient, setNewFeeRecipient] = useState(feeRecipient);
   const [transferAddress, setTransferAddress] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [merchantSearch, setMerchantSearch] = useState("");
+
+  const isInitialLoading = isLoading && merchants.length === 0 && stats.totalMerchants === 0;
+
+  const handleFeeBpsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setNewFeeBps(val);
+    const num = parseInt(val);
+    if (!val || isNaN(num)) setFeeBpsError("Enter a whole number");
+    else if (num < 0) setFeeBpsError("Cannot be negative");
+    else if (num > 500) setFeeBpsError("Maximum is 500 BPS (5%)");
+    else setFeeBpsError(null);
+  };
 
   const filteredMerchants = merchants.filter((m) => {
     if (!merchantSearch) return true;
@@ -130,6 +144,40 @@ export default function AdminPage() {
             <Button variant="outline" size="sm" onClick={() => navigate("/dashboard")}>
               Back to Dashboard
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (isInitialLoading) {
+    return (
+      <div className="mx-auto max-w-7xl flex flex-col gap-fluid-lg p-fluid-md lg:p-fluid-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-2">
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-4 w-60" />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-space-md">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-8 w-8 rounded-lg" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-7 w-24" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        <Card>
+          <CardHeader><Skeleton className="h-6 w-40" /></CardHeader>
+          <CardContent className="flex flex-col gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
           </CardContent>
         </Card>
       </div>
@@ -257,8 +305,9 @@ export default function AdminPage() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-heading-sm">Contract Controls</CardTitle>
           <Button variant="ghost" size="sm" onClick={() => setShowSettings(!showSettings)} aria-label={showSettings ? "Hide advanced settings" : "Show advanced settings"} aria-expanded={showSettings}>
-            <Settings className="h-4 w-4 mr-1" />
-            {showSettings ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            <Settings className="h-4 w-4" />
+            <span className="ml-1.5 hidden sm:inline">Advanced</span>
+            {showSettings ? <ChevronUp className="h-4 w-4 ml-1" /> : <ChevronDown className="h-4 w-4 ml-1" />}
           </Button>
         </CardHeader>
         <CardContent className="flex flex-col gap-space-md">
@@ -304,20 +353,29 @@ export default function AdminPage() {
               <div className="flex flex-col gap-2">
                 <p className="text-body font-medium text-foreground">Platform Fee</p>
                 <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min={0}
-                    max={500}
-                    step={1}
-                    value={newFeeBps}
-                    onChange={(e) => setNewFeeBps(e.target.value)}
-                    className="w-24 font-mono"
-                    disabled={!isContractOwner || !!pendingAction}
-                  />
-                  <span className="text-caption text-muted-foreground">BPS ({(parseInt(newFeeBps) / 100 || 0).toFixed(2)}%)</span>
-                  <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction} onClick={() => updateFeeBps(parseInt(newFeeBps))}>
-                    {pendingAction === "fee" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
-                  </Button>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        max={500}
+                        step={1}
+                        value={newFeeBps}
+                        onChange={handleFeeBpsChange}
+                        className={cn("w-24 font-mono", feeBpsError && "border-destructive focus-visible:ring-destructive")}
+                        aria-invalid={!!feeBpsError}
+                        aria-describedby={feeBpsError ? "fee-bps-error" : undefined}
+                        disabled={!isContractOwner || !!pendingAction}
+                      />
+                      <span className="text-caption text-muted-foreground">BPS ({(parseInt(newFeeBps) / 100 || 0).toFixed(2)}%)</span>
+                      <Button size="sm" variant="outline" disabled={!isContractOwner || !!pendingAction || !!feeBpsError} onClick={() => updateFeeBps(parseInt(newFeeBps))}>
+                        {pendingAction === "fee" ? <Loader2 className="h-4 w-4 animate-spin" /> : "Update"}
+                      </Button>
+                    </div>
+                    {feeBpsError && (
+                      <p id="fee-bps-error" className="text-caption text-destructive">{feeBpsError}</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -504,7 +562,7 @@ export default function AdminPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
+                                    className="h-9 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
                                     disabled={!isContractOwner || !!pendingAction}
                                     aria-label={`Verify ${m.name}`}
                                   >
@@ -544,7 +602,7 @@ export default function AdminPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 transition-colors"
+                                    className="h-9 gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10 transition-colors"
                                     disabled={!isContractOwner || !!pendingAction}
                                     aria-label={`Suspend ${m.name}`}
                                   >
@@ -587,7 +645,7 @@ export default function AdminPage() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
+                                    className="h-9 gap-1.5 text-success border-success/30 hover:bg-success/10 transition-colors"
                                     disabled={!isContractOwner || !!pendingAction}
                                     aria-label={`Reinstate ${m.name}`}
                                   >
