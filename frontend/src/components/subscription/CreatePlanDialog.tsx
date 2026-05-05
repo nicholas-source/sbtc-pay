@@ -118,9 +118,9 @@ export default function CreatePlanDialog() {
               )}
             />
             <div className="flex flex-col gap-2">
-              <FormLabel>Token</FormLabel>
+              <FormLabel id="token-label">Token</FormLabel>
               <Select value={tokenType} onValueChange={(v) => setTokenType(v as TokenType)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectTrigger aria-labelledby="token-label"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sbtc">sBTC</SelectItem>
                   <SelectItem value="stx">STX</SelectItem>
