@@ -188,7 +188,7 @@ export function PlatformAnalyticsPanel() {
       const [paymentsRes, invoicesRes] = await Promise.all([
         supabase
           .from("payments")
-          .select("amount, fee, token_type, created_at")
+          .select("tx_id, amount, fee, token_type, created_at")
           .gte("created_at", since)
           .limit(QUERY_LIMIT),
         supabase
@@ -204,7 +204,17 @@ export function PlatformAnalyticsPanel() {
       if (paymentsRes.error) throw paymentsRes.error;
       if (invoicesRes.error) throw invoicesRes.error;
 
-      const payments: PaymentRow[] = paymentsRes.data ?? [];
+      // Deduplicate by tx_id — belt-and-suspenders guard against any duplicate
+      // rows that may exist before migration 013 dedup was applied, or from
+      // chainhook re-delivering events before the events-table unique constraint
+      // was in place.  Keep the first occurrence (lowest created_at / first seen).
+      const seenTxIds = new Set<string>();
+      const payments: PaymentRow[] = (paymentsRes.data ?? []).filter((p) => {
+        if (!p.tx_id) return true; // rows without tx_id are always kept
+        if (seenTxIds.has(p.tx_id)) return false;
+        seenTxIds.add(p.tx_id);
+        return true;
+      });
       // Supabase stores status as a numeric contract code; map to string label
       const invoices: InvoiceRow[] = (invoicesRes.data ?? []).map((r) => ({
         status: STATUS_MAP[r.status] ?? "pending",
