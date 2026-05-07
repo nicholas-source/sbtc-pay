@@ -614,6 +614,18 @@ async function handlePaymentReceived(
 
   const tokenType = resolveTokenType(data);
 
+  // Remove any reconcile-inserted orphan rows (tx_id IS NULL) for this invoice.
+  // The reconcile cron job inserts a catch-up payment with tx_id=null when it
+  // detects on-chain payments not yet reflected in the DB.  If the chainhook
+  // then fires (as it normally does), both rows survive because the UNIQUE(tx_id)
+  // constraint allows multiple NULLs.  Deleting orphans here before the real
+  // insert ensures only one canonical payment row exists per payment event.
+  await supabase
+    .from("payments")
+    .delete()
+    .eq("invoice_id", invoiceId)
+    .is("tx_id", null);
+
   // Insert payment record — upsert on tx_id so DLQ replay is idempotent.
   // If the row already exists (replay after partial success), skip all side
   // effects (invoice/merchant/platform updates) to avoid double-counting.

@@ -188,7 +188,7 @@ export function PlatformAnalyticsPanel() {
       const [paymentsRes, invoicesRes] = await Promise.all([
         supabase
           .from("payments")
-          .select("tx_id, amount, fee, token_type, created_at")
+          .select("tx_id, invoice_id, amount, fee, token_type, created_at")
           .gte("created_at", since)
           .limit(QUERY_LIMIT),
         supabase
@@ -204,13 +204,23 @@ export function PlatformAnalyticsPanel() {
       if (paymentsRes.error) throw paymentsRes.error;
       if (invoicesRes.error) throw invoicesRes.error;
 
-      // Deduplicate by tx_id — belt-and-suspenders guard against any duplicate
-      // rows that may exist before migration 013 dedup was applied, or from
-      // chainhook re-delivering events before the events-table unique constraint
-      // was in place.  Keep the first occurrence (lowest created_at / first seen).
+      // Deduplicate payments — guards against two known duplicate sources:
+      // 1. tx_id duplicates: chainhook re-delivers same event (before migration 013
+      //    events-table unique constraint). Keep first occurrence per tx_id.
+      // 2. null-tx_id orphans: reconcile cron inserts a catch-up payment row with
+      //    tx_id=null, then the chainhook inserts the same payment with the real
+      //    tx_id. Drop null-tx_id rows when a real row exists for that invoice.
       const seenTxIds = new Set<string>();
+      const invoicesWithRealPayment = new Set<number>(
+        (paymentsRes.data ?? [])
+          .filter((p) => p.tx_id)
+          .map((p) => p.invoice_id as number)
+      );
       const payments: PaymentRow[] = (paymentsRes.data ?? []).filter((p) => {
-        if (!p.tx_id) return true; // rows without tx_id are always kept
+        if (!p.tx_id) {
+          // Drop null-tx_id orphan if a real payment exists for the same invoice
+          return !invoicesWithRealPayment.has(p.invoice_id as number);
+        }
         if (seenTxIds.has(p.tx_id)) return false;
         seenTxIds.add(p.tx_id);
         return true;
