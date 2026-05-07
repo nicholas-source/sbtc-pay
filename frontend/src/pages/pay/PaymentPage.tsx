@@ -170,6 +170,9 @@ function PaymentPage() {
   const mountedRef = useRef(true);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const abortRef = useRef<AbortController | null>(null);
+  // Mirrors paymentState so realtime callbacks don't capture stale values
+  const paymentStateRef = useRef<"idle" | "confirming" | "confirmed" | "error">("idle");
+  paymentStateRef.current = paymentState;
 
   // --- Pending payment localStorage helpers (double-pay guard + recovery) ---
   const pendingKey = invoiceId ? `sbtc-pay-pending-tx-${invoiceId}` : null;
@@ -242,6 +245,51 @@ function PaymentPage() {
       abortRef.current?.abort();
     };
   }, []);
+
+  // Supabase realtime: resolve the confirming spinner the moment chainhook
+  // records the payment — no need to wait for the full polling timeout.
+  useEffect(() => {
+    if (!invoiceId || isNaN(parseInt(invoiceId, 10))) return;
+    const numericId = parseInt(invoiceId, 10);
+
+    const channel = supabase
+      .channel(`pay-confirm-${invoiceId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "payments",
+          filter: `invoice_id=eq.${numericId}`,
+        },
+        (payload) => {
+          if (!mountedRef.current) return;
+          if (paymentStateRef.current !== "confirming") return;
+
+          // Realtime beat the blockchain poller — abort polling and confirm now
+          abortRef.current?.abort();
+          clearPendingPayment();
+
+          const row = payload.new as { tx_id?: string; amount?: number; payer?: string };
+          if (row.tx_id) setTxId(row.tx_id);
+          setCompletedPayment({
+            timestamp: new Date(),
+            amount: row.amount ?? confirmedAmount.current,
+            txId: row.tx_id ?? "",
+            payer: row.payer ?? "",
+          });
+          setPaymentState("confirmed");
+          toast.success("Payment confirmed on-chain!");
+          fetchBalances();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [invoiceId, fetchBalances]);
 
   // Check if this is a blockchain invoice (has a DB/on-chain id)
   const isBlockchainInvoice = invoice && invoice.dbId > 0;
