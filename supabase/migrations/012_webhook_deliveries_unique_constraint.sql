@@ -12,6 +12,16 @@
 
 DROP INDEX IF EXISTS public.idx_webhook_deliveries_idempotency;
 
-ALTER TABLE public.webhook_deliveries
-  ADD CONSTRAINT webhook_deliveries_idempotency_key
-  UNIQUE (merchant_principal, tx_id, event_type);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'webhook_deliveries_idempotency_key'
+      AND conrelid = 'public.webhook_deliveries'::regclass
+  ) THEN
+    ALTER TABLE public.webhook_deliveries
+      ADD CONSTRAINT webhook_deliveries_idempotency_key
+      UNIQUE (merchant_principal, tx_id, event_type);
+  END IF;
+END;
+$$;
