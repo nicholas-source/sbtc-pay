@@ -15,7 +15,7 @@ const features = [
   { icon: Repeat, title: "Subscriptions", desc: "Recurring billing with pause, resume, and cancel — all trustlessly on-chain.", color: "primary" as const },
   { icon: Shield, title: "No Chargebacks", desc: "Immutable blockchain payments mean zero fraud risk and zero disputes.", color: "secondary" as const },
   { icon: Zap, title: "Instant Settlement", desc: "Funds arrive directly to your wallet. No intermediaries, no holding periods.", color: "primary" as const },
-  { icon: Code, title: "Developer First", desc: "Embeddable widgets, webhooks, and a clean API for seamless integration.", color: "secondary" as const },
+  { icon: Code, title: "Developer First", desc: "Embeddable widgets and webhooks for seamless integration.", color: "secondary" as const },
 ];
 
 const colorClasses = {

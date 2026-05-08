@@ -30,10 +30,6 @@ const FAQS: FaqItem[] = [
     a: "A 0.5% platform fee is deducted automatically by the smart contract at the moment of payment — not billed separately. The fee goes to the sBTC Pay fee recipient address set in the contract. There are no monthly fees, no setup fees, and no hidden costs.",
   },
   {
-    q: "Is the contract open source and audited?",
-    a: "Yes. The Clarity smart contract is fully open source on GitHub. The contract is immutable once deployed — no admin can modify payment logic or redirect funds. A security audit is in progress; findings will be published in the repository.",
-  },
-  {
     q: "How do recurring subscriptions work?",
     a: "Merchants create subscription plans with a price and interval (daily, weekly, monthly, etc.). Customers subscribe on-chain. Each renewal is an explicit on-chain transaction — there is no automatic pull from customer wallets. Customers stay in full control and can cancel at any time.",
   },
