@@ -64,7 +64,7 @@ export default function Subscriptions() {
 
       <p>After creating the subscription, subscribers use the <strong>Customer Portal</strong>:</p>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/customer/subscriptions" />
+      <CodeBlock code="https://sbtc-pay.com/customer/subscriptions" />
 
       <p>From the portal, a subscriber can:</p>
 

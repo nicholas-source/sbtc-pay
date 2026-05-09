@@ -72,7 +72,7 @@ export default function Invoices() {
 
       <p>Send your customer this URL — they open it, connect their wallet, and pay:</p>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/pay/{invoiceId}" />
+      <CodeBlock code="https://sbtc-pay.com/pay/{invoiceId}" />
 
       <p>
         No code or embedding required. Works great in an email, Telegram message, or chat.
@@ -88,7 +88,7 @@ export default function Invoices() {
       <CodeBlock
         language="html"
         code={`<iframe
-  src="https://sbtc-pay-phi.vercel.app/widget/invoice/{invoiceId}"
+  src="https://sbtc-pay.com/widget/invoice/{invoiceId}"
   width="100%"
   height="520"
   frameborder="0"

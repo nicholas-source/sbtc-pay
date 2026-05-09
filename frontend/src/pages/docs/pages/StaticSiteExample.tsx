@@ -110,8 +110,8 @@ export default function StaticSiteExample() {
     // ==========================
 
     const base = ENV === "mainnet"
-      ? "https://sbtc-pay-phi.vercel.app"
-      : "https://sbtc-pay-testnet.vercel.app";
+      ? "https://sbtc-pay.com"
+      : "https://testnet.sbtc-pay.com";
 
     const params = new URLSearchParams({
       amount: String(AMOUNT_SATS),

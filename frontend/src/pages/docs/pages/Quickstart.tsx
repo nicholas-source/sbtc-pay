@@ -67,7 +67,7 @@ export default function Quickstart() {
           <p>
             Open the sBTC Pay dashboard and connect your wallet:
           </p>
-          <CodeBlock code="https://sbtc-pay-testnet.vercel.app/dashboard" />
+          <CodeBlock code="https://testnet.sbtc-pay.com/dashboard" />
           <p>
             Click <strong>Connect Wallet</strong>, pick your wallet, and approve the connection. On
             first connect, the dashboard will prompt you to <strong>register as a merchant</strong>.
@@ -99,7 +99,7 @@ export default function Quickstart() {
           <p>
             Click the invoice to open its public payment page. Copy the URL — it looks like this:
           </p>
-          <CodeBlock code="https://sbtc-pay-testnet.vercel.app/pay/1" />
+          <CodeBlock code="https://testnet.sbtc-pay.com/pay/1" />
           <p>
             Open that URL in a new tab (or a different browser). Click <strong>Pay with sBTC</strong>,
             approve the transaction in your wallet, and wait for confirmation.
@@ -118,7 +118,7 @@ export default function Quickstart() {
           <CodeBlock
             language="html"
             code={`<iframe
-  src="https://sbtc-pay-testnet.vercel.app/widget/ST123...?amount=10000"
+  src="https://testnet.sbtc-pay.com/widget/ST123...?amount=10000"
   width="100%"
   height="520"
   frameborder="0"
@@ -136,8 +136,8 @@ export default function Quickstart() {
       <Callout variant="success" title="You just shipped a payment integration.">
         <p>
           Everything you did on testnet works the same way on mainnet — with real sBTC. The URLs change
-          from <InlineCode>sbtc-pay-testnet.vercel.app</InlineCode> to{" "}
-          <InlineCode>sbtc-pay-phi.vercel.app</InlineCode>, and you'll connect a wallet that holds real
+          from <InlineCode>testnet.sbtc-pay.com</InlineCode> to{" "}
+          <InlineCode>sbtc-pay.com</InlineCode>, and you'll connect a wallet that holds real
           testnet tokens.
         </p>
       </Callout>

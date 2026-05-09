@@ -99,8 +99,8 @@ export default function Dashboard() {
       </p>
 
       <ul>
-        <li><strong>Mainnet:</strong> <InlineCode>sbtc-pay-phi.vercel.app/dashboard</InlineCode></li>
-        <li><strong>Testnet:</strong> <InlineCode>sbtc-pay-testnet.vercel.app/dashboard</InlineCode></li>
+        <li><strong>Mainnet:</strong> <InlineCode>sbtc-pay.com/dashboard</InlineCode></li>
+        <li><strong>Testnet:</strong> <InlineCode>testnet.sbtc-pay.com/dashboard</InlineCode></li>
       </ul>
 
       <p>

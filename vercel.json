@@ -34,6 +34,11 @@
   ],
   "rewrites": [
     {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "docs.sbtc-pay.com" }],
+      "destination": "/docs/:path*"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -53,7 +53,7 @@ export default function Widgets() {
         filename="Direct payment widget"
         language="html"
         code={`<iframe
-  src="https://sbtc-pay-phi.vercel.app/widget/{MERCHANT_ADDRESS}?amount=10000&token=sbtc&memo=Coffee"
+  src="https://sbtc-pay.com/widget/{MERCHANT_ADDRESS}?amount=10000&token=sbtc&memo=Coffee"
   width="100%"
   height="520"
   frameborder="0"
@@ -75,7 +75,7 @@ export default function Widgets() {
         filename="Invoice widget"
         language="html"
         code={`<iframe
-  src="https://sbtc-pay-phi.vercel.app/widget/invoice/{INVOICE_ID}"
+  src="https://sbtc-pay.com/widget/invoice/{INVOICE_ID}"
   width="100%"
   height="520"
   frameborder="0"
@@ -99,7 +99,7 @@ export default function Widgets() {
         filename="Subscription widget"
         language="html"
         code={`<iframe
-  src="https://sbtc-pay-phi.vercel.app/widget/subscribe/{MERCHANT_ADDRESS}?plan=Pro&amount=50000&interval=monthly&token=sbtc"
+  src="https://sbtc-pay.com/widget/subscribe/{MERCHANT_ADDRESS}?plan=Pro&amount=50000&interval=monthly&token=sbtc"
   width="100%"
   height="520"
   frameborder="0"
@@ -150,8 +150,8 @@ export default function Widgets() {
       </p>
 
       <ul>
-        <li><strong>Testnet dashboard:</strong> <InlineCode>sbtc-pay-testnet.vercel.app</InlineCode></li>
-        <li><strong>Mainnet dashboard:</strong> <InlineCode>sbtc-pay-phi.vercel.app</InlineCode></li>
+        <li><strong>Testnet dashboard:</strong> <InlineCode>testnet.sbtc-pay.com</InlineCode></li>
+        <li><strong>Mainnet dashboard:</strong> <InlineCode>sbtc-pay.com</InlineCode></li>
       </ul>
 
       <h2>Self-hosting the widget</h2>

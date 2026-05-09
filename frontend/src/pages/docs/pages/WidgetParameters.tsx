@@ -20,7 +20,7 @@ export default function WidgetParameters() {
 
       <p>URL shape:</p>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/widget/{MERCHANT_ADDRESS}?<params>" />
+      <CodeBlock code="https://sbtc-pay.com/widget/{MERCHANT_ADDRESS}?<params>" />
 
       <PropTable
         rows={[
@@ -34,13 +34,13 @@ export default function WidgetParameters() {
 
       <h3>Example</h3>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/widget/SP1234ABC...?amount=50000&token=sbtc&memo=Monthly+coffee" />
+      <CodeBlock code="https://sbtc-pay.com/widget/SP1234ABC...?amount=50000&token=sbtc&memo=Monthly+coffee" />
 
       <h2>Invoice widget</h2>
 
       <p>URL shape:</p>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/widget/invoice/{INVOICE_ID}" />
+      <CodeBlock code="https://sbtc-pay.com/widget/invoice/{INVOICE_ID}" />
 
       <PropTable
         rows={[
@@ -55,13 +55,13 @@ export default function WidgetParameters() {
 
       <h3>Example</h3>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/widget/invoice/42" />
+      <CodeBlock code="https://sbtc-pay.com/widget/invoice/42" />
 
       <h2>Subscription widget</h2>
 
       <p>URL shape:</p>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/widget/subscribe/{MERCHANT_ADDRESS}?<params>" />
+      <CodeBlock code="https://sbtc-pay.com/widget/subscribe/{MERCHANT_ADDRESS}?<params>" />
 
       <PropTable
         rows={[
@@ -75,7 +75,7 @@ export default function WidgetParameters() {
 
       <h3>Example</h3>
 
-      <CodeBlock code="https://sbtc-pay-phi.vercel.app/widget/subscribe/SP1234ABC...?plan=Pro+Plan&amount=500000&interval=monthly&token=sbtc" />
+      <CodeBlock code="https://sbtc-pay.com/widget/subscribe/SP1234ABC...?plan=Pro+Plan&amount=500000&interval=monthly&token=sbtc" />
 
       <Callout variant="tip" title="Custom intervals">
         The interval parameter accepts either a preset name (<code>monthly</code>) or a raw burn-block
@@ -92,7 +92,7 @@ export default function WidgetParameters() {
 
       <CodeBlock
         language="javascript"
-        code={`const url = new URL("https://sbtc-pay-phi.vercel.app/widget/SP1234...");
+        code={`const url = new URL("https://sbtc-pay.com/widget/SP1234...");
 url.searchParams.set("amount", "50000");
 url.searchParams.set("memo", "Tip for great article");
 url.searchParams.set("token", "sbtc");
