@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatAmount, amountToUsd, tokenLabel, baseToHuman } from "@/lib/constants";
 import { PageTransition } from "@/components/layout/PageTransition";
-import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
+import { useWalletStore, useLivePrices, providerDisplayName } from "@/stores/wallet-store";
 import { createSubscription, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, BURN_BLOCKS_PER_HOUR, type TokenType } from "@/lib/stacks/config";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
@@ -46,7 +46,7 @@ export default function SubscriptionWidget() {
   const humanAmount = baseToHuman(baseAmount, tokenType);
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
 
-  const { isConnected, address, sbtcBalance, stxBalance, balancesLoading, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, balancesLoading, provider, connect, switchWallet } = useWalletStore();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [subState, setSubState] = useState<"idle" | "confirming" | "subscribed" | "error">("idle");
   const [txId, setTxId] = useState<string | null>(null);
@@ -195,7 +195,14 @@ export default function SubscriptionWidget() {
 
             <p className="text-micro text-muted-foreground text-center">
               {isConnected && address ? (
-                <>Connected: <code className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</code> · </>
+                <>
+                  Connected{provider ? ` with ${providerDisplayName(provider)}` : ""}: <code className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</code>
+                  {" · "}
+                  <button type="button" onClick={() => switchWallet()} className="underline hover:text-foreground transition-colors">
+                    Switch
+                  </button>
+                  {" · "}
+                </>
               ) : null}
               Merchant: <code className="font-mono">{addr.slice(0, 8)}…{addr.slice(-4)}</code>
             </p>
