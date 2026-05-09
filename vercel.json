@@ -32,12 +32,15 @@
       ]
     }
   ],
-  "rewrites": [
+  "redirects": [
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "docs.sbtc-pay.com" }],
-      "destination": "/docs/:path*"
-    },
+      "destination": "https://sbtc-pay.com/docs/:path*",
+      "permanent": false
+    }
+  ],
+  "rewrites": [
     {
       "source": "/(.*)",
       "destination": "/index.html"
