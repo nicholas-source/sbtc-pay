@@ -3,7 +3,7 @@ import { useParams } from "react-router-dom";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Wallet, AlertTriangle, Bitcoin, Copy, Check, Loader2, RefreshCw } from "lucide-react";
 import { useInvoiceStore, STATUS_MAP, type Payment, type Invoice } from "@/stores/invoice-store";
-import { useWalletStore } from "@/stores/wallet-store";
+import { useWalletStore, providerDisplayName } from "@/stores/wallet-store";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +29,7 @@ function PaymentPage() {
   // Try local store first (merchant viewing their own invoice)
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === invoiceId || i.dbId.toString() === invoiceId));
   const addConfirmedPayment = useInvoiceStore((s) => s.addConfirmedPayment);
-  const { isConnected, isConnecting, address, sbtcBalance, stxBalance, balancesLoading, connect, connectionError, clearError, fetchBalances } = useWalletStore();
+  const { isConnected, isConnecting, address, sbtcBalance, stxBalance, balancesLoading, provider, connect, switchWallet, connectionError, clearError, fetchBalances } = useWalletStore();
 
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [invoiceLoading, setInvoiceLoading] = useState(false);
@@ -797,7 +797,15 @@ function PaymentPage() {
 
         {isConnected && address && (
           <p className="text-caption text-muted-foreground text-center">
-            Connected: {truncateAddress(address)}
+            Connected{provider ? ` with ${providerDisplayName(provider)}` : ""}: {truncateAddress(address)}
+            {" · "}
+            <button
+              type="button"
+              onClick={() => switchWallet()}
+              className="underline hover:text-foreground transition-colors"
+            >
+              Use a different wallet
+            </button>
           </p>
         )}
       </div>
