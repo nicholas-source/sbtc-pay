@@ -17,7 +17,7 @@ import {
   getInvoice as getInvoiceOnChain,
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseWithWallet } from "@/lib/supabase/client";
 import { fetchBurnBlockHeight } from "@/lib/stacks/config";
 
 /** Run async tasks with concurrency limit to avoid 429s from Hiro API. */
@@ -145,12 +145,17 @@ export const useAdminStore = create<AdminState>((set, get) => ({
 
       const config = configResult.status === "fulfilled" ? configResult.value : null;
 
+      // Use the wallet-authenticated client so RLS policies (is_platform_admin /
+      // requesting_wallet_address) can match the caller's JWT. The plain anon
+      // client returns 0 rows on mainnet because all admin tables require auth.
+      const db = supabaseWithWallet(walletAddress);
+
       // Fetch ALL merchants in pages to avoid Supabase 1000-row default limit
       const MERCHANT_PAGE = 500;
       let merchantRows: Array<Record<string, unknown>> = [];
       let from = 0;
       while (true) {
-        const { data } = await supabase
+        const { data } = await db
           .from("merchants")
           .select("*")
           .order("id", { ascending: false })
@@ -199,7 +204,7 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       const breakdown = { paid: 0, pending: 0, expired: 0, cancelled: 0, refunded: 0, partial: 0 };
       try {
         const [{ data: invoiceRows }, burnHeight] = await Promise.all([
-          supabase.from("invoices").select("id, status, expires_at_block"),
+          db.from("invoices").select("id, status, expires_at_block"),
           fetchBurnBlockHeight().catch(() => 0),
         ]);
         const STATUS_LABELS = ["pending", "partial", "paid", "expired", "cancelled", "refunded"] as const;

@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseWithWallet } from "@/lib/supabase/client";
+import { useWalletStore } from "@/stores/wallet-store";
 import { getExplorerTxUrl, truncateAddress } from "@/lib/stacks/config";
 import { formatAmount, tokenLabel } from "@/lib/constants";
 import type { TokenType } from "@/lib/constants";
@@ -29,6 +30,7 @@ interface AdminPaymentRow {
 }
 
 export function PlatformPaymentsFeed() {
+  const address = useWalletStore((s) => s.address);
   const [rows, setRows] = useState<AdminPaymentRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export function PlatformPaymentsFeed() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await supabase
+      const { data } = await supabaseWithWallet(address ?? "")
         .from("payments")
         .select("id, amount, fee, merchant_received, payer, tx_id, block_height, created_at, token_type, invoice_id, merchant_principal")
         .order("block_height", { ascending: false })
@@ -68,7 +70,7 @@ export function PlatformPaymentsFeed() {
     } finally {
       setLoading(false);
     }
-  }, [limit]);
+  }, [limit, address]);
 
   useEffect(() => { load(); }, [load]);
 

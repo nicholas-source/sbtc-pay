@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseWithWallet } from "@/lib/supabase/client";
+import { useWalletStore } from "@/stores/wallet-store";
 import { getExplorerTxUrl, API_URL } from "@/lib/stacks/config";
 import { cn } from "@/lib/utils";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
@@ -21,6 +22,7 @@ interface IndexerState {
 }
 
 export function IndexerHealthPanel() {
+  const address = useWalletStore((s) => s.address);
   const [state, setState] = useState<IndexerState>({
     lastEventBlock: null, lastEventAt: null, stacksTip: null, stacksTipFailed: false,
     recentEvents: [], loading: true, error: null,
@@ -29,9 +31,12 @@ export function IndexerHealthPanel() {
   const load = useCallback(async () => {
     setState((s) => ({ ...s, loading: true, error: null }));
     try {
+      // Use the wallet-authenticated client — events table requires a JWT
+      // (RLS: requesting_wallet_address() IS NOT NULL).
+      const db = supabaseWithWallet(address ?? "");
       const [heartbeatRes, eventsRes, infoRes] = await Promise.all([
         // Latest heartbeat — used for lag calculation, not shown in table
-        supabase
+        db
           .from("events")
           .select("block_height, processed_at")
           .eq("event_type", "heartbeat")
@@ -39,7 +44,7 @@ export function IndexerHealthPanel() {
           .limit(1)
           .maybeSingle(),
         // Last 20 real tx events — shown in table (heartbeats excluded)
-        supabase
+        db
           .from("events")
           .select("id, event_type, tx_id, block_height, processed_at")
           .neq("event_type", "heartbeat")
@@ -60,7 +65,7 @@ export function IndexerHealthPanel() {
     } catch {
       setState((s) => ({ ...s, loading: false, error: "Failed to load indexer data." }));
     }
-  }, []);
+  }, [address]);
 
   useEffect(() => { load(); }, [load]);
 

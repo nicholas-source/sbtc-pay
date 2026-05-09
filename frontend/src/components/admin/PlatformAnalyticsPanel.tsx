@@ -10,7 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ChartContainer, type ChartConfig } from "@/components/ui/chart";
-import { supabase } from "@/lib/supabase/client";
+import { supabaseWithWallet } from "@/lib/supabase/client";
+import { useWalletStore } from "@/stores/wallet-store";
 import {
   buildVolume, buildConversions, buildMix,
   type PaymentRow, type InvoiceRow,
@@ -166,6 +167,7 @@ function ConversionTooltip({ active, payload, label }: {
 // ── Main component ────────────────────────────────────────────────────────────
 
 export function PlatformAnalyticsPanel() {
+  const address = useWalletStore((s) => s.address);
   const [timeRange, setTimeRange] = useState<TimeRange>("30d");
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading]     = useState(true);
@@ -184,14 +186,15 @@ export function PlatformAnalyticsPanel() {
     try {
       const days  = RANGE_DAYS[timeRange];
       const since = subDays(new Date(), days - 1).toISOString();
+      const db    = supabaseWithWallet(address ?? "");
 
       const [paymentsRes, invoicesRes] = await Promise.all([
-        supabase
+        db
           .from("payments")
           .select("tx_id, invoice_id, amount, fee, token_type, created_at")
           .gte("created_at", since)
           .limit(QUERY_LIMIT),
-        supabase
+        db
           .from("invoices")
           .select("status, created_at")
           .gte("created_at", since)
@@ -248,7 +251,7 @@ export function PlatformAnalyticsPanel() {
         setLoading(false);
       }
     }
-  }, [timeRange]);
+  }, [timeRange, address]);
 
   useEffect(() => {
     load();
