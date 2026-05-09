@@ -24,8 +24,33 @@ function getPersistedSession(): { address: string; publicKey: string | null } | 
   }
 }
 
-export type WalletProvider = 'leather' | 'xverse' | 'asigna' | null;
+export type WalletProvider = 'leather' | 'xverse' | 'asigna' | 'walletconnect' | 'other' | null;
 export type Network = 'mainnet' | 'testnet';
+
+// Map a @stacks/connect provider id (e.g., "LeatherProvider", "XverseProviders.StacksProvider")
+// to a stable internal id and a friendly display name.
+const PROVIDER_NAMES: Record<NonNullable<WalletProvider>, string> = {
+  leather: 'Leather',
+  xverse: 'Xverse',
+  asigna: 'Asigna',
+  walletconnect: 'WalletConnect',
+  other: 'Wallet',
+};
+
+function classifyProviderId(id: string | null | undefined): WalletProvider {
+  if (!id) return null;
+  const lower = id.toLowerCase();
+  if (lower.includes('leather')) return 'leather';
+  if (lower.includes('xverse')) return 'xverse';
+  if (lower.includes('asigna')) return 'asigna';
+  if (lower.includes('walletconnect')) return 'walletconnect';
+  return 'other';
+}
+
+export function providerDisplayName(p: WalletProvider): string {
+  if (!p) return 'Wallet';
+  return PROVIDER_NAMES[p] ?? 'Wallet';
+}
 
 // Error types for wallet connection
 export type WalletError = 
@@ -128,6 +153,8 @@ interface WalletState {
   // Actions
   connect: () => Promise<void>;
   disconnect: () => Promise<void>;
+  /** Forcefully forget the persisted wallet selection and re-show the picker. */
+  switchWallet: () => Promise<void>;
   checkConnection: () => Promise<void>;
   /** Authenticate with Supabase via wallet signature (sign-once, 24h JWT). */
   authenticate: () => Promise<void>;
@@ -211,6 +238,18 @@ export const useWalletStore = create<WalletState>()(
                 return;
               }
 
+              // Read which wallet the user actually selected — @stacks/connect
+              // stores the provider id (e.g. "LeatherProvider", "XverseProviders.StacksProvider")
+              // separately from the address. Surfacing this lets the UI show
+              // "Connected with Xverse: ST..." so a user with both extensions
+              // installed can spot a mismatch and switch wallets.
+              let providerId: string | null = null;
+              try {
+                const mod = await loadStacksConnect();
+                providerId = (mod as unknown as { getSelectedProviderId?: () => string | null })
+                  .getSelectedProviderId?.() ?? null;
+              } catch { /* fall through with null */ }
+
               // balancesLoading flips to true here (not later in fetchBalances) so
               // payment widgets gate the Pay button through the entire authenticate
               // → fetch chain. Without this, there's a window where isConnected=true
@@ -221,6 +260,7 @@ export const useWalletStore = create<WalletState>()(
                 isConnecting: false,
                 address: stxAddress,
                 publicKey,
+                provider: classifyProviderId(providerId),
                 connectionError: null,
                 balancesLoading: true,
               });
@@ -273,8 +313,16 @@ export const useWalletStore = create<WalletState>()(
       },
 
       disconnect: async () => {
-        const { disconnect: stacksDisconnect } = await loadStacksConnect();
-        stacksDisconnect();
+        const mod = await loadStacksConnect();
+        mod.disconnect();
+        // Also forget the wallet-provider selection so the next connect()
+        // shows the picker instead of silently reusing the previous wallet
+        // (this is the root cause of the "Leather is connected but I picked
+        // Xverse" bug when both extensions are installed).
+        try {
+          (mod as unknown as { clearSelectedProviderId?: () => void })
+            .clearSelectedProviderId?.();
+        } catch { /* older versions may not export this */ }
         clearWalletAuth();
         set({
           isConnected: false,
@@ -290,9 +338,19 @@ export const useWalletStore = create<WalletState>()(
         });
       },
 
+      switchWallet: async () => {
+        // disconnect() now also clears the persisted provider selection,
+        // so the picker will reappear when the caller invokes connect() next.
+        await get().disconnect();
+        await get().connect();
+      },
+
       checkConnection: async () => {
         try {
-          const { isConnected: stacksIsConnected, getLocalStorage, disconnect: stacksDisconnect } = await loadStacksConnect();
+          const mod = await loadStacksConnect();
+          const { isConnected: stacksIsConnected, getLocalStorage, disconnect: stacksDisconnect } = mod;
+          const persistedProviderId = (mod as unknown as { getSelectedProviderId?: () => string | null })
+            .getSelectedProviderId?.() ?? null;
 
           if (stacksIsConnected()) {
             const stored = getLocalStorage();
@@ -328,6 +386,7 @@ export const useWalletStore = create<WalletState>()(
                 connectionChecked: true,
                 address: stxAddr.address,
                 publicKey: (stxAddr as { publicKey?: string }).publicKey || persistedPublicKey || null,
+                provider: classifyProviderId(persistedProviderId),
                 isAuthenticated: hasValidAuth(stxAddr.address),
                 connectionError: null,
               });
