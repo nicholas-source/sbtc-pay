@@ -11,7 +11,7 @@ import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { formatAmount, amountToUsd, tokenLabel } from "@/lib/constants";
-import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
+import { useWalletStore, useLivePrices, providerDisplayName } from "@/stores/wallet-store";
 import { payInvoice, getInvoice as getInvoiceOnChain, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, fetchBurnBlockHeight } from "@/lib/stacks/config";
@@ -22,7 +22,7 @@ export default function InvoicePaymentWidget() {
   const invoiceId = rawInvoiceId?.replace(/^INV-/i, "").trim();
   const storeInvoice = useInvoiceStore((s) => s.invoices.find((i) => i.id === rawInvoiceId || i.id === `INV-${invoiceId}` || i.dbId.toString() === invoiceId));
 
-  const { isConnected, address, sbtcBalance, stxBalance, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, provider, connect, switchWallet } = useWalletStore();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [remoteInvoice, setRemoteInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(false);
@@ -240,7 +240,11 @@ export default function InvoicePaymentWidget() {
 
       {isConnected && address && (
         <p className="text-micro text-muted-foreground text-center">
-          Connected: <code className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</code>
+          Connected{provider ? ` with ${providerDisplayName(provider)}` : ""}: <code className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</code>
+          {" · "}
+          <button type="button" onClick={() => switchWallet()} className="underline hover:text-foreground transition-colors">
+            Switch
+          </button>
         </p>
       )}
     </WidgetShell>
