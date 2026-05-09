@@ -18,6 +18,7 @@ import {
   CONTRACT_ERRORS,
 } from "@/lib/stacks/contract";
 import { supabaseWithWallet } from "@/lib/supabase/client";
+import type { Tables } from "@/lib/supabase/types";
 import { fetchBurnBlockHeight } from "@/lib/stacks/config";
 
 /** Run async tasks with concurrency limit to avoid 429s from Hiro API. */
@@ -150,9 +151,10 @@ export const useAdminStore = create<AdminState>((set, get) => ({
       // client returns 0 rows on mainnet because all admin tables require auth.
       const db = supabaseWithWallet(walletAddress);
 
-      // Fetch ALL merchants in pages to avoid Supabase 1000-row default limit
+      // Fetch ALL merchants in pages to avoid Supabase 1000-row default limit.
+      type MerchantRow = Tables<"merchants">;
       const MERCHANT_PAGE = 500;
-      let merchantRows: Array<Record<string, unknown>> = [];
+      let merchantRows: MerchantRow[] = [];
       let from = 0;
       while (true) {
         const { data } = await db
@@ -166,13 +168,13 @@ export const useAdminStore = create<AdminState>((set, get) => ({
         from += MERCHANT_PAGE;
       }
 
-      const merchantsFromDb: MerchantEntry[] = (merchantRows ?? []).map((m) => ({
+      const merchantsFromDb: MerchantEntry[] = merchantRows.map((m) => ({
         id: `M-${m.id}`,
         name: m.name || "Unknown",
         address: m.principal,
         isVerified: m.is_verified ?? false,
         isSuspended: !(m.is_active ?? true),
-        registeredAt: new Date(m.created_at),
+        registeredAt: new Date(m.created_at ?? Date.now()),
         invoiceCount: m.invoice_count ?? 0,
         totalVolumeSbtc: m.total_received_sbtc ?? 0,
         totalVolumeStx: m.total_received_stx ?? 0,
