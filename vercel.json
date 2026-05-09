@@ -34,6 +34,12 @@
   ],
   "redirects": [
     {
+      "source": "/",
+      "has": [{ "type": "host", "value": "docs.sbtc-pay.com" }],
+      "destination": "https://sbtc-pay.com/docs",
+      "permanent": false
+    },
+    {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "docs.sbtc-pay.com" }],
       "destination": "https://sbtc-pay.com/docs/:path*",
