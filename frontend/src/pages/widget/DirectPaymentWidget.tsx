@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { formatAmount, amountToUsd, tokenLabel, baseToHuman, humanToBaseUnits } from "@/lib/constants";
-import { useWalletStore, useLivePrices } from "@/stores/wallet-store";
+import { useWalletStore, useLivePrices, providerDisplayName } from "@/stores/wallet-store";
 import { payMerchantDirect, CONTRACT_ERRORS } from "@/lib/stacks/contract";
 import { PAYMENT_CONTRACT, getExplorerTxUrl, type TokenType } from "@/lib/stacks/config";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
@@ -32,7 +32,7 @@ export default function DirectPaymentWidget() {
   const [txId, setTxId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const { isConnected, address, sbtcBalance, stxBalance, balancesLoading, connect } = useWalletStore();
+  const { isConnected, address, sbtcBalance, stxBalance, balancesLoading, provider, connect, switchWallet } = useWalletStore();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const addr = merchantAddress || "";
 
@@ -218,7 +218,14 @@ export default function DirectPaymentWidget() {
 
             <p className="text-micro text-muted-foreground text-center">
               {isConnected && address ? (
-                <>Connected: <code className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</code> · </>
+                <>
+                  Connected{provider ? ` with ${providerDisplayName(provider)}` : ""}: <code className="font-mono">{address.slice(0, 6)}…{address.slice(-4)}</code>
+                  {" · "}
+                  <button type="button" onClick={() => switchWallet()} className="underline hover:text-foreground transition-colors">
+                    Switch
+                  </button>
+                  {" · "}
+                </>
               ) : null}
               Paying to <code className="font-mono">{addr.slice(0, 8)}…{addr.slice(-4)}</code>
             </p>
