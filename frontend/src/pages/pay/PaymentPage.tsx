@@ -739,14 +739,17 @@ function PaymentPage() {
 
         {!isConnected ? (
           <div className="flex flex-col gap-space-sm">
-            {/* Testnet warning */}
-            <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-              </span>
-              <span className="text-caption text-primary">Testnet Mode - Switch wallet to Testnet before connecting</span>
-            </div>
+            {/* Network warning — only relevant on testnet, where customers may have
+                a mainnet wallet selected by default and need to switch. */}
+            {NETWORK_MODE === "testnet" && (
+              <div className="flex items-center justify-center gap-2 p-2 rounded-lg bg-primary/10 border border-primary/30">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                </span>
+                <span className="text-caption text-primary">Testnet Mode - Switch wallet to Testnet before connecting</span>
+              </div>
+            )}
             <Button
               disabled={isConnecting}
               className="w-full h-12 text-body font-semibold gap-2"
@@ -859,12 +862,14 @@ function PageShell({ children }: { children: React.ReactNode }) {
             <div className="flex items-center justify-center gap-2.5">
               <img src="/favicon.png" className="h-10 w-10 sm:h-12 sm:w-12 shrink-0 rounded-2xl object-contain" alt="" aria-hidden="true" />
               <span className="text-heading-sm text-primary">sBTC Pay</span>
-              <Badge
-                variant="outline"
-                className="ml-2 border-stacks text-stacks text-caption"
-              >
-                Testnet
-              </Badge>
+              {NETWORK_MODE === "testnet" && (
+                <Badge
+                  variant="outline"
+                  className="ml-2 border-stacks text-stacks text-caption"
+                >
+                  Testnet
+                </Badge>
+              )}
             </div>
 
             {children}
