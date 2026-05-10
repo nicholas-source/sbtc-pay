@@ -12,6 +12,9 @@ import { cn } from "@/lib/utils";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 
 interface IndexerState {
+  /** processed_at of the latest pg_cron heartbeat row — primary aliveness signal. */
+  lastHeartbeatAt: string | null;
+  /** processed_at of the latest real (non-heartbeat) on-chain event — informational. */
   lastEventBlock: number | null;
   lastEventAt: string | null;
   stacksTip: number | null;
@@ -24,6 +27,7 @@ interface IndexerState {
 export function IndexerHealthPanel() {
   const address = useWalletStore((s) => s.address);
   const [state, setState] = useState<IndexerState>({
+    lastHeartbeatAt: null,
     lastEventBlock: null, lastEventAt: null, stacksTip: null, stacksTipFailed: false,
     recentEvents: [], loading: true, error: null,
   });
@@ -34,12 +38,20 @@ export function IndexerHealthPanel() {
       // Use the wallet-authenticated client — events table requires a JWT
       // (RLS: requesting_wallet_address() IS NOT NULL).
       const db = supabaseWithWallet(address ?? "");
-      const [heartbeatRes, eventsRes, infoRes] = await Promise.all([
-        // Latest heartbeat — used for lag calculation, not shown in table
+      const [heartbeatRes, latestEventRes, eventsRes, infoRes] = await Promise.all([
+        // Latest pg_cron heartbeat — primary aliveness signal (time-based)
+        db
+          .from("events")
+          .select("processed_at")
+          .eq("event_type", "heartbeat")
+          .order("processed_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+        // Latest real on-chain event — informational ("last activity X ago")
         db
           .from("events")
           .select("block_height, processed_at")
-          .eq("event_type", "heartbeat")
+          .neq("event_type", "heartbeat")
           .order("block_height", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -52,10 +64,10 @@ export function IndexerHealthPanel() {
           .limit(20),
         fetch(`${API_URL}/v2/info`).then((r) => r.ok ? r.json() : null).catch(() => null),
       ]);
-      const heartbeat = heartbeatRes.data ?? null;
       setState({
-        lastEventBlock: heartbeat?.block_height ?? null,
-        lastEventAt: heartbeat?.processed_at ?? null,
+        lastHeartbeatAt: heartbeatRes.data?.processed_at ?? null,
+        lastEventBlock: latestEventRes.data?.block_height ?? null,
+        lastEventAt: latestEventRes.data?.processed_at ?? null,
         stacksTip: (infoRes?.stacks_tip_height as number | undefined) ?? null,
         stacksTipFailed: infoRes === null,
         recentEvents: eventsRes.data ?? [],
@@ -69,20 +81,23 @@ export function IndexerHealthPanel() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Stacks blocks ~5s post-Nakamoto — lag in blocks vs current tip
-  // This correctly measures indexer staleness regardless of activity level
-  const lag = state.stacksTip && state.lastEventBlock
-    ? state.stacksTip - state.lastEventBlock
+  // Indexer aliveness is time-based (pg_cron heartbeat), NOT block-height-based.
+  // Block-height lag conflates "no on-chain activity" with "indexer broken" —
+  // a payments platform can sit idle for hours and still be perfectly healthy.
+  // Heartbeat fires every minute via pg_cron, so a fresh heartbeat = alive.
+  const heartbeatAgeSec = state.lastHeartbeatAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(state.lastHeartbeatAt).getTime()) / 1000))
     : null;
 
-  const lagStatus = lag === null ? "unknown"
-    : lag <= 120 ? "healthy"      // ≤ ~10 min
-    : lag <= 720 ? "warning"      // ≤ ~1 hour
-    : "critical";
+  const lagStatus = heartbeatAgeSec === null
+    ? (state.stacksTipFailed ? "unknown" : "unknown")
+    : heartbeatAgeSec <= 120 ? "healthy"   // 1 expected tick + small drift
+    : heartbeatAgeSec <= 600 ? "warning"   // 10 min — pg_cron may have skipped
+    : "critical";                          // > 10 min — indexer DB layer is stuck
 
   const lagLabel = lagStatus === "healthy" ? "Live"
-    : lagStatus === "warning" ? `~${Math.round(lag! * 5 / 60)} min behind`
-    : lagStatus === "critical" ? `~${Math.round(lag! * 5 / 3600)}h behind — check chainhook`
+    : lagStatus === "warning" ? `Heartbeat ${Math.round(heartbeatAgeSec! / 60)}m old`
+    : lagStatus === "critical" ? `Indexer offline — heartbeat ${Math.round(heartbeatAgeSec! / 60)}m old`
     : state.stacksTipFailed ? "Stacks API unavailable"
     : "No heartbeats yet";
 
