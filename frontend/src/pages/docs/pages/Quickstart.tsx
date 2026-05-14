@@ -24,11 +24,11 @@ export default function Quickstart() {
         <Step number={1} title="Install a Stacks wallet">
           <p>
             sBTC Pay works with any standards-compliant Stacks wallet. We recommend{" "}
-            <a href="https://leather.io/install-extension" target="_blank" rel="noopener noreferrer">
+            <a href="https://chromewebstore.google.com/detail/leather/ldinpeekobnhjjdofggfgjlcehhmanlj" target="_blank" rel="noopener noreferrer">
               Leather
             </a>{" "}
             or{" "}
-            <a href="https://www.xverse.app/download" target="_blank" rel="noopener noreferrer">
+            <a href="https://chromewebstore.google.com/detail/xverse-bitcoin-crypto-wal/idnnbdplmphpflfnlkomgpfbpcgelopg" target="_blank" rel="noopener noreferrer">
               Xverse
             </a>
             . Install the browser extension, create a wallet, and save your seed phrase somewhere safe.
