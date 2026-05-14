@@ -70,7 +70,7 @@ const queryClient = new QueryClient({
 
 // Route title map for dynamic <title>
 const ROUTE_TITLES: Record<string, string> = {
-  "/": "sBTC Pay — Bitcoin Payments on Stacks",
+  "/": "sBTC Pay - Bitcoin Payments on Stacks",
   "/dashboard": "Dashboard | sBTC Pay",
   "/dashboard/invoices": "Invoices | sBTC Pay",
   "/dashboard/refunds": "Refunds | sBTC Pay",
