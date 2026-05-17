@@ -112,7 +112,7 @@ function RefundsPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md">
             <StatCard label="Total Refunds" value={stats.count} displayValue={stats.count.toString()} icon={RotateCcw} change="" accent="destructive" />
             <StatCard label="Total Refunded" value={stats.totalUsd} displayValue={stats.totalDisplay} unit="" usd={stats.totalUsd > 0 ? `$${stats.totalUsd.toFixed(2)}` : ""} icon={ArrowUpRight} change="" accent="warning" />
             <StatCard label="Invoices Affected" value={stats.uniqueInvoices} displayValue={stats.uniqueInvoices.toString()} icon={Receipt} change="" accent="info" />

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { ChevronDown, ChevronUp, Users, Trash2, Calendar, Link2, Check } from "lucide-react";
+import { Users, Trash2, Calendar, Link2, Check } from "lucide-react";
 import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,9 @@ import {
 import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
+} from "@/components/ui/sheet";
 import { useSubscriptionStore, type SubscriptionPlan } from "@/stores/subscription-store";
 import SubscriberTable from "./SubscriberTable";
 
@@ -25,7 +28,6 @@ interface PlanCardProps {
 }
 
 export default function PlanCard({ plan }: PlanCardProps) {
-  const [expanded, setExpanded] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [deactivateOpen, setDeactivateOpen] = useState(false);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
@@ -158,22 +160,24 @@ export default function PlanCard({ plan }: PlanCardProps) {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? "Hide" : "Subscribers"}
-              {expanded ? <ChevronUp className="ml-1 h-4 w-4" /> : <ChevronDown className="ml-1 h-4 w-4" />}
-            </Button>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={subscribers.length === 0}>
+                  <Users className="mr-1 h-4 w-4" />
+                  Subscribers
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-full sm:max-w-xl flex flex-col gap-0">
+                <SheetHeader className="pb-4 border-b border-border">
+                  <SheetTitle>{plan.name} — Subscribers</SheetTitle>
+                </SheetHeader>
+                <div className="flex-1 overflow-auto pt-4">
+                  <SubscriberTable planId={plan.id} />
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
-
-        {expanded && (
-          <div className="pt-2">
-            <SubscriberTable planId={plan.id} />
-          </div>
-        )}
       </CardContent>
 
       <AlertDialog open={deactivateOpen} onOpenChange={setDeactivateOpen}>

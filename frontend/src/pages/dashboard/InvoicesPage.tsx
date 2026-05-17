@@ -101,7 +101,7 @@ function InvoicesPage() {
         </div>
       </div>
 
-      <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md">
         <StatCard label="Total Invoices" value={stats.total} displayValue={String(stats.total)} icon={FileText} change="" accent="primary" />
         <StatCard label="Pending Amount" value={stats.pendingUsd} displayValue={stats.pendingDisplay} unit="" usd={stats.pendingUsd > 0 ? `$${stats.pendingUsd.toFixed(2)}` : ""} icon={Clock} change="" accent="warning" />
         <StatCard label="Paid Amount" value={stats.paidUsd} displayValue={stats.paidDisplay} unit="" usd={stats.paidUsd > 0 ? `$${stats.paidUsd.toFixed(2)}` : ""} icon={CheckCircle} change="" accent="success" />

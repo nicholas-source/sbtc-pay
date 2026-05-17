@@ -127,7 +127,7 @@ function SubscriptionsPage() {
       ) : (
         <>
           {/* Stats */}
-          <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md">
             <StatCard label="Total Plans" value={stats.totalPlans} displayValue={stats.totalPlans.toString()} icon={Layers} change={`${plans.filter(p => p.isActive).length} active`} accent="secondary" />
             <StatCard label="Active Subscribers" value={stats.activeSubscribers} displayValue={stats.activeSubscribers.toString()} icon={Users} change={`${subscribers.length} total`} accent="info" />
             <StatCard label="Monthly Revenue" value={stats.revenueUsd} displayValue={stats.revenueDisplay} unit="" usd={stats.revenueUsd > 0 ? `≈ $${stats.revenueUsd.toFixed(2)}` : ""} icon={TrendingUp} change={stats.revenueUsd > 0 ? "recurring" : ""} accent="success" />
@@ -137,7 +137,7 @@ function SubscriptionsPage() {
           <SubscriptionAnalyticsChart />
 
           {/* Plan Cards */}
-          <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-space-md">
             {plans.map((plan) => (
               <PlanCard key={plan.id} plan={plan} />
             ))}
