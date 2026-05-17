@@ -61,7 +61,7 @@ export default function DeveloperSection() {
                 </li>
               ))}
             </ul>
-            <Button variant="outline" size="lg" className="h-12 gap-2" asChild>
+            <Button variant="outline" size="lg" className="h-12 gap-2 px-6" asChild>
               <Link to="/docs/widgets">
                 Read the Docs <ArrowRight className="h-4 w-4" />
               </Link>

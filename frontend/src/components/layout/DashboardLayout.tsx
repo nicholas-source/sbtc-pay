@@ -146,7 +146,7 @@ export function DashboardLayout() {
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-body-sm font-medium transition-colors focus-ring",
                   isActive
-                    ? "bg-sidebar-accent text-primary border-l-3 border-primary"
+                    ? "bg-sidebar-accent text-primary border-l-[3px] border-primary"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )
               }
@@ -165,7 +165,7 @@ export function DashboardLayout() {
                 cn(
                   "flex items-center gap-3 rounded-lg px-3 py-2.5 text-body-sm font-medium transition-colors focus-ring",
                   isActive
-                    ? "bg-sidebar-accent text-primary border-l-3 border-primary"
+                    ? "bg-sidebar-accent text-primary border-l-[3px] border-primary"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                 )
               }

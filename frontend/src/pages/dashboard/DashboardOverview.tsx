@@ -64,7 +64,7 @@ function DashboardOverview() {
         <PriceStatusBadge />
       </div>
 
-      <div className="grid gap-space-md" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">
         {stats.map((s) => (
           <StatCard key={s.label} {...s} />
         ))}

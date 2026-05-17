@@ -43,7 +43,7 @@ export default function CtaSection() {
               <Bitcoin className="h-4 w-4" />
               {isConnected ? "Open Dashboard" : "Connect Wallet to Start"}
             </Button>
-            <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
+            <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto gap-2" asChild>
               <Link to="/docs">
                 Read the Docs <ArrowRight className="h-4 w-4" />
               </Link>
