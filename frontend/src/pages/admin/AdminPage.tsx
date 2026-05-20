@@ -6,7 +6,7 @@ import {
   Shield, Pause, Play, Settings, Users, FileText, Repeat,
   TrendingUp, AlertTriangle, ArrowRightLeft,
   Bitcoin, ChevronDown, ChevronUp, BadgeCheck, Ban, Loader2,
-  Copy, ExternalLink, Search, RefreshCw, CheckCircle2,
+  Copy, ExternalLink, Search, RefreshCw, CheckCircle2, Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useAdminStore } from "@/stores/admin-store";
+import type { MerchantEntry } from "@/stores/admin-store";
+import { MerchantActivitySheet } from "@/components/admin/MerchantActivitySheet";
 import { useWalletStore } from "@/stores/wallet-store";
 import { getExplorerAddressUrl } from "@/lib/stacks/config";
 import { formatAmount, amountToUsd } from "@/lib/constants";
@@ -96,6 +98,8 @@ export default function AdminPage() {
   const [transferAddress, setTransferAddress] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const [merchantSearch, setMerchantSearch] = useState("");
+  const [selectedMerchant, setSelectedMerchant] = useState<MerchantEntry | null>(null);
+  const [merchantSheetOpen, setMerchantSheetOpen] = useState(false);
 
   const isInitialLoading = isLoading && merchants.length === 0 && stats.totalMerchants === 0;
 
@@ -554,6 +558,20 @@ export default function AdminPage() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-9 w-9 p-0"
+                              onClick={() => { setSelectedMerchant(m); setMerchantSheetOpen(true); }}
+                              aria-label={`View activity for ${m.name}`}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">View activity</TooltipContent>
+                        </Tooltip>
                         {!m.isVerified && !m.isSuspended && (
                           <AlertDialog>
                             <Tooltip>
@@ -692,6 +710,19 @@ export default function AdminPage() {
 
       {/* Platform-wide Payments */}
       <PlatformPaymentsFeed />
+
+      {/* Merchant Activity Sheet */}
+      <MerchantActivitySheet
+        merchant={selectedMerchant}
+        open={merchantSheetOpen}
+        onOpenChange={setMerchantSheetOpen}
+        walletAddress={address ?? ""}
+        isContractOwner={isContractOwner}
+        pendingAction={pendingAction}
+        onVerify={verifyMerchant}
+        onSuspend={suspendMerchant}
+        onUnsuspend={unsuspendMerchant}
+      />
     </div>
   );
 }
