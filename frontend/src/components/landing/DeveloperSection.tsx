@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 const SNIPPET = `<!-- Embed sBTC Pay in any webpage -->
 <iframe
-  src="https://sbtcpay.com/widget/invoice?id=inv_28f4a3"
+  src="https://sbtc-pay.com/widget/invoice?id=inv_28f4a3"
   width="420"
   height="380"
   style="border:none;border-radius:16px"
@@ -101,7 +101,7 @@ export default function DeveloperSection() {
               <pre className="p-5 text-caption font-mono overflow-x-auto leading-6">
                 <span className="text-muted-foreground/50">{`<!-- Embed sBTC Pay in any webpage -->\n`}</span>
                 <span className="text-secondary">{`<iframe\n`}</span>
-                <span className="text-foreground">{`  src`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"https://sbtcpay.com/widget/invoice?id=inv_28f4a3"`}</span>{`\n`}
+                <span className="text-foreground">{`  src`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"https://sbtc-pay.com/widget/invoice?id=inv_28f4a3"`}</span>{`\n`}
                 <span className="text-foreground">{`  width`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"420"`}</span>{`\n`}
                 <span className="text-foreground">{`  height`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"380"`}</span>{`\n`}
                 <span className="text-foreground">{`  style`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"border:none;border-radius:16px"`}</span>{`\n`}
