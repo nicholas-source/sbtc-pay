@@ -15,8 +15,11 @@ import type { TokenType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 
+type AdminPaymentKind = "invoice" | "direct";
+
 interface AdminPaymentRow {
   id: string;
+  kind: AdminPaymentKind;
   tokenType: TokenType;
   amount: number;
   merchantReceived: number;
@@ -44,26 +47,54 @@ export function PlatformPaymentsFeed() {
     setLoading(true);
     setError(null);
     try {
-      const { data } = await supabaseWithWallet(address ?? "")
-        .from("payments")
-        .select("id, amount, fee, merchant_received, payer, tx_id, block_height, created_at, token_type, invoice_id, merchant_principal")
-        .order("block_height", { ascending: false })
-        .limit(fetchLimit);
-      setRows(
-        (data ?? []).map((r) => ({
-          id: `p-${r.id}`,
-          tokenType: (r.token_type === "stx" ? "stx" : "sbtc") as TokenType,
-          amount: r.amount,
-          merchantReceived: r.merchant_received ?? r.amount,
-          fee: r.fee ?? 0,
-          payer: r.payer,
-          merchantPrincipal: r.merchant_principal,
-          txId: r.tx_id,
-          blockHeight: r.block_height,
-          createdAt: r.created_at,
-          invoiceId: r.invoice_id,
-        }))
-      );
+      const db = supabaseWithWallet(address ?? "");
+      // Fetch invoice + direct payments in parallel. Each side asks for the
+      // full page size; the combined list is sorted + truncated client-side.
+      const [paymentsRes, directRes] = await Promise.all([
+        db
+          .from("payments")
+          .select("id, amount, fee, merchant_received, payer, tx_id, block_height, created_at, token_type, invoice_id, merchant_principal")
+          .order("block_height", { ascending: false })
+          .limit(fetchLimit),
+        db
+          .from("direct_payments")
+          .select("id, amount, fee, merchant_received, payer, tx_id, block_height, created_at, token_type, merchant_principal")
+          .order("block_height", { ascending: false })
+          .limit(fetchLimit),
+      ]);
+
+      const invoiceRows: AdminPaymentRow[] = (paymentsRes.data ?? []).map((r) => ({
+        id: `p-${r.id}`,
+        kind: "invoice",
+        tokenType: (r.token_type === "stx" ? "stx" : "sbtc") as TokenType,
+        amount: r.amount,
+        merchantReceived: r.merchant_received ?? r.amount,
+        fee: r.fee ?? 0,
+        payer: r.payer,
+        merchantPrincipal: r.merchant_principal,
+        txId: r.tx_id,
+        blockHeight: r.block_height,
+        createdAt: r.created_at,
+        invoiceId: r.invoice_id,
+      }));
+      const directRows: AdminPaymentRow[] = (directRes.data ?? []).map((r) => ({
+        id: `d-${r.id}`,
+        kind: "direct",
+        tokenType: (r.token_type === "stx" ? "stx" : "sbtc") as TokenType,
+        amount: r.amount,
+        merchantReceived: r.merchant_received ?? r.amount,
+        fee: r.fee ?? 0,
+        payer: r.payer,
+        merchantPrincipal: r.merchant_principal,
+        txId: r.tx_id,
+        blockHeight: r.block_height,
+        createdAt: r.created_at,
+      }));
+
+      const combined = [...invoiceRows, ...directRows]
+        .sort((a, b) => b.blockHeight - a.blockHeight)
+        .slice(0, fetchLimit);
+      setRows(combined);
     } catch (err) {
       console.error("Failed to load platform payments:", err);
       setError("Failed to load payments. Please try again.");
@@ -143,6 +174,7 @@ export function PlatformPaymentsFeed() {
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-16">Token</TableHead>
+                  <TableHead className="w-20 hidden sm:table-cell">Type</TableHead>
                   <TableHead>Amount</TableHead>
                   <TableHead className="hidden sm:table-cell">Received</TableHead>
                   <TableHead className="hidden sm:table-cell">Fee</TableHead>
@@ -156,7 +188,7 @@ export function PlatformPaymentsFeed() {
               <TableBody>
                 {loading && rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
                       <div className="flex items-center justify-center gap-2">
                         <RefreshCw className="h-4 w-4 animate-spin" /> Loading…
                       </div>
@@ -164,7 +196,7 @@ export function PlatformPaymentsFeed() {
                   </TableRow>
                 ) : filtered.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
                       <Layers className="h-8 w-8 mx-auto mb-2 opacity-40" />
                       <p>{rows.length === 0 ? "No payments yet" : "No results for this filter"}</p>
                     </TableCell>
@@ -181,6 +213,18 @@ export function PlatformPaymentsFeed() {
                         )}
                       >
                         {r.tokenType === "stx" ? "STX" : "sBTC"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      <Badge
+                        variant="outline"
+                        className={cn("text-micro",
+                          r.kind === "invoice"
+                            ? "border-info/40 text-info bg-info/10"
+                            : "border-muted-foreground/30 text-muted-foreground"
+                        )}
+                      >
+                        {r.kind === "invoice" ? "Invoice" : "Direct"}
                       </Badge>
                     </TableCell>
                     <TableCell>
