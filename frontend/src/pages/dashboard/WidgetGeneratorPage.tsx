@@ -15,11 +15,13 @@ import { isValidStacksAddress } from "@/lib/validators";
 import type { TokenType } from "@/lib/stacks/config";
 
 type WidgetType = "direct" | "invoice" | "subscription";
+type EmbedFormat = "script" | "iframe";
 
 export default function WidgetGeneratorPage() {
   const walletAddress = useWalletStore((s) => s.address) || "";
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
   const [widgetType, setWidgetType] = useState<WidgetType>("direct");
+  const [embedFormat, setEmbedFormat] = useState<EmbedFormat>("script");
   const [merchantAddress, setMerchantAddress] = useState(walletAddress);
   const [amount, setAmount] = useState("0.001");
   const [memo, setMemo] = useState("");
@@ -99,7 +101,43 @@ export default function WidgetGeneratorPage() {
     }
   }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme, tokenType, embedBase]);
 
-  const embedCode = `<iframe src="${embedUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:420px;" allow="clipboard-write"></iframe>`;
+  const iframeEmbedCode = `<iframe src="${embedUrl}" width="100%" height="520" frameborder="0" style="border-radius:12px;overflow:hidden;max-width:420px;" allow="clipboard-write"></iframe>`;
+
+  const scriptEmbedCode = useMemo(() => {
+    const attrs: string[] = [];
+    const baseAmt = amount ? humanToBaseUnits(Number(amount), tokenType) : 0;
+    switch (widgetType) {
+      case "direct":
+        attrs.push(`data-sbtcpay="direct"`);
+        attrs.push(`data-sbtcpay-merchant="${merchantAddress}"`);
+        if (baseAmt) attrs.push(`data-sbtcpay-amount="${baseAmt}"`);
+        if (tokenType !== "sbtc") attrs.push(`data-sbtcpay-token="${tokenType}"`);
+        if (memo) attrs.push(`data-sbtcpay-memo="${memo.replace(/"/g, "&quot;")}"`);
+        if (theme !== "dark") attrs.push(`data-sbtcpay-theme="${theme}"`);
+        break;
+      case "invoice": {
+        const id = invoiceId.replace(/^INV-/i, "").trim() || "0";
+        attrs.push(`data-sbtcpay="invoice"`);
+        attrs.push(`data-sbtcpay-invoice="${id}"`);
+        break;
+      }
+      case "subscription":
+        attrs.push(`data-sbtcpay="subscribe"`);
+        attrs.push(`data-sbtcpay-merchant="${merchantAddress}"`);
+        if (planName) attrs.push(`data-sbtcpay-plan="${planName.replace(/"/g, "&quot;")}"`);
+        if (baseAmt) attrs.push(`data-sbtcpay-amount="${baseAmt}"`);
+        if (interval) attrs.push(`data-sbtcpay-interval="${interval}"`);
+        if (tokenType !== "sbtc") attrs.push(`data-sbtcpay-token="${tokenType}"`);
+        break;
+    }
+    return `<!-- 1. Load the SDK once per page -->
+<script src="${embedBase}/sbtcpay.js" async></script>
+
+<!-- 2. Place this anywhere a Pay button should appear -->
+<div ${attrs.join(" ")}></div>`;
+  }, [widgetType, merchantAddress, amount, memo, invoiceId, planName, interval, theme, tokenType, embedBase]);
+
+  const embedCode = embedFormat === "script" ? scriptEmbedCode : iframeEmbedCode;
 
   const copyEmbed = async () => {
     try {
@@ -264,9 +302,20 @@ export default function WidgetGeneratorPage() {
               <CardTitle className="text-heading-sm">Embed Code</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-col gap-space-sm">
+              <Tabs value={embedFormat} onValueChange={(v) => setEmbedFormat(v as EmbedFormat)}>
+                <TabsList className="w-full">
+                  <TabsTrigger value="script" className="flex-1 text-xs sm:text-body-sm">Script tag (recommended)</TabsTrigger>
+                  <TabsTrigger value="iframe" className="flex-1 text-xs sm:text-body-sm">iframe</TabsTrigger>
+                </TabsList>
+              </Tabs>
               <pre className={cn("rounded-lg bg-muted p-3 text-caption font-mono text-muted-foreground overflow-x-auto whitespace-pre-wrap break-all transition-colors duration-300", copied && "bg-primary/10 ring-1 ring-primary/30")}>
                 {embedCode}
               </pre>
+              <p className="text-caption text-muted-foreground">
+                {embedFormat === "script"
+                  ? "Drops a styled Pay button into your page. Click opens a modal — no layout work needed."
+                  : "Inline iframe. Use this when you need the widget visible in the page flow without a click trigger."}
+              </p>
               <Button variant="outline" className="gap-2" onClick={copyEmbed}>
                 {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
                 {copied ? "Copied!" : "Copy Embed Code"}
