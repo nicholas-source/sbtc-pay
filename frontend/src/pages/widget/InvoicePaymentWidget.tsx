@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { AlertTriangle, Wallet, Loader2, Check } from "lucide-react";
+import { postToParent } from "@/lib/widget-bridge";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,6 +122,7 @@ export default function InvoicePaymentWidget() {
         setTxId(result.txId);
         setPayState("confirmed");
         toast.success("Payment submitted!");
+        postToParent({ type: "sbtcpay:payment_submitted", txId: result.txId, invoiceId: invoice.dbId });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Payment failed";
@@ -129,8 +131,11 @@ export default function InvoicePaymentWidget() {
       setErrorMsg(readable || msg);
       setPayState("error");
       toast.error(readable || msg);
+      postToParent({ type: "sbtcpay:error", message: readable || msg });
     }
   }, [invoice, payState, isConnected, address, connect, stxBalance, sbtcBalance]);
+
+  useEffect(() => { postToParent({ type: "sbtcpay:ready" }); }, []);
 
   if (loading) {
     return (
