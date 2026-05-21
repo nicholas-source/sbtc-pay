@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -15,14 +15,22 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { amountToUsd } from "@/lib/constants";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
 import { useSubscriptionStore, type SubscriptionPlan, type Subscriber } from "@/stores/subscription-store";
-import { useLivePrices } from "@/stores/wallet-store";
+import { useLivePrices, useWalletStore } from "@/stores/wallet-store";
+import { supabaseWithWallet } from "@/lib/supabase/client";
 
 type Period = "daily" | "weekly" | "monthly";
+
+interface DirectPaymentRow {
+  amount: number;
+  token_type: string | null;
+  created_at: string;
+}
 
 function buildRevenueData(
   invoices: Invoice[],
   plans: SubscriptionPlan[],
   subscribers: Subscriber[],
+  directPayments: DirectPaymentRow[],
   period: Period,
   btcPriceUsd: number | null,
   stxPriceUsd: number | null,
@@ -90,6 +98,20 @@ function buildRevenueData(
     }
   }
 
+  // Sum direct payments into the same buckets
+  for (const dp of directPayments) {
+    if (!dp.amount || dp.amount <= 0) continue;
+    const tt: 'sbtc' | 'stx' = dp.token_type === 'stx' ? 'stx' : 'sbtc';
+    const d = new Date(dp.created_at);
+    let key: string;
+    if (period === "daily") key = format(d, "yyyy-MM-dd");
+    else if (period === "weekly") key = format(startOfWeek(d), "yyyy-MM-dd");
+    else key = format(d, "yyyy-MM");
+    if (usdMap.has(key)) {
+      usdMap.set(key, usdMap.get(key)! + (parseFloat(amountToUsd(dp.amount, tt, btcPriceUsd, stxPriceUsd)) || 0));
+    }
+  }
+
   return buckets.map((b) => {
     const usd = usdMap.get(b.key) || 0;
     return { date: b.label, usd };
@@ -115,7 +137,37 @@ export default function RevenueChart() {
   const plans = useSubscriptionStore((s) => s.plans);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
-  const data = useMemo(() => buildRevenueData(invoices, plans, subscribers, period, btcPriceUsd, stxPriceUsd), [invoices, plans, subscribers, period, btcPriceUsd, stxPriceUsd]);
+  const { address, isAuthenticated } = useWalletStore();
+
+  // Direct payments: fetched here because they aren't in any Zustand store.
+  // Window: last 6 months to cover all chart periods (daily/weekly/monthly
+  // currently span 30 days / 12 weeks / 6 months).
+  const [directPayments, setDirectPayments] = useState<DirectPaymentRow[]>([]);
+
+  useEffect(() => {
+    if (!address || !isAuthenticated) {
+      setDirectPayments([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const since = subMonths(new Date(), 6).toISOString();
+      const db = supabaseWithWallet(address);
+      const { data, error } = await db
+        .from("direct_payments")
+        .select("amount, token_type, created_at")
+        .eq("merchant_principal", address)
+        .gte("created_at", since);
+      if (cancelled || error || !data) return;
+      setDirectPayments(data as DirectPaymentRow[]);
+    })();
+    return () => { cancelled = true; };
+  }, [address, isAuthenticated]);
+
+  const data = useMemo(
+    () => buildRevenueData(invoices, plans, subscribers, directPayments, period, btcPriceUsd, stxPriceUsd),
+    [invoices, plans, subscribers, directPayments, period, btcPriceUsd, stxPriceUsd],
+  );
   const hasRevenue = data.some((d) => d.usd > 0);
 
   return (
