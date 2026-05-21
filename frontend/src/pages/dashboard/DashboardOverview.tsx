@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { TrendingUp, FileText, Repeat, RefreshCcw } from "lucide-react";
 import { useMerchantStore } from "@/stores/merchant-store";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
+import { useWalletStore } from "@/stores/wallet-store";
+import { supabaseWithWallet } from "@/lib/supabase/client";
 import MerchantRegistration from "@/components/dashboard/MerchantRegistration";
 import StatCard from "@/components/dashboard/StatCard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
@@ -16,6 +19,40 @@ function DashboardOverview() {
   const invoices = useInvoiceStore((s) => s.invoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
+  const { address, isAuthenticated } = useWalletStore();
+
+  // Direct payment totals — invoice store doesn't carry them, so fetch
+  // aggregates directly. Keep state lifted to this component so they can be
+  // folded into the Total Revenue stat alongside invoice payments.
+  const [directSbtc, setDirectSbtc] = useState(0);
+  const [directStx, setDirectStx] = useState(0);
+
+  useEffect(() => {
+    if (!address || !isAuthenticated) {
+      setDirectSbtc(0);
+      setDirectStx(0);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const db = supabaseWithWallet(address);
+      const { data, error } = await db
+        .from("direct_payments")
+        .select("merchant_received, token_type")
+        .eq("merchant_principal", address);
+      if (cancelled || error || !data) return;
+      let sbtc = 0;
+      let stx = 0;
+      for (const r of data) {
+        const amt = r.merchant_received ?? 0;
+        if (r.token_type === "stx") stx += amt;
+        else sbtc += amt;
+      }
+      setDirectSbtc(sbtc);
+      setDirectStx(stx);
+    })();
+    return () => { cancelled = true; };
+  }, [address, isAuthenticated]);
 
   if (!profile) {
     return <MerchantRegistration />;
@@ -25,8 +62,8 @@ function DashboardOverview() {
   const sbtcInvoices = invoices.filter((inv) => inv.tokenType !== 'stx');
   const stxInvoices = invoices.filter((inv) => inv.tokenType === 'stx');
 
-  const sbtcRevenue = sbtcInvoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
-  const stxRevenue = stxInvoices.reduce((sum, inv) => sum + inv.amountPaid, 0);
+  const sbtcRevenue = sbtcInvoices.reduce((sum, inv) => sum + inv.amountPaid, 0) + directSbtc;
+  const stxRevenue = stxInvoices.reduce((sum, inv) => sum + inv.amountPaid, 0) + directStx;
   const totalRevenueUsd = (sbtcRevenue > 0 ? parseFloat(amountToUsd(sbtcRevenue, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0)
     + (stxRevenue > 0 ? parseFloat(amountToUsd(stxRevenue, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0);
 
