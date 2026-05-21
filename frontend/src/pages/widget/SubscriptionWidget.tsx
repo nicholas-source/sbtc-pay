@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { postToParent } from "@/lib/widget-bridge";
 import { Repeat, Wallet, Loader2, Check, CreditCard } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -92,6 +93,7 @@ export default function SubscriptionWidget() {
         setTxId(result.txId);
         setSubState("subscribed");
         toast.success("Subscription created! You can now make your first payment.");
+        postToParent({ type: "sbtcpay:subscription_created", txId: result.txId });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Subscription failed";
@@ -100,8 +102,11 @@ export default function SubscriptionWidget() {
       setErrorMsg(readable || msg);
       setSubState("error");
       toast.error(readable || msg);
+      postToParent({ type: "sbtcpay:error", message: readable || msg });
     }
   }, [addr, plan, baseAmount, intervalBlocks, subState, isConnected, address, connect, tokenType]);
+
+  useEffect(() => { postToParent({ type: "sbtcpay:ready" }); }, []);
 
   if (subState === "subscribed" && txId) {
     // Subscription registered on-chain — direct user to Customer Portal for first payment
