@@ -44,7 +44,7 @@ const SCENARIOS: Scenario[] = [
     merchant: "Coffee Shop BTC",
     initial: "C",
     invoiceId: "INV-2026-0042",
-    url: "sbtcpay.com/pay/inv-28f4a3",
+    url: "sbtc-pay.com/pay/inv-28f4a3",
     amountSats: 500_000,    // 0.005 sBTC
     paidSats: 310_000,      // 62 %
     status: "partial",
@@ -56,7 +56,7 @@ const SCENARIOS: Scenario[] = [
     merchant: "Freelance Design Co.",
     initial: "F",
     invoiceId: "INV-2026-0118",
-    url: "sbtcpay.com/pay/inv-7c9e21",
+    url: "sbtc-pay.com/pay/inv-7c9e21",
     amountSats: 1_200_000,  // 0.012 sBTC
     paidSats: 0,
     status: "pending",
@@ -68,7 +68,7 @@ const SCENARIOS: Scenario[] = [
     merchant: "Dev Tools Pro",
     initial: "D",
     invoiceId: "SUB-2026-0008",
-    url: "sbtcpay.com/pay/sub-9a2b14",
+    url: "sbtc-pay.com/pay/sub-9a2b14",
     amountSats: 200_000,    // 0.002 sBTC
     paidSats: 200_000,      // 100 %
     status: "paid",
@@ -80,7 +80,7 @@ const SCENARIOS: Scenario[] = [
     merchant: "Bakery Online",
     initial: "B",
     invoiceId: "INV-2026-0205",
-    url: "sbtcpay.com/pay/inv-4d8f67",
+    url: "sbtc-pay.com/pay/inv-4d8f67",
     amountSats: 800_000,    // 0.008 sBTC
     paidSats: 640_000,      // 80 %
     status: "partial",
