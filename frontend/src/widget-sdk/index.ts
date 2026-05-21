@@ -184,6 +184,16 @@ function open(opts: SBTCPayOpenOptions): { close: () => void } {
   document.body.style.overflow = "hidden";
   document.body.appendChild(backdrop);
 
+  // Mirror lifecycle to window-level CustomEvents so callers using the
+  // declarative auto-mount (data-sbtcpay="…") can still observe results.
+  // Programmatic open() callers get opts.onX; declarative callers can:
+  //   window.addEventListener('sbtcpay:success', (e) => e.detail.txId)
+  const emit = (name: "success" | "error" | "close", detail: Record<string, unknown> = {}) => {
+    try {
+      window.dispatchEvent(new CustomEvent(`sbtcpay:${name}`, { detail: { mode: opts.mode, ...detail } }));
+    } catch { /* CustomEvent unsupported (very old browsers) — ignore */ }
+  };
+
   let closed = false;
   const cleanup = () => {
     if (closed) return;
@@ -194,6 +204,7 @@ function open(opts: SBTCPayOpenOptions): { close: () => void } {
     backdrop.remove();
     activeModal = null;
     try { opts.onClose?.(); } catch { /* host callback error — swallow */ }
+    emit("close");
   };
 
   const onMessage = (ev: MessageEvent) => {
@@ -209,20 +220,23 @@ function open(opts: SBTCPayOpenOptions): { close: () => void } {
         // Widget mounted inside iframe — could hide a loading shimmer here
         break;
       case "sbtcpay:payment_submitted":
-      case "sbtcpay:subscription_created":
+      case "sbtcpay:subscription_created": {
+        const txId = String(data.txId ?? "");
+        const invoiceId = typeof data.invoiceId === "number" ? data.invoiceId : undefined;
         try {
-          opts.onSuccess?.({
-            txId: String(data.txId ?? ""),
-            invoiceId: typeof data.invoiceId === "number" ? data.invoiceId : undefined,
-            mode: opts.mode,
-          });
+          opts.onSuccess?.({ txId, invoiceId, mode: opts.mode });
         } catch { /* swallow host errors */ }
+        emit("success", { txId, invoiceId });
         // Give the user a beat to see the success screen, then close
         setTimeout(cleanup, 2200);
         break;
-      case "sbtcpay:error":
-        try { opts.onError?.({ message: String(data.message ?? "Payment failed") }); } catch { /* */ }
+      }
+      case "sbtcpay:error": {
+        const message = String(data.message ?? "Payment failed");
+        try { opts.onError?.({ message }); } catch { /* */ }
+        emit("error", { message });
         break;
+      }
       case "sbtcpay:close":
         cleanup();
         break;
