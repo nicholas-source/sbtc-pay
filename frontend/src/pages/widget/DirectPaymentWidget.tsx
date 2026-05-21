@@ -1,5 +1,6 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
+import { postToParent } from "@/lib/widget-bridge";
 import { AlertTriangle, Wallet, Loader2, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -83,6 +84,7 @@ export default function DirectPaymentWidget() {
         setTxId(result.txId);
         setPayState("confirmed");
         toast.success("Payment submitted!");
+        postToParent({ type: "sbtcpay:payment_submitted", txId: result.txId });
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Payment failed";
@@ -92,8 +94,11 @@ export default function DirectPaymentWidget() {
       setErrorMsg(readable || msg);
       setPayState("error");
       toast.error(readable || msg);
+      postToParent({ type: "sbtcpay:error", message: readable || msg });
     }
   }, [addr, payAmount, payMemo, payState, isConnected, address, connect, tokenType, stxBalance, sbtcBalance]);
+
+  useEffect(() => { postToParent({ type: "sbtcpay:ready" }); }, []);
 
   if (!addr) {
     return (
