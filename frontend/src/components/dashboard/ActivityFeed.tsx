@@ -4,8 +4,22 @@ import { formatDistanceToNow } from "date-fns";
 import { formatAmount, tokenLabel } from "@/lib/constants";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
-import { useMemo } from "react";
+import { useWalletStore } from "@/stores/wallet-store";
+import { supabaseWithWallet } from "@/lib/supabase/client";
+import { useEffect, useMemo, useState } from "react";
 import type { TokenType } from "@/lib/stacks/config";
+
+// Direct payments don't have a Zustand store yet — fetched here directly.
+// Limit small because this feed only shows the most recent 15 items overall.
+const DIRECT_PAYMENTS_LIMIT = 15;
+
+interface DirectPaymentRow {
+  id: number;
+  amount: number;
+  payer: string;
+  created_at: string;
+  token_type: string | null;
+}
 
 interface ActivityEvent {
   id: string;
@@ -46,8 +60,30 @@ function truncateAddr(addr: string): string {
 export default function ActivityFeed() {
   const invoices = useInvoiceStore((s) => s.invoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
-
   const plans = useSubscriptionStore((s) => s.plans);
+  const { address, isAuthenticated } = useWalletStore();
+
+  const [directPayments, setDirectPayments] = useState<DirectPaymentRow[]>([]);
+
+  useEffect(() => {
+    if (!address || !isAuthenticated) {
+      setDirectPayments([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const client = supabaseWithWallet(address);
+      const { data, error } = await client
+        .from("direct_payments")
+        .select("id, amount, payer, created_at, token_type")
+        .eq("merchant_principal", address)
+        .order("block_height", { ascending: false })
+        .limit(DIRECT_PAYMENTS_LIMIT);
+      if (cancelled || error || !data) return;
+      setDirectPayments(data as DirectPaymentRow[]);
+    })();
+    return () => { cancelled = true; };
+  }, [address, isAuthenticated]);
 
   const events = useMemo(() => {
     const items: ActivityEvent[] = [];
@@ -111,10 +147,23 @@ export default function ActivityFeed() {
       }
     }
 
+    // Direct payments (pay-merchant-direct / pay-merchant-direct-stx).
+    for (const dp of directPayments) {
+      items.push({
+        id: `direct-${dp.id}`,
+        type: "payment",
+        title: "Direct Payment",
+        amount: dp.amount,
+        address: truncateAddr(dp.payer || ""),
+        timestamp: new Date(dp.created_at),
+        tokenType: (dp.token_type === "stx" ? "stx" : "sbtc") as TokenType,
+      });
+    }
+
     // Sort by most recent first, limit to 15
     items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
     return items.slice(0, 15);
-  }, [invoices, subscribers, plans]);
+  }, [invoices, subscribers, plans, directPayments]);
   return (
     <Card>
       <CardHeader>
