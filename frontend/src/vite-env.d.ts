@@ -6,7 +6,7 @@ interface ImportMetaEnv {
   readonly VITE_EXPLORER_URL?: string;
   readonly VITE_PAYMENT_CONTRACT_ADDRESS?: string;
   readonly VITE_PAYMENT_CONTRACT_NAME?: string;
-  /** Production origin used in embed code snippets, e.g. https://sbtcpay.com */
+  /** Production origin used in embed code snippets, e.g. https://sbtc-pay.com */
   readonly VITE_APP_URL?: string;
 }
 
