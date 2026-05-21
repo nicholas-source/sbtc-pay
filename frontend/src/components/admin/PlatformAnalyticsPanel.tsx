@@ -188,10 +188,15 @@ export function PlatformAnalyticsPanel() {
       const since = subDays(new Date(), days - 1).toISOString();
       const db    = supabaseWithWallet(address ?? "");
 
-      const [paymentsRes, invoicesRes] = await Promise.all([
+      const [paymentsRes, directRes, invoicesRes] = await Promise.all([
         db
           .from("payments")
           .select("tx_id, invoice_id, amount, fee, token_type, created_at")
+          .gte("created_at", since)
+          .limit(QUERY_LIMIT),
+        db
+          .from("direct_payments")
+          .select("tx_id, amount, fee, token_type, created_at")
           .gte("created_at", since)
           .limit(QUERY_LIMIT),
         db
@@ -205,9 +210,10 @@ export function PlatformAnalyticsPanel() {
       if (controller.signal.aborted) return;
 
       if (paymentsRes.error) throw paymentsRes.error;
+      if (directRes.error) throw directRes.error;
       if (invoicesRes.error) throw invoicesRes.error;
 
-      // Deduplicate payments — guards against two known duplicate sources:
+      // Deduplicate invoice payments — guards against two known duplicate sources:
       // 1. tx_id duplicates: chainhook re-delivers same event (before migration 013
       //    events-table unique constraint). Keep first occurrence per tx_id.
       // 2. null-tx_id orphans: reconcile cron inserts a catch-up payment row with
@@ -219,22 +225,36 @@ export function PlatformAnalyticsPanel() {
           .filter((p) => p.tx_id)
           .map((p) => p.invoice_id as number)
       );
-      const payments: PaymentRow[] = (paymentsRes.data ?? []).filter((p) => {
+      const invoicePayments: PaymentRow[] = (paymentsRes.data ?? []).filter((p) => {
         if (!p.tx_id) {
-          // Drop null-tx_id orphan if a real payment exists for the same invoice
           return !invoicesWithRealPayment.has(p.invoice_id as number);
         }
         if (seenTxIds.has(p.tx_id)) return false;
         seenTxIds.add(p.tx_id);
         return true;
       });
+
+      // Direct payments — flow through pay-merchant-direct / pay-merchant-direct-stx.
+      // They share the seen-tx_id set with invoice payments so a single tx_id
+      // can't be counted twice across the two tables.
+      const directPayments: PaymentRow[] = (directRes.data ?? []).filter((p) => {
+        if (!p.tx_id) return true;
+        if (seenTxIds.has(p.tx_id)) return false;
+        seenTxIds.add(p.tx_id);
+        return true;
+      });
+
+      const payments: PaymentRow[] = [...invoicePayments, ...directPayments];
+
       // Supabase stores status as a numeric contract code; map to string label
       const invoices: InvoiceRow[] = (invoicesRes.data ?? []).map((r) => ({
         status: STATUS_MAP[r.status] ?? "pending",
         created_at: r.created_at,
       }));
       const truncated =
-        payments.length === QUERY_LIMIT || invoices.length === QUERY_LIMIT;
+        invoicePayments.length === QUERY_LIMIT ||
+        directPayments.length === QUERY_LIMIT ||
+        invoices.length === QUERY_LIMIT;
 
       setAnalytics({
         volume:      buildVolume(payments, days),
