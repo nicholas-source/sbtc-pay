@@ -1,19 +1,19 @@
 /**
  * MerchantAnalyticsPanel — per-merchant analytics using store data.
  *
- * Reads from invoice-store (invoice payments) and subscription-store
- * (subscription billing cycle payments), both already hydrated from Supabase
- * by DashboardLayout.  Adapts them to the shared PaymentRow / InvoiceRow
- * shapes so the same pure builder functions are reused.
+ * Reads invoice payments + subscription billings from their Zustand stores
+ * (already hydrated by DashboardLayout) and fetches direct payments from
+ * Supabase directly (no store yet).  Adapts all three to the shared
+ * PaymentRow / InvoiceRow shapes so the same pure builder functions apply.
  *
  * Three tabs:
- *   • Volume      — daily payment counts by token, invoices + subscriptions
- *   • Conversions — invoices created vs paid (subscription-only merchants see
- *                   an empty state here, which is correct — CR is invoice concept)
+ *   • Volume      — daily payment counts by token, invoices + subscriptions + direct
+ *   • Conversions — invoices created vs paid (invoice-only by design — direct
+ *                   payments have no conversion lifecycle)
  *   • Token Mix   — sBTC / STX distribution across all payment types
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
 import { BarChart2 } from "lucide-react";
 import {
@@ -31,6 +31,14 @@ import {
 import { formatSbtcCompact, formatStxCompact } from "@/lib/constants";
 import { useInvoiceStore, type Invoice } from "@/stores/invoice-store";
 import { useSubscriptionStore, type Subscriber, type SubscriptionPlan } from "@/stores/subscription-store";
+import { useWalletStore } from "@/stores/wallet-store";
+import { supabaseWithWallet } from "@/lib/supabase/client";
+
+interface DirectPaymentRow {
+  amount: number;
+  token_type: string | null;
+  created_at: string;
+}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -89,6 +97,15 @@ function toSubscriptionPaymentRows(
   });
 }
 
+function toDirectPaymentRows(rows: DirectPaymentRow[]): PaymentRow[] {
+  return rows.map((r) => ({
+    amount: r.amount,
+    fee: null,
+    token_type: r.token_type === "stx" ? "stx" : "sbtc",
+    created_at: r.created_at,
+  }));
+}
+
 function toInvoiceRows(invoices: Invoice[]): InvoiceRow[] {
   return invoices.map((inv) => ({
     status: inv.status,
@@ -118,6 +135,18 @@ function ChartEmpty({ message = "No data in this period" }: { message?: string }
       <BarChart2 className="mb-3 h-10 w-10 opacity-20" aria-hidden="true" />
       <p className="text-body-sm">{message}</p>
       <p className="text-caption mt-1">Data will appear once transactions occur</p>
+    </div>
+  );
+}
+
+// Donut-shaped skeleton so the Token Mix tab doesn't visually jump from a
+// bar-chart skeleton into a donut layout when data loads.
+function DonutSkeleton() {
+  return (
+    <div className="flex h-[260px] items-center justify-center" aria-hidden="true">
+      <div className="relative h-[160px] w-[160px] animate-pulse rounded-full bg-muted">
+        <div className="absolute inset-[22%] rounded-full bg-background" />
+      </div>
     </div>
   );
 }
@@ -169,6 +198,24 @@ function VolumeTooltip({ active, payload, label }: {
   );
 }
 
+function TokenMixTooltip({ active, payload, total }: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number }>;
+  total: number;
+}) {
+  if (!active || !payload?.length) return null;
+  const item = payload[0];
+  const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+  return (
+    <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
+      <p className="font-medium">{item.name}</p>
+      <p className="font-mono text-muted-foreground">
+        {item.value} payment{item.value !== 1 ? "s" : ""} ({pct}%)
+      </p>
+    </div>
+  );
+}
+
 function ConversionTooltip({ active, payload, label }: {
   active?: boolean;
   payload?: Array<{ dataKey: string; value: number; payload: DailyConversion }>;
@@ -204,8 +251,34 @@ export function MerchantAnalyticsPanel() {
   const isLoading   = useInvoiceStore((s) => s.isLoading);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
   const plans       = useSubscriptionStore((s) => s.plans);
+  const { address, isAuthenticated } = useWalletStore();
   const [range, setRange] = useState<TimeRange>("30d");
   const days = RANGE_DAYS[range];
+
+  // Direct payments fetched once (90-day window covers all range options);
+  // per-range filtering happens in-memory below so range toggles stay snappy.
+  const [directPaymentRowsRaw, setDirectPaymentRowsRaw] = useState<DirectPaymentRow[]>([]);
+
+  useEffect(() => {
+    if (!address || !isAuthenticated) {
+      setDirectPaymentRowsRaw([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const since = new Date();
+      since.setDate(since.getDate() - 90);
+      const db = supabaseWithWallet(address);
+      const { data, error } = await db
+        .from("direct_payments")
+        .select("amount, token_type, created_at")
+        .eq("merchant_principal", address)
+        .gte("created_at", since.toISOString());
+      if (cancelled || error || !data) return;
+      setDirectPaymentRowsRaw(data as DirectPaymentRow[]);
+    })();
+    return () => { cancelled = true; };
+  }, [address, isAuthenticated]);
 
   // Stable plan lookup map (planId → plan)
   const planMap = useMemo(() => new Map(plans.map((p) => [p.id, p])), [plans]);
@@ -230,11 +303,17 @@ export function MerchantAnalyticsPanel() {
     return allRows.filter((r) => new Date(r.created_at) >= cutoff);
   }, [subscribers, planMap, cutoff]);
 
+  // Direct payments within the window
+  const windowDirectPaymentRows = useMemo(() => {
+    const allRows = toDirectPaymentRows(directPaymentRowsRaw);
+    return allRows.filter((r) => new Date(r.created_at) >= cutoff);
+  }, [directPaymentRowsRaw, cutoff]);
+
   const invoicePaymentRows = useMemo(() => toPaymentRows(windowInvoices), [windowInvoices]);
-  // All payment rows: invoices + subscription billings
+  // All payment rows: invoices + subscription billings + direct
   const paymentRows  = useMemo(
-    () => [...invoicePaymentRows, ...windowSubPaymentRows],
-    [invoicePaymentRows, windowSubPaymentRows],
+    () => [...invoicePaymentRows, ...windowSubPaymentRows, ...windowDirectPaymentRows],
+    [invoicePaymentRows, windowSubPaymentRows, windowDirectPaymentRows],
   );
   const invoiceRows  = useMemo(() => toInvoiceRows(windowInvoices),  [windowInvoices]);
   const volume       = useMemo(() => buildVolume(paymentRows, days),       [paymentRows, days]);
@@ -422,7 +501,7 @@ export function MerchantAnalyticsPanel() {
           {/* ── Token Mix ─────────────────────────────────────────────── */}
           <TabsContent value="mix">
             {isLoading ? (
-              <ChartSkeleton />
+              <DonutSkeleton />
             ) : !hasPayments ? (
               <ChartEmpty message="No payments in this period" />
             ) : (
@@ -446,13 +525,9 @@ export function MerchantAnalyticsPanel() {
                         ))}
                       </Pie>
                       <Tooltip
-                        formatter={(value: number, name: string) => [`${value} payments`, name]}
-                        contentStyle={{
-                          background: "hsl(var(--background))",
-                          border: "1px solid hsl(var(--border))",
-                          borderRadius: "0.5rem",
-                          fontSize: "0.75rem",
-                        }}
+                        content={(props) => (
+                          <TokenMixTooltip {...props} total={totalPayments} />
+                        )}
                       />
                     </PieChart>
                   </ResponsiveContainer>
