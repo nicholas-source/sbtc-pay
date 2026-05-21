@@ -101,6 +101,37 @@ export default function Widgets() {
 ></div>`}
       />
 
+      <h2>Listening for events (declarative)</h2>
+
+      <p>
+        When you use the <InlineCode>data-sbtcpay</InlineCode> attribute to auto-mount a Pay
+        button, you can still observe payment events by listening for{" "}
+        <InlineCode>CustomEvent</InlineCode>s on <InlineCode>window</InlineCode>:
+      </p>
+
+      <CodeBlock
+        filename="Listen for events from auto-mounted buttons"
+        language="html"
+        code={`<div data-sbtcpay="invoice" data-sbtcpay-invoice="123"></div>
+
+<script src="https://sbtc-pay.com/sbtcpay.js" async></script>
+<script>
+  window.addEventListener('sbtcpay:success', (e) => {
+    // e.detail = { mode, txId, invoiceId? }
+    console.log('Paid', e.detail.txId);
+    // e.g. fire analytics, redirect, refresh inventory
+  });
+
+  window.addEventListener('sbtcpay:error', (e) => {
+    console.error(e.detail.message);
+  });
+
+  window.addEventListener('sbtcpay:close', (e) => {
+    console.log('User closed the modal (mode:', e.detail.mode, ')');
+  });
+</script>`}
+      />
+
       <h2>Programmatic API</h2>
 
       <p>
