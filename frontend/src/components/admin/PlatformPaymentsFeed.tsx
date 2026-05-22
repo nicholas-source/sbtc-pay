@@ -105,6 +105,20 @@ export function PlatformPaymentsFeed() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Live updates: refetch when chainhook indexes a new payment of either kind.
+  // Migration 017 enables the publication on these tables; without it the
+  // channel opens but no events arrive.
+  useEffect(() => {
+    if (!address) return;
+    const client = supabaseWithWallet(address);
+    const channel = client
+      .channel(`admin-payments-feed-${address}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "payments" }, () => { load(); })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_payments" }, () => { load(); })
+      .subscribe();
+    return () => { client.removeChannel(channel); };
+  }, [address, load]);
+
   const filtered = rows.filter((r) => {
     if (tokenFilter !== "all" && r.tokenType !== tokenFilter) return false;
     if (!search.trim()) return true;
