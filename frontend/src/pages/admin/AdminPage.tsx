@@ -39,6 +39,7 @@ import { exportToCSV } from "@/lib/export-csv";
 import { IndexerHealthPanel } from "@/components/admin/IndexerHealthPanel";
 import { PlatformPaymentsFeed } from "@/components/admin/PlatformPaymentsFeed";
 import { PlatformAnalyticsPanel } from "@/components/admin/PlatformAnalyticsPanel";
+import { AdminAuditLog } from "@/components/admin/AdminAuditLog";
 
 type AccentColor = "primary" | "secondary" | "success" | "warning" | "destructive" | "info";
 
@@ -185,6 +186,103 @@ export default function AdminPage() {
   const scrollToMerchants = (filter: StatusFilter = "all") => {
     setStatusFilter(filter);
     merchantTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Time range for the headline stat cards.
+  // "all" uses on-chain lifetime counters; windowed options recompute from
+  // Supabase so you can see "last 30d volume" without polluting the contract.
+  type TimeRange = "all" | "7d" | "30d" | "90d";
+  const [timeRange, setTimeRange] = useState<TimeRange>("all");
+  const [windowedStats, setWindowedStats] = useState<{
+    totalVolumeSbtc: number;
+    totalVolumeStx: number;
+    feesCollectedSbtc: number;
+    feesCollectedStx: number;
+    totalInvoices: number;
+    totalSubscriptions: number;
+    totalMerchants: number;
+  } | null>(null);
+  const [windowedLoading, setWindowedLoading] = useState(false);
+
+  useEffect(() => {
+    if (timeRange === "all" || !address) {
+      setWindowedStats(null);
+      return;
+    }
+    const days = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const sinceIso = since.toISOString();
+
+    let cancelled = false;
+    setWindowedLoading(true);
+    (async () => {
+      const db = supabaseWithWallet(address);
+      const [payRes, directRes, subPayRes, invRes, subRes, merRes] = await Promise.all([
+        db.from("payments").select("amount, fee, token_type").gte("created_at", sinceIso),
+        db.from("direct_payments").select("amount, fee, token_type").gte("created_at", sinceIso),
+        db.from("subscription_payments").select("amount, fee, token_type").gte("created_at", sinceIso),
+        db.from("invoices").select("*", { count: "exact", head: true }).gte("created_at", sinceIso),
+        db.from("subscriptions").select("*", { count: "exact", head: true }).gte("created_at", sinceIso),
+        db.from("merchants").select("*", { count: "exact", head: true }).gte("created_at", sinceIso),
+      ]);
+      if (cancelled) return;
+
+      let totalVolumeSbtc = 0, totalVolumeStx = 0, feesCollectedSbtc = 0, feesCollectedStx = 0;
+      const sumRows = (rows: { amount: number; fee?: number | null; token_type: string | null }[] | null | undefined) => {
+        for (const r of rows ?? []) {
+          const amt = r.amount ?? 0;
+          const fee = r.fee ?? 0;
+          if (r.token_type === "stx") {
+            totalVolumeStx += amt;
+            feesCollectedStx += fee;
+          } else {
+            totalVolumeSbtc += amt;
+            feesCollectedSbtc += fee;
+          }
+        }
+      };
+      sumRows(payRes.data);
+      sumRows(directRes.data);
+      sumRows(subPayRes.data);
+
+      setWindowedStats({
+        totalVolumeSbtc,
+        totalVolumeStx,
+        feesCollectedSbtc,
+        feesCollectedStx,
+        totalInvoices: invRes.count ?? 0,
+        totalSubscriptions: subRes.count ?? 0,
+        totalMerchants: merRes.count ?? 0,
+      });
+      setWindowedLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [timeRange, address]);
+
+  // Effective stats — windowed values when a range is active, lifetime otherwise.
+  // Invoice breakdown chips only show in "all time" since the windowed query
+  // doesn't break invoice counts down by status.
+  const effective = timeRange === "all" || !windowedStats
+    ? {
+        totalVolumeSbtc: stats.totalVolumeSbtc,
+        totalVolumeStx: stats.totalVolumeStx,
+        feesCollectedSbtc: stats.feesCollectedSbtc,
+        feesCollectedStx: stats.feesCollectedStx,
+        totalInvoices: stats.totalInvoices,
+        totalSubscriptions: stats.totalSubscriptions,
+        totalMerchants: stats.totalMerchants,
+        showBreakdown: true,
+      }
+    : {
+        ...windowedStats,
+        showBreakdown: false,
+      };
+  const rangeLabel: Record<TimeRange, string> = {
+    all: "All time",
+    "7d": "Last 7 days",
+    "30d": "Last 30 days",
+    "90d": "Last 90 days",
   };
 
   // Status filter pills. "all" shows everyone; the others drill into a single status.
@@ -463,11 +561,40 @@ export default function AdminPage() {
 
 
 
+      {/* Platform Stats — range toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <p className="text-caption text-muted-foreground">
+          Showing <span className="text-foreground font-medium">{rangeLabel[timeRange]}</span>
+          {windowedLoading && (
+            <Loader2 className="inline h-3 w-3 ml-2 animate-spin" />
+          )}
+        </p>
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
+          {(["all", "7d", "30d", "90d"] as const).map((r) => (
+            <button
+              key={r}
+              onClick={() => setTimeRange(r)}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-caption font-medium transition-colors focus-ring",
+                timeRange === r
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              aria-pressed={timeRange === r}
+            >
+              {r === "all" ? "All time" : r}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Platform Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-space-md">
         <StatCard
           label="Merchants"
-          value={Math.max(stats.totalMerchants, merchants.length).toString()}
+          value={timeRange === "all"
+            ? Math.max(stats.totalMerchants, merchants.length).toString()
+            : effective.totalMerchants.toString()}
           icon={Users}
           accent="info"
           onClick={() => scrollToMerchants("all")}
@@ -481,8 +608,8 @@ export default function AdminPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="font-mono-nums text-sats text-foreground">{stats.totalInvoices.toString()}</div>
-            {stats.totalInvoices > 0 && (
+            <div className="font-mono-nums text-sats text-foreground">{effective.totalInvoices.toString()}</div>
+            {effective.totalInvoices > 0 && effective.showBreakdown && (
               <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-caption text-muted-foreground">
                 {stats.invoiceBreakdown.paid > 0 && (
                   <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-success" />{stats.invoiceBreakdown.paid} Paid</span>
@@ -506,7 +633,7 @@ export default function AdminPage() {
             )}
           </CardContent>
         </Card>
-        <StatCard label="Subscriptions" value={stats.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
+        <StatCard label="Subscriptions" value={effective.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
         <Card className="card-accent-success animate-fade-slide-up">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">Total Volume</CardTitle>
@@ -516,13 +643,13 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <div className="font-mono-nums text-sats text-foreground">
-              {[stats.totalVolumeSbtc > 0 ? `${formatAmount(stats.totalVolumeSbtc, 'sbtc')} sBTC` : '', stats.totalVolumeStx > 0 ? `${formatAmount(stats.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'}
+              {[effective.totalVolumeSbtc > 0 ? `${formatAmount(effective.totalVolumeSbtc, 'sbtc')} sBTC` : '', effective.totalVolumeStx > 0 ? `${formatAmount(effective.totalVolumeStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'}
             </div>
-            {(stats.totalVolumeSbtc > 0 || stats.totalVolumeStx > 0) && (
+            {(effective.totalVolumeSbtc > 0 || effective.totalVolumeStx > 0) && (
               <div className="text-caption text-muted-foreground mt-1">
                 ≈ ${(
-                  (stats.totalVolumeSbtc > 0 ? parseFloat(amountToUsd(stats.totalVolumeSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0) +
-                  (stats.totalVolumeStx > 0 ? parseFloat(amountToUsd(stats.totalVolumeStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+                  (effective.totalVolumeSbtc > 0 ? parseFloat(amountToUsd(effective.totalVolumeSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0) +
+                  (effective.totalVolumeStx > 0 ? parseFloat(amountToUsd(effective.totalVolumeStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0)
                 ).toFixed(2)}
               </div>
             )}
@@ -537,14 +664,14 @@ export default function AdminPage() {
           </CardHeader>
           <CardContent>
             <div className="font-mono-nums text-sats text-foreground">
-              {[stats.feesCollectedSbtc > 0 ? `${formatAmount(stats.feesCollectedSbtc, 'sbtc')} sBTC` : '', stats.feesCollectedStx > 0 ? `${formatAmount(stats.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'}
+              {[effective.feesCollectedSbtc > 0 ? `${formatAmount(effective.feesCollectedSbtc, 'sbtc')} sBTC` : '', effective.feesCollectedStx > 0 ? `${formatAmount(effective.feesCollectedStx, 'stx')} STX` : ''].filter(Boolean).join(' + ') || '0'}
             </div>
-            {(stats.feesCollectedSbtc > 0 || stats.feesCollectedStx > 0) && (
+            {(effective.feesCollectedSbtc > 0 || effective.feesCollectedStx > 0) && (
               <div className="text-caption text-muted-foreground mt-1">
                 ≈ ${
                   (
-                    (stats.feesCollectedSbtc > 0 ? parseFloat(amountToUsd(stats.feesCollectedSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0) +
-                    (stats.feesCollectedStx > 0 ? parseFloat(amountToUsd(stats.feesCollectedStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0)
+                    (effective.feesCollectedSbtc > 0 ? parseFloat(amountToUsd(effective.feesCollectedSbtc, 'sbtc', btcPriceUsd, stxPriceUsd)) || 0 : 0) +
+                    (effective.feesCollectedStx > 0 ? parseFloat(amountToUsd(effective.feesCollectedStx, 'stx', btcPriceUsd, stxPriceUsd)) || 0 : 0)
                   ).toFixed(2)
                 }
               </div>
@@ -1131,6 +1258,9 @@ export default function AdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Audit Log — surfaces every admin action indexed from on-chain events */}
+      <AdminAuditLog />
 
       {/* Indexer Health */}
       <IndexerHealthPanel />
