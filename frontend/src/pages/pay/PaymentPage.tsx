@@ -780,7 +780,7 @@ function PaymentPage() {
               {isConnecting ? (
                 <><Loader2 className="h-5 w-5 animate-spin" />Connecting...</>
               ) : (
-                <><Wallet className="h-5 w-5" />Connect Wallet & Pay</>
+                <><Wallet className="h-5 w-5" />Connect wallet</>
               )}
             </Button>
           </div>
@@ -829,7 +829,8 @@ function PaymentPage() {
         <Button
           variant="ghost"
           size="icon"
-          className="shrink-0 h-8 w-8"
+          aria-label={copiedAddress ? "Address copied" : "Copy merchant address"}
+          className="shrink-0 h-11 w-11"
           onClick={async () => {
             await navigator.clipboard.writeText(invoice.merchantAddress);
             setCopiedAddress(true);

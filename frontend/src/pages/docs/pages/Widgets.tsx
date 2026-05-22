@@ -52,7 +52,7 @@ export default function Widgets() {
       <h3>1. Direct payment</h3>
 
       <p>
-        Fixed-amount payment button — donation pages, tip jars, simple digital-good checkouts. No
+        Fixed-amount payment button — donation pages, one-off purchases, simple digital-good checkouts. No
         invoice is created; the payment goes straight into your merchant wallet.
       </p>
 

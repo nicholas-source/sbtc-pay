@@ -26,8 +26,8 @@ export default function Dashboard() {
       </p>
 
       <Callout variant="warning" title="Keep your seed phrase safe">
-        Your wallet is your identity. If you lose your seed phrase, you lose access to your merchant
-        account and any funds held in that wallet. sBTC Pay cannot recover it for you.
+        Your wallet is your identity. If you lose your seed phrase, you lose access to your account
+        and any funds held in that wallet. sBTC Pay cannot recover it for you.
       </Callout>
 
       <h2>Overview</h2>

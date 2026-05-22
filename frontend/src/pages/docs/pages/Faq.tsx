@@ -33,9 +33,10 @@ const FAQ_ITEMS = [
     q: "Can I accept fiat?",
     a: (
       <p>
-        Not directly. sBTC Pay is Bitcoin in, Bitcoin out. If you want fiat payouts, you'll need to
-        swap sBTC to fiat via a separate service like a crypto exchange or off-ramp. For merchants
-        needing direct card acceptance, a traditional processor is the right tool.
+        sBTC Pay is Bitcoin-native — you receive sBTC or STX directly to your wallet, no
+        custodian in the middle. That's the value: every payment settles on Bitcoin, you keep
+        the keys, and there's nothing for an intermediary to freeze, claw back, or skim. If you
+        need to convert to fiat later, off-ramp through any exchange that supports Stacks.
       </p>
     ),
   },
@@ -132,10 +133,11 @@ const FAQ_ITEMS = [
     q: "What jurisdictions does sBTC Pay work in?",
     a: (
       <p>
-        sBTC Pay is a non-custodial protocol — there's no onboarding check or regional gating. However,
-        merchants are responsible for their own jurisdiction's rules around accepting Bitcoin payments,
-        including tax reporting and (in some jurisdictions) money transmission licensing. Consult a
-        lawyer familiar with crypto in your region.
+        sBTC Pay is a non-custodial protocol — no onboarding check, no regional gating. Whoever you
+        are (business, freelancer, creator, contributor), you're responsible for your own
+        jurisdiction's rules around receiving Bitcoin — tax reporting, and money transmission
+        licensing if you operate as a merchant somewhere it's required. Consult a lawyer familiar
+        with crypto in your region.
       </p>
     ),
   },

@@ -12,9 +12,9 @@ export default function Refunds() {
       description="Issue full or partial refunds for any completed payment. All refunds are on-chain and auditable."
     >
       <p className="lead">
-        A refund moves funds from the merchant's wallet back to the customer's wallet. You can refund
-        partially (useful for price adjustments) or fully. There's a bounded refund window, so refunds
-        can't be issued indefinitely after payment.
+        A refund moves funds from your wallet back to the payer's wallet. You can refund partially
+        (useful for price adjustments) or fully. There's a bounded refund window, so refunds can't
+        be issued indefinitely after payment.
       </p>
 
       <h2>Issuing a refund</h2>
@@ -104,9 +104,9 @@ export default function Refunds() {
 
       <h3>Chargeback equivalent</h3>
       <p>
-        In crypto there's no "chargeback" — the merchant controls the refund. If a customer disputes a
-        charge, you have full discretion to refund or not. This means merchants take on the dispute
-        burden that card networks normally handle — factor that into your fraud policy.
+        In crypto there's no "chargeback" — you control the refund. If a payer disputes a charge,
+        you have full discretion to refund or not. This means you take on the dispute burden that
+        card networks normally handle — factor that into your fraud policy.
       </p>
 
       <h2>Errors you might hit</h2>
@@ -117,7 +117,7 @@ export default function Refunds() {
           <Link to="/docs/errors">Error Codes</Link> page for the exact constant.
         </li>
         <li>
-          <strong>Insufficient balance</strong> — your merchant wallet doesn't have enough sBTC/STX to
+          <strong>Insufficient balance</strong> — your wallet doesn't have enough sBTC/STX to
           cover the refund. Top it up before retrying.
         </li>
         <li>

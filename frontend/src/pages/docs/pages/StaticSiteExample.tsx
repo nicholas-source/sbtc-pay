@@ -13,7 +13,7 @@ export default function StaticSiteExample() {
     >
       <p className="lead">
         The simplest possible integration. One script tag, one button, a payment modal your customers
-        can use. Good for landing pages, tip jars, donation pages, simple Gumroad-style checkout flows,
+        can use. Good for landing pages, donation pages, simple Gumroad-style checkout flows,
         or any static site.
       </p>
 

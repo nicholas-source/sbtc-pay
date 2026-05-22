@@ -97,7 +97,7 @@ export default function Settlement() {
           accepting Bitcoin without running a Lightning node or a Bitcoin-to-fiat off-ramp.
         </li>
         <li>
-          <strong>STX:</strong> the native Stacks token. Useful for merchants in the Stacks ecosystem
+          <strong>STX:</strong> the native Stacks token. Useful for anyone in the Stacks ecosystem
           (e.g., selling services to other Stacks dApps) where transacting in STX avoids an extra swap.
         </li>
       </ul>
@@ -119,7 +119,7 @@ export default function Settlement() {
       </ul>
 
       <p>
-        This means even if you want to accept sBTC-only, your merchant wallet needs a small STX
+        This means even if you want to accept sBTC-only, your wallet needs a small STX
         balance to pay the network fee when issuing refunds or administrative transactions.
       </p>
     </DocsPage>

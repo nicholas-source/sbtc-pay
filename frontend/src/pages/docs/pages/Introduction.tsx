@@ -23,7 +23,7 @@ export default function Introduction() {
         {[
           { icon: Bitcoin, title: "One-time payments", body: "Direct wallet-to-wallet transfers or invoice-based checkout with partial and overpay support." },
           { icon: Repeat, title: "Subscriptions", body: "Recurring billing with pause, resume, cancel, and pro-rated intervals — all on-chain." },
-          { icon: LayoutGrid, title: "Embeddable widgets", body: "Drop three copy-paste widgets onto any site. No backend required on the merchant side." },
+          { icon: LayoutGrid, title: "Embeddable widgets", body: "Drop three copy-paste widgets onto any site. No backend required." },
           { icon: Shield, title: "Refunds & disputes", body: "Full and partial refunds within a bounded window, with transparent on-chain record." },
         ].map(({ icon: Icon, title, body }) => (
           <div key={title} className="rounded-lg border border-border bg-card p-4">

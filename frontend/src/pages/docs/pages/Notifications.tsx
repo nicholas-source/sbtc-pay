@@ -13,7 +13,7 @@ export default function Notifications() {
       description="Three ways to know when a payment lands — outbound webhooks (push), polling the indexer (pull), or running your own Chainhook."
     >
       <p className="lead">
-        When a payment hits your merchant wallet, you'll want to react — fulfill an order, grant access
+        When a payment hits your wallet, you'll want to react — fulfill an order, grant access
         to a product, update your own database. This page covers all three mechanisms, with real
         code.
       </p>
@@ -21,8 +21,8 @@ export default function Notifications() {
       <h2>Option 1 — Outbound webhooks (recommended)</h2>
 
       <p>
-        Set a <strong>Webhook URL</strong> in your merchant Settings. sBTC Pay sends a signed
-        HTTPS POST to that URL every time an on-chain event happens for your merchant — payment
+        Set a <strong>Webhook URL</strong> in your Settings. sBTC Pay sends a signed
+        HTTPS POST to that URL every time an on-chain event happens for your account — payment
         received, subscription created, refund processed, and so on.
       </p>
 

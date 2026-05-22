@@ -45,8 +45,8 @@ export default function Fees() {
       </p>
 
       <Callout variant="info" title="No fee on refunds">
-        When a merchant issues a refund, there's no additional protocol fee — the merchant pays the
-        refund amount from their own wallet directly to the customer.
+        When you issue a refund, there's no additional protocol fee — you pay the refund amount
+        from your own wallet directly to the payer.
       </Callout>
 
       <h2>Can the fee change?</h2>

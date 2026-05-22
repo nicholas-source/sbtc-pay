@@ -112,8 +112,8 @@ export default function Invoices() {
 
       <p>
         If <InlineCode>allowOverpay</InlineCode> is enabled, the customer can pay more than the invoice
-        amount. The excess is treated as a tip and goes to the merchant along with the base amount. This
-        is common for content creators and tip jars.
+        amount. The excess goes to the recipient along with the base amount. This is common for
+        content creators, fundraisers, and any "pay what you want" flow.
       </p>
 
       <Callout variant="warning" title="One or the other — usually">

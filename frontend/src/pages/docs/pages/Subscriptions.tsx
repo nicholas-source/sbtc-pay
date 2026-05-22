@@ -13,9 +13,9 @@ export default function Subscriptions() {
       description="Recurring billing — daily, weekly, monthly, or any custom interval — all settled on-chain in sBTC or STX."
     >
       <p className="lead">
-        A subscription is an agreement between a merchant and a subscriber: a fixed amount paid on a
-        fixed cadence. The contract tracks when the next payment is due, and either the subscriber or
-        any automation the merchant runs can trigger the payment once the interval has passed.
+        A subscription is an agreement between a recipient and a subscriber: a fixed amount paid on
+        a fixed cadence. The contract tracks when the next payment is due, and either the subscriber
+        or any automation you run can trigger the payment once the interval has passed.
       </p>
 
       <h2>Key differences from a credit-card subscription</h2>
