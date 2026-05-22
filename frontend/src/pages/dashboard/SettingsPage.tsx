@@ -28,8 +28,8 @@ import WebhookDelivery from "@/components/settings/WebhookDelivery";
 
 const schema = z.object({
   name: z.string().trim()
-    .min(2, "Business name must be at least 2 characters")
-    .max(CONTRACT_LIMITS.MERCHANT_NAME, `Business name must be ${CONTRACT_LIMITS.MERCHANT_NAME} characters or less`),
+    .min(2, "Display name must be at least 2 characters")
+    .max(CONTRACT_LIMITS.MERCHANT_NAME, `Display name must be ${CONTRACT_LIMITS.MERCHANT_NAME} characters or less`),
   description: z.string().trim()
     .max(CONTRACT_LIMITS.DESCRIPTION, `Description must be ${CONTRACT_LIMITS.DESCRIPTION} characters or less`)
     .optional().default(""),
@@ -73,7 +73,7 @@ function SettingsPage() {
     return (
       <div>
         <h1 className="text-heading-lg text-foreground">Settings</h1>
-        <p className="text-body-sm text-muted-foreground mt-1">You need to register as a merchant before you can update settings.</p>
+        <p className="text-body-sm text-muted-foreground mt-1">Create your account before you can update settings.</p>
       </div>
     );
   }
@@ -103,7 +103,7 @@ function SettingsPage() {
     <div className="flex flex-col gap-fluid-lg max-w-2xl">
       <div>
         <h1 className="text-heading-lg font-display text-foreground">Settings</h1>
-        <p className="text-body-sm text-muted-foreground mt-1">Manage your merchant profile.</p>
+        <p className="text-body-sm text-muted-foreground mt-1">Manage your account profile.</p>
       </div>
 
       {/* Profile Header */}
@@ -136,7 +136,7 @@ function SettingsPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-heading-sm">Profile Details</CardTitle>
-          <CardDescription>Update your merchant information.</CardDescription>
+          <CardDescription>Update your account information.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -144,7 +144,7 @@ function SettingsPage() {
               <FormField control={form.control} name="name" render={({ field }) => (
                 <FormItem>
                   <div className="flex justify-between">
-                    <FormLabel>Business Name</FormLabel>
+                    <FormLabel>Display name</FormLabel>
                     <span className="text-xs text-muted-foreground">{field.value?.length ?? 0}/{CONTRACT_LIMITS.MERCHANT_NAME}</span>
                   </div>
                   <FormControl><Input maxLength={CONTRACT_LIMITS.MERCHANT_NAME} {...field} /></FormControl>
@@ -197,14 +197,14 @@ function SettingsPage() {
       <Card className="border-destructive/30">
         <CardHeader>
           <CardTitle className="text-heading-sm text-destructive">Danger Zone</CardTitle>
-          <CardDescription>Irreversible actions for your merchant account.</CardDescription>
+          <CardDescription>Irreversible actions for your account.</CardDescription>
         </CardHeader>
         <CardContent>
           <Separator className="mb-4" />
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-foreground">Disconnect Merchant</p>
-              <p className="text-caption text-muted-foreground prose-width">Remove your merchant profile entirely.</p>
+              <p className="text-sm font-medium text-foreground">Disconnect account</p>
+              <p className="text-caption text-muted-foreground prose-width">Remove your profile locally. The on-chain registration stays on the contract.</p>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -212,13 +212,13 @@ function SettingsPage() {
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>Disconnect your merchant profile?</AlertDialogTitle>
+                  <AlertDialogTitle>Disconnect your account?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    This will remove your merchant profile and all settings. You'll need to re-register to accept payments again.
+                    This removes your locally cached profile. Your on-chain registration and payment history aren't affected — reconnecting the same wallet brings everything back.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Keep Profile</AlertDialogCancel>
+                  <AlertDialogCancel>Keep profile</AlertDialogCancel>
                   <AlertDialogAction onClick={clearProfile}>Disconnect</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { TrendingUp, FileText, Repeat, RefreshCcw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { TrendingUp, FileText, Repeat, RefreshCcw, FilePlus, Code2, ArrowRight } from "lucide-react";
 import { useMerchantStore } from "@/stores/merchant-store";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
@@ -10,6 +11,8 @@ import StatCard from "@/components/dashboard/StatCard";
 import RevenueChart from "@/components/dashboard/RevenueChart";
 import ActivityFeed from "@/components/dashboard/ActivityFeed";
 import { MerchantAnalyticsPanel } from "@/components/dashboard/MerchantAnalyticsPanel";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { amountToUsd, formatAmount } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
 import { PriceStatusBadge } from "@/components/pay/PriceStatusBadge";
@@ -86,6 +89,14 @@ function DashboardOverview() {
   const activeInvoices = invoices.filter((inv) => inv.status === "pending" || inv.status === "partial").length;
   const activeSubs = subscribers.filter((s) => s.status === "active").length;
 
+  // Empty state: brand-new merchant with no invoices, no subscribers, no direct payments.
+  // Show a welcome card with clear next actions instead of blank charts.
+  const isFreshAccount =
+    invoices.length === 0 &&
+    subscribers.length === 0 &&
+    directSbtc === 0 &&
+    directStx === 0;
+
   const stats = [
     { label: "Total Revenue", value: totalRevenueUsd, displayValue: revenueDisplay, unit: "", usd: totalRevenueUsd > 0 ? `$${totalRevenueUsd.toFixed(2)}` : "", icon: TrendingUp, change: "", accent: "success" as const },
     { label: "Active Invoices", value: activeInvoices, displayValue: String(activeInvoices), unit: "", usd: "", icon: FileText, change: "", accent: "primary" as const },
@@ -97,9 +108,44 @@ function DashboardOverview() {
     <div className="flex flex-col gap-fluid-lg">
       <div>
         <h1 className="text-heading-lg font-display text-foreground">Dashboard</h1>
-        <p className="text-body-sm text-muted-foreground mt-1">Overview of your payment activity.</p>
+        <p className="text-body-sm text-muted-foreground mt-1">
+          {isFreshAccount
+            ? `Welcome${profile.name ? `, ${profile.name}` : ""} — your account is live.`
+            : "Overview of your payment activity."}
+        </p>
         <PriceStatusBadge />
       </div>
+
+      {isFreshAccount && (
+        <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-background to-secondary/5 overflow-hidden">
+          <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center gap-6">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-heading-sm font-display text-foreground">
+                Get your first payment in.
+              </h2>
+              <p className="mt-1.5 text-body-sm text-muted-foreground">
+                Create an invoice with an amount + memo, share the link, and watch it land
+                here in real time. Or grab a script tag to embed a Pay button on your site.
+              </p>
+              <div className="mt-4 flex flex-col sm:flex-row gap-2.5">
+                <Button asChild size="sm" className="gap-2">
+                  <Link to="/dashboard/invoices">
+                    <FilePlus className="h-4 w-4" />
+                    Create your first invoice
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+                <Button asChild size="sm" variant="outline" className="gap-2">
+                  <Link to="/dashboard/widget">
+                    <Code2 className="h-4 w-4" />
+                    Generate an embed
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-space-md">
         {stats.map((s) => (

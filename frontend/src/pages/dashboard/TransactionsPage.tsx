@@ -358,7 +358,19 @@ export default function TransactionsPage() {
                   <TableRow>
                     <TableCell colSpan={9} className="text-center py-12 text-muted-foreground">
                       <ArrowLeftRight className="h-8 w-8 mx-auto mb-2 opacity-40" />
-                      <p>{rows.length === 0 ? "No transactions yet" : "No results for this filter"}</p>
+                      {rows.length === 0 ? (
+                        <>
+                          <p className="text-foreground font-medium">No transactions yet</p>
+                          <p className="text-caption text-muted-foreground mt-1">
+                            Create an invoice or share a payment link to start receiving payments.
+                          </p>
+                          <Button asChild variant="outline" size="sm" className="mt-4">
+                            <a href="/dashboard/invoices">Go to Invoices</a>
+                          </Button>
+                        </>
+                      ) : (
+                        <p>No results for this filter</p>
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (
