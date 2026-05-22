@@ -6,7 +6,7 @@ import { useInvoiceStore } from "@/stores/invoice-store";
 import { useSubscriptionStore } from "@/stores/subscription-store";
 import { useWalletStore } from "@/stores/wallet-store";
 import { supabaseWithWallet } from "@/lib/supabase/client";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { TokenType } from "@/lib/stacks/config";
 
 // Direct payments don't have a Zustand store yet — fetched here directly.
@@ -59,31 +59,66 @@ function truncateAddr(addr: string): string {
 
 export default function ActivityFeed() {
   const invoices = useInvoiceStore((s) => s.invoices);
+  const fetchInvoices = useInvoiceStore((s) => s.fetchInvoices);
   const subscribers = useSubscriptionStore((s) => s.subscribers);
   const plans = useSubscriptionStore((s) => s.plans);
   const { address, isAuthenticated } = useWalletStore();
 
   const [directPayments, setDirectPayments] = useState<DirectPaymentRow[]>([]);
 
-  useEffect(() => {
+  // Pulled out of the effect so the realtime callback can re-run it on demand.
+  const refetchDirectPayments = useCallback(async () => {
     if (!address || !isAuthenticated) {
       setDirectPayments([]);
       return;
     }
-    let cancelled = false;
-    (async () => {
-      const client = supabaseWithWallet(address);
-      const { data, error } = await client
-        .from("direct_payments")
-        .select("id, amount, payer, created_at, token_type")
-        .eq("merchant_principal", address)
-        .order("block_height", { ascending: false })
-        .limit(DIRECT_PAYMENTS_LIMIT);
-      if (cancelled || error || !data) return;
-      setDirectPayments(data as DirectPaymentRow[]);
-    })();
-    return () => { cancelled = true; };
+    const client = supabaseWithWallet(address);
+    const { data, error } = await client
+      .from("direct_payments")
+      .select("id, amount, payer, created_at, token_type")
+      .eq("merchant_principal", address)
+      .order("block_height", { ascending: false })
+      .limit(DIRECT_PAYMENTS_LIMIT);
+    if (error || !data) return;
+    setDirectPayments(data as DirectPaymentRow[]);
   }, [address, isAuthenticated]);
+
+  useEffect(() => {
+    refetchDirectPayments();
+  }, [refetchDirectPayments]);
+
+  // Live updates: whenever a new payment for this merchant lands on-chain
+  // (chainhook inserts a row), refresh whichever data source it belongs to.
+  // Migration 017 enables the publication on these tables; without it the
+  // channel opens but no events arrive.
+  useEffect(() => {
+    if (!address || !isAuthenticated) return;
+    const client = supabaseWithWallet(address);
+    const channel = client
+      .channel(`activity-feed-${address}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "direct_payments",
+          filter: `merchant_principal=eq.${address}`,
+        },
+        () => { refetchDirectPayments(); },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "payments",
+          filter: `merchant_principal=eq.${address}`,
+        },
+        () => { fetchInvoices(address).catch(() => { /* swallow */ }); },
+      )
+      .subscribe();
+    return () => { client.removeChannel(channel); };
+  }, [address, isAuthenticated, refetchDirectPayments, fetchInvoices]);
 
   const events = useMemo(() => {
     const items: ActivityEvent[] = [];

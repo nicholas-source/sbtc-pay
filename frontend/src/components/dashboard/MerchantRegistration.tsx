@@ -13,8 +13,8 @@ import { toast } from "sonner";
 
 const schema = z.object({
   name: z.string().trim()
-    .min(2, "Business name must be at least 2 characters")
-    .max(CONTRACT_LIMITS.MERCHANT_NAME, `Business name must be ${CONTRACT_LIMITS.MERCHANT_NAME} characters or less`),
+    .min(2, "Display name must be at least 2 characters")
+    .max(CONTRACT_LIMITS.MERCHANT_NAME, `Display name must be ${CONTRACT_LIMITS.MERCHANT_NAME} characters or less`),
   description: z.string().trim()
     .max(CONTRACT_LIMITS.DESCRIPTION, `Description must be ${CONTRACT_LIMITS.DESCRIPTION} characters or less`)
     .optional().default(""),
@@ -57,16 +57,17 @@ export default function MerchantRegistration() {
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Store className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-heading-lg">Register as Merchant</CardTitle>
+          <CardTitle className="text-heading-lg">Create your account</CardTitle>
           <CardDescription className="text-body-sm">
-            Set up your merchant profile to start accepting sBTC payments.
+            One on-chain transaction sets up your profile so you can start receiving
+            sBTC and STX. Takes a few seconds and a tiny bit of STX for gas.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isRegistering ? (
             <div className="flex flex-col items-center gap-4 py-8">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground animate-pulse">Submitting to blockchain...</p>
+              <p className="text-sm text-muted-foreground animate-pulse">Registering on-chain…</p>
             </div>
           ) : (
             <Form {...form}>
@@ -77,11 +78,11 @@ export default function MerchantRegistration() {
                   render={({ field }) => (
                     <FormItem>
                       <div className="flex justify-between">
-                        <FormLabel>Business Name *</FormLabel>
+                        <FormLabel>Display name *</FormLabel>
                         <span className="text-xs text-muted-foreground">{field.value?.length ?? 0}/{CONTRACT_LIMITS.MERCHANT_NAME}</span>
                       </div>
                       <FormControl>
-                        <Input placeholder="Acme Inc." maxLength={CONTRACT_LIMITS.MERCHANT_NAME} {...field} />
+                        <Input placeholder="Acme Inc., @yourname, your DAO…" maxLength={CONTRACT_LIMITS.MERCHANT_NAME} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -97,7 +98,7 @@ export default function MerchantRegistration() {
                         <span className="text-xs text-muted-foreground">{field.value?.length ?? 0}/{CONTRACT_LIMITS.DESCRIPTION}</span>
                       </div>
                       <FormControl>
-                        <Textarea placeholder="Tell customers about your business..." rows={3} maxLength={CONTRACT_LIMITS.DESCRIPTION} {...field} />
+                        <Textarea placeholder="What are you collecting payments for? Tips, services, products, contributions…" rows={3} maxLength={CONTRACT_LIMITS.DESCRIPTION} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -136,7 +137,7 @@ export default function MerchantRegistration() {
                   )}
                 />
                 <Button type="submit" className="w-full" size="lg">
-                  Register Merchant
+                  Create account
                 </Button>
               </form>
             </Form>
