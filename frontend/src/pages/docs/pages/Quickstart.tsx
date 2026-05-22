@@ -110,25 +110,25 @@ export default function Quickstart() {
           </p>
         </Step>
 
-        <Step number={6} title="Embed a widget on your site">
+        <Step number={6} title="Embed a Pay button on your site">
           <p>
             From the dashboard, go to <strong>Widget Generator</strong>. Pick <strong>Direct</strong>,
             set an amount, and copy the generated embed code. It looks like this:
           </p>
           <CodeBlock
             language="html"
-            code={`<iframe
-  src="https://testnet.sbtc-pay.com/widget/ST123...?amount=10000"
-  width="100%"
-  height="520"
-  frameborder="0"
-  style="border-radius:12px;overflow:hidden;max-width:420px;"
-  allow="clipboard-write"
-></iframe>`}
+            code={`<!-- Load the SDK once per page -->
+<script src="https://testnet.sbtc-pay.com/sbtcpay.js" async></script>
+
+<!-- Drop a Pay button anywhere -->
+<div data-sbtcpay="direct"
+     data-sbtcpay-merchant="ST123..."
+     data-sbtcpay-amount="10000"></div>`}
           />
           <p>
-            Paste this into any HTML page. Your customer sees a payment widget, connects their wallet,
-            and pays — and the payment lands in your dashboard.
+            Paste this into any HTML page. A styled Pay button appears; clicking it opens a modal
+            where the customer connects a wallet and pays. The payment lands in your dashboard in
+            real time.
           </p>
         </Step>
       </Steps>

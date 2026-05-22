@@ -81,19 +81,15 @@ export default function Invoices() {
       <h3>2. Embeddable invoice widget</h3>
 
       <p>
-        For a checkout page where the invoice lives on your site, use the invoice widget. See{" "}
-        <Link to="/docs/widgets">Widget Overview</Link> for full details.
+        For a checkout page where the invoice lives on your site, drop the SDK in and reference the
+        invoice ID. See <Link to="/docs/widgets">Widget Overview</Link> for full details.
       </p>
 
       <CodeBlock
         language="html"
-        code={`<iframe
-  src="https://sbtc-pay.com/widget/invoice/{invoiceId}"
-  width="100%"
-  height="520"
-  frameborder="0"
-  style="border-radius:12px;"
-></iframe>`}
+        code={`<script src="https://sbtc-pay.com/sbtcpay.js" async></script>
+
+<div data-sbtcpay="invoice" data-sbtcpay-invoice="{invoiceId}"></div>`}
       />
 
       <h2>Partial payments</h2>

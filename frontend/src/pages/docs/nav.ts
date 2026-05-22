@@ -18,12 +18,12 @@ export const DOCS_NAV: DocsNavSection[] = [
     ],
   },
   {
-    label: "For Merchants",
+    label: "Receiving Payments",
     items: [
       { slug: "invoices", title: "Creating Invoices", description: "One-time payments with partial and overpay support" },
       { slug: "subscriptions", title: "Subscriptions", description: "Recurring billing with pause/resume/cancel" },
       { slug: "refunds", title: "Processing Refunds", description: "Full and partial refund flow" },
-      { slug: "dashboard", title: "Dashboard Guide", description: "Navigating your merchant dashboard" },
+      { slug: "dashboard", title: "Dashboard Guide", description: "Navigating your dashboard" },
       { slug: "notifications", title: "Payment Notifications", description: "How to get notified when a payment lands" },
       { slug: "fees", title: "Fees", description: "Protocol fee, network fee, and how they split" },
     ],

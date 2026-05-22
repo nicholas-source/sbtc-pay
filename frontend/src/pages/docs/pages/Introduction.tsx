@@ -9,7 +9,7 @@ export default function Introduction() {
       slug=""
       section="Get Started"
       title="Introduction"
-      description="sBTC Pay is a Stacks-native payment platform that lets merchants accept sBTC and STX with Stripe-style ergonomics. This guide takes you from never heard of it to first live payment."
+      description="sBTC Pay is a Stacks-native payment platform for receiving sBTC and STX with Stripe-style ergonomics. This guide takes you from never heard of it to first live payment."
     >
       <p className="lead">
         If you've used Stripe, PayPal, or Paddle, sBTC Pay will feel familiar. The difference: settlement
@@ -38,12 +38,14 @@ export default function Introduction() {
 
       <ul>
         <li>
-          <strong>Merchants</strong> — online stores, content creators, SaaS founders, donation pages.
-          Anyone who wants to accept Bitcoin without signing up for a custodial processor.
+          <strong>Anyone who needs to receive sBTC or STX</strong> — online stores, indie creators,
+          SaaS founders, DAO treasuries, freelancers, hackathon organizers, donation pages. If you
+          have a Stacks wallet and want to get paid into it without a custodial processor in the
+          middle, this is for you.
         </li>
         <li>
-          <strong>Developers integrating sBTC Pay</strong> — you need a widget that drops into a checkout
-          page and handles wallet connection, payment, and confirmation.
+          <strong>Developers integrating sBTC Pay</strong> — you want a script tag that drops into a
+          page and handles wallet connection, payment, and confirmation. No backend required.
         </li>
         <li>
           <strong>Auditors and technical evaluators</strong> — the{" "}
@@ -60,8 +62,8 @@ export default function Introduction() {
           sBTC Pay never holds your money.
         </li>
         <li>
-          <strong>Bitcoin-settled.</strong> sBTC is 1:1 Bitcoin. Merchants receive the same asset that
-          settles the rails, not a stablecoin proxy.
+          <strong>Bitcoin-settled.</strong> sBTC is 1:1 Bitcoin. You receive the same asset that
+          settles the rails — not a stablecoin proxy.
         </li>
         <li>
           <strong>Transparent.</strong> Every invoice, payment, subscription, and refund is a verifiable
@@ -73,9 +75,14 @@ export default function Introduction() {
         </li>
       </ul>
 
-      <Callout variant="tip" title="Not sure if sBTC Pay fits?">
-        If you need <strong>fiat payouts</strong> or <strong>credit card acceptance</strong>, this isn't
-        the right tool. sBTC Pay is Bitcoin in, Bitcoin out. For fiat rails, use a traditional processor.
+      <Callout variant="tip" title="Where sBTC Pay shines">
+        <ul className="my-0 ml-4 list-disc">
+          <li><strong>Direct settlement.</strong> Funds land in your wallet the moment a payment confirms — no platform balance, no payout schedule, no holds.</li>
+          <li><strong>Global by default.</strong> Anyone with a Stacks wallet can pay you. No merchant account application, no country gating, no KYC.</li>
+          <li><strong>Bitcoin, not a proxy.</strong> sBTC is 1:1 Bitcoin. You're paid in the asset, not a stablecoin or store credit.</li>
+          <li><strong>No chargebacks.</strong> Payments are final on-chain — no fraud disputes, no reversals, no hidden hold periods.</li>
+          <li><strong>No floor.</strong> No monthly fees, no minimums, no setup. 0.5% per payment, deducted on-chain at settlement time.</li>
+        </ul>
       </Callout>
 
       <h2>What to read next</h2>

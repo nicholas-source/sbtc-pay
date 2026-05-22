@@ -7,22 +7,22 @@ export default function Dashboard() {
   return (
     <DocsPage
       slug="dashboard"
-      section="For Merchants"
+      section="Receiving Payments"
       title="Dashboard Guide"
-      description="A tour of the merchant dashboard — what every screen shows and how to get what you need fast."
+      description="A tour of the dashboard — what every screen shows and how to get what you need fast."
     >
       <p className="lead">
         The dashboard is your home base. Once your wallet is connected, you can see every invoice,
         subscription, refund, and payment you've received — plus configure widgets and manage your
-        merchant profile.
+        account profile.
       </p>
 
       <h2>Connecting your wallet</h2>
 
       <p>
         Click <strong>Connect Wallet</strong> in the top right. Pick your wallet, approve the connection
-        — that's it. The dashboard uses your wallet address as your merchant identity. There's no
-        password, no email, no separate account.
+        — that's it. The dashboard uses your wallet address as your identity. There's no password, no
+        email, no separate account.
       </p>
 
       <Callout variant="warning" title="Keep your seed phrase safe">
@@ -78,17 +78,17 @@ export default function Dashboard() {
 
       <h2>Settings</h2>
 
-      <p>Update your merchant profile:</p>
+      <p>Update your account profile:</p>
 
       <ul>
-        <li><strong>Display name</strong> — what customers see on payment pages</li>
-        <li><strong>Description</strong> — a short blurb about your business</li>
+        <li><strong>Display name</strong> — what payers see on payment pages</li>
+        <li><strong>Description</strong> — a short blurb about what you're collecting payments for</li>
         <li><strong>Logo URL</strong> — shows on your payment pages and customer portal</li>
         <li><strong>Webhook URL</strong> — (optional) we POST payment events here so your system can sync</li>
       </ul>
 
       <p>
-        Changes to these fields are on-chain (your merchant record is part of the contract). Updating
+        Changes to these fields are on-chain (your account record is part of the contract). Updating
         requires a wallet transaction and a small fee.
       </p>
 
