@@ -236,7 +236,7 @@ export default function InvoiceTable({ onSelect }: Props) {
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 focus-ring" aria-label="Invoice actions">
+                          <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-9 sm:w-9 focus-ring" aria-label="Invoice actions">
                             <span className="text-lg leading-none">⋯</span>
                           </Button>
                         </DropdownMenuTrigger>
