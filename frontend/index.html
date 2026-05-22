@@ -3,20 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <!-- Favicons — all sizes served from the same PNG; browser picks the best fit -->
+    <!-- Favicons — currently all sizes resolve to /favicon.png until per-size
+         assets are produced. Browsers downsample acceptably for now.
+         Designer deliverables to drop in (no HTML changes needed once present):
+           /favicon-32.png      (32×32)
+           /favicon-16.png      (16×16)
+           /apple-touch-icon.png (180×180)
+           /icon-192.png        (192×192, manifest)
+           /icon-512.png        (512×512, manifest)
+           /og-image.png        (1200×630, social card) -->
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="/favicon.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png" />
-    <!-- Apple touch icons -->
+    <!-- Apple touch icon (180×180 is the modern one; older sizes derive from it) -->
     <link rel="apple-touch-icon" sizes="180x180" href="/favicon.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/favicon.png" />
-    <link rel="apple-touch-icon" sizes="120x120" href="/favicon.png" />
-    <!-- Windows / PWA -->
+    <!-- PWA manifest (icons + theme for "Add to Home Screen") -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Windows tile -->
     <meta name="msapplication-TileImage" content="/favicon.png" />
     <meta name="msapplication-TileColor" content="#F97316" />
     <meta name="theme-color" content="#F97316" />
-    <title>sBTC Pay - Bitcoin Payments on Stacks</title>
-    <meta name="description" content="Enterprise-grade Bitcoin payment infrastructure. Invoicing, subscriptions, and embeddable widgets — built on Stacks, secured by Bitcoin." />
+    <title>sBTC Pay — Get paid in sBTC</title>
+    <meta name="description" content="A working payment link in 60 seconds. Invoices, subscriptions, one-time payments — paid directly to your wallet in sBTC or STX." />
 
     <!-- Preconnect to font CDNs -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -34,14 +42,25 @@
     />
     <meta name="author" content="sBTC Pay" />
 
-    <meta property="og:title" content="sBTC Pay - Bitcoin Payments on Stacks" />
-    <meta property="og:description" content="Enterprise-grade Bitcoin payment infrastructure. Invoicing, subscriptions, and embeddable widgets — built on Stacks, secured by Bitcoin." />
+    <!-- Open Graph (Facebook, LinkedIn, Discord, Telegram, Slack, etc.) -->
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:site_name" content="sBTC Pay" />
+    <meta property="og:title" content="sBTC Pay — Get paid in sBTC" />
+    <meta property="og:description" content="A working payment link in 60 seconds. Invoices, subscriptions, one-time payments — paid directly to your wallet in sBTC or STX." />
+    <meta property="og:url" content="https://sbtc-pay.com" />
+    <!-- og:image — falls back to favicon until a proper 1200×630 social card is designed. -->
+    <meta property="og:image" content="/favicon.png" />
+    <meta property="og:image:alt" content="sBTC Pay logo" />
 
-    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Twitter / X.
+         Card is "summary" while we use the favicon as placeholder image.
+         Once /og-image.png exists at 1200×630, change to "summary_large_image". -->
+    <meta name="twitter:card" content="summary" />
     <meta name="twitter:site" content="@sBTCPay" />
-    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:title" content="sBTC Pay — Get paid in sBTC" />
+    <meta name="twitter:description" content="A working payment link in 60 seconds. Invoices, subscriptions, one-time payments — paid directly to your wallet in sBTC or STX." />
+    <meta name="twitter:image" content="/favicon.png" />
+    <meta name="twitter:image:alt" content="sBTC Pay logo" />
   </head>
 
   <body class="bg-[hsl(220,16%,6%)]">
