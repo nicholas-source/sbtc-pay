@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bitcoin, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useWalletStore } from "@/stores/wallet-store";
 import InvoiceMock from "@/components/landing/InvoiceMock";
 
@@ -35,40 +35,41 @@ export default function HeroSection() {
           animate="visible"
           variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
         >
-          <motion.div variants={fadeUp} custom={0}>
-            <span className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 sm:px-4 py-1.5 text-caption font-semibold text-primary">
-              <Bitcoin className="h-3.5 w-3.5" />
-              Powered by Stacks & sBTC
-            </span>
-          </motion.div>
-
           <motion.h1
             variants={fadeUp}
-            custom={1}
-            className="mt-6 text-display sm:text-display-lg lg:text-display-xl tracking-tight"
+            custom={0}
+            className="text-display sm:text-display-lg lg:text-display-xl tracking-tight text-balance"
           >
-            Accept Bitcoin payments.{" "}
-            <span className="text-primary">Built on Stacks.</span>
+            Get paid in sBTC.{" "}
+            <span className="text-primary whitespace-nowrap">Nothing weird.</span>
           </motion.h1>
 
           <motion.p
             variants={fadeUp}
-            custom={2}
-            className="mt-6 text-body-lg text-muted-foreground max-w-xl mx-auto"
+            custom={1}
+            className="mt-6 text-body-lg text-muted-foreground max-w-xl mx-auto text-balance"
           >
-            Enterprise-grade invoicing with partial payments, refunds, recurring
-            subscriptions, and embeddable widgets — settled directly to your wallet on Bitcoin.
+            A working payment link in 60 seconds. Invoices, subscriptions,
+            one-time payments — paid directly to your wallet in sBTC or STX.
           </motion.p>
 
-          <motion.div variants={fadeUp} custom={3} className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center gap-2.5 sm:gap-3 md:gap-4">
+          <motion.div variants={fadeUp} custom={2} className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center gap-2.5 sm:gap-3 md:gap-4">
             <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" onClick={handleGetStarted}>
-              {isConnected ? "Open Dashboard" : "Get Started"}
+              {isConnected ? "Open dashboard" : "Get your link"}
               <ArrowRight className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
               <a href="#how-it-works">How it works</a>
             </Button>
           </motion.div>
+
+          <motion.p
+            variants={fadeUp}
+            custom={3}
+            className="mt-6 text-caption text-muted-foreground"
+          >
+            Live on Stacks mainnet · Non-custodial
+          </motion.p>
 
           {/* Animated invoice mock — visible on all screen sizes */}
           <div className="mt-10 sm:mt-12 md:mt-14">

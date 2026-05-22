@@ -15,7 +15,7 @@ const features = [
   { icon: Repeat, title: "Subscriptions", desc: "Recurring billing with pause, resume, and cancel — all trustlessly on-chain.", color: "primary" as const },
   { icon: Shield, title: "No Chargebacks", desc: "Immutable blockchain payments mean zero fraud risk and zero disputes.", color: "secondary" as const },
   { icon: Zap, title: "Instant Settlement", desc: "Funds arrive directly to your wallet. No intermediaries, no holding periods.", color: "primary" as const },
-  { icon: Code, title: "Developer First", desc: "Embeddable widgets and webhooks for seamless integration.", color: "secondary" as const },
+  { icon: Code, title: "Developer First", desc: "Drop in a script tag. Listen for webhooks. Ship in an afternoon.", color: "secondary" as const },
 ];
 
 const colorClasses = {
@@ -36,10 +36,10 @@ export default function FeaturesSection() {
         >
           <h2 className="text-heading-lg sm:text-display font-display text-foreground">
             Everything you need to{" "}
-            <span className="text-secondary">accept sBTC</span>
+            <span className="text-secondary">get paid in sBTC.</span>
           </h2>
           <p className="mt-4 text-body-lg text-muted-foreground max-w-xl mx-auto">
-            A complete payment platform designed for modern businesses.
+            Invoices, subscriptions, refunds, embeds — all the boring parts, handled.
           </p>
         </motion.div>
 

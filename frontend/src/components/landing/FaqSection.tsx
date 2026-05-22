@@ -10,6 +10,10 @@ interface FaqItem {
 
 const FAQS: FaqItem[] = [
   {
+    q: "Who can use sBTC Pay?",
+    a: "Anyone with a Stacks wallet who needs to receive sBTC or STX — creators getting paid for their work, freelancers invoicing clients, DAOs collecting contributions, indie SaaS billing subscriptions, and businesses accepting on-chain payments. The dashboard refers to every recipient as a \"merchant\" because that's the smart contract's term for a registered Stacks principal — not a description of who has to use it. Registration is a single on-chain transaction (a few seconds and a small amount of STX for gas) and you're set up.",
+  },
+  {
     q: "Which wallets are supported?",
     a: "Leather and Xverse — the two leading Stacks wallets. Both are available as browser extensions and mobile apps. No wallet install? The payment page also shows a QR code so mobile users can pay directly.",
   },
@@ -31,11 +35,11 @@ const FAQS: FaqItem[] = [
   },
   {
     q: "How do recurring subscriptions work?",
-    a: "Merchants create subscription plans with a price and interval (daily, weekly, monthly, etc.). Customers subscribe on-chain. Each renewal is an explicit on-chain transaction — there is no automatic pull from customer wallets. Customers stay in full control and can cancel at any time.",
+    a: "Create subscription plans with a price and interval (daily, weekly, monthly, etc.). Subscribers sign up on-chain. Each renewal is an explicit on-chain transaction — there is no automatic pull from anyone's wallet. Subscribers stay in full control and can cancel at any time.",
   },
   {
     q: "Can I embed a payment widget on my existing website?",
-    a: "Yes. The Widget Generator in your dashboard produces a single <iframe> snippet. Drop it into any HTML page, React app, or static site — no SDK, no build step, no backend needed.",
+    a: "Yes. The Widget Generator in your dashboard outputs a <script> tag and a data-sbtcpay element you paste into any HTML page, React app, or static site — a styled Pay button appears wherever you drop it and opens a payment modal on click. An <iframe> embed is also available if you'd rather show the widget inline.",
   },
 ];
 
@@ -95,7 +99,7 @@ export default function FaqSection() {
             Common questions
           </h2>
           <p className="mt-4 text-body-lg text-muted-foreground max-w-lg mx-auto">
-            Everything you need to know before accepting your first Bitcoin payment.
+            Everything you need to know before getting paid in sBTC.
           </p>
         </motion.div>
 

@@ -6,11 +6,11 @@ import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useWalletStore } from "@/stores/wallet-store";
 
 const checkpoints = [
-  "0.5% platform fee — the lowest in crypto payments",
+  "0.5% platform fee, deducted on-chain at payment time",
   "No monthly fees, no hidden costs",
-  "Settle directly to your wallet",
+  "Settles directly to your wallet — no intermediary holds funds",
   "Real-time webhook notifications",
-  "Embeddable payment widgets",
+  "Script tag, iframe, or programmatic SDK — your choice",
 ];
 
 export default function PricingSection() {
@@ -77,7 +77,7 @@ export default function PricingSection() {
               </div>
 
               <Button size="lg" className="w-full mt-8 h-12 gap-2 text-base" onClick={handleStart}>
-                {isConnected ? "Open Dashboard" : "Start Accepting Payments"}
+                {isConnected ? "Open dashboard" : "Get your link"}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </CardContent>

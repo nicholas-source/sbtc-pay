@@ -4,8 +4,8 @@ import { Wallet, Link2, Zap } from "lucide-react";
 const STEPS = [
   {
     Icon: Wallet,
-    title: "Connect your wallet",
-    desc: "Link Leather or Xverse. Sign a message to verify ownership — no email, no password, no KYC.",
+    title: "Connect & register",
+    desc: "Link Leather or Xverse, then register your account on-chain — one transaction, about 10 seconds. No email, no password, no KYC.",
     color: "primary" as const,
   },
   {
@@ -17,7 +17,7 @@ const STEPS = [
   {
     Icon: Zap,
     title: "Receive funds on-chain",
-    desc: "Customers pay directly into your wallet. One Stacks block — ~10 seconds — and the payment is final.",
+    desc: "Anyone with sBTC pays directly into your wallet. One Stacks block — ~10 seconds — and it's final.",
     color: "primary" as const,
   },
 ];

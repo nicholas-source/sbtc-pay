@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Bitcoin, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useWalletStore } from "@/stores/wallet-store";
 
 export default function CtaSection() {
@@ -31,21 +31,21 @@ export default function CtaSection() {
           transition={{ duration: 0.5 }}
         >
           <h2 className="text-heading-lg sm:text-display lg:text-display-lg font-display text-foreground mb-4">
-            Ready to accept{" "}
-            <span className="text-primary">Bitcoin payments?</span>
+            Ready when{" "}
+            <span className="text-primary">you are.</span>
           </h2>
           <p className="text-body-lg text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join merchants already using sBTC Pay. Connect your wallet and create your first invoice
-            in under a minute.
+            Connect a wallet and you'll have a live payment link in under a minute.
+            No accounts. No waitlists. No KYC.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button size="lg" className="gap-2 h-12 px-8 text-base w-full sm:w-auto" onClick={handleStart}>
-              <Bitcoin className="h-4 w-4" />
-              {isConnected ? "Open Dashboard" : "Connect Wallet to Start"}
+              {isConnected ? "Open dashboard" : "Get your link"}
+              <ArrowRight className="h-4 w-4" />
             </Button>
             <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto gap-2" asChild>
               <Link to="/docs">
-                Read the Docs <ArrowRight className="h-4 w-4" />
+                Read the docs <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
           </div>

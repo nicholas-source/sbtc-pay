@@ -114,10 +114,14 @@ export default function LandingNavbar() {
           <Link to="/docs" className="hover:text-foreground transition-colors">Docs</Link>
         </nav>
 
-        {/* Desktop wallet + CTA */}
+        {/* Desktop wallet + CTA.
+            Navbar CTA is intentionally NOT a "Get Started" duplicate of the
+            hero — it only appears for already-connected users as a quick
+            Dashboard jump. For visitors, the WalletButton below handles
+            wallet connect and the hero owns the "Get your link" CTA. */}
         <div className="hidden md:flex items-center gap-2.5">
           <AnimatePresence>
-            {!heroVisible && (
+            {isConnected && !heroVisible && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -125,7 +129,7 @@ export default function LandingNavbar() {
                 transition={{ duration: 0.15, ease: "easeOut" }}
               >
                 <Button size="sm" onClick={handleGetStarted}>
-                  {isConnected ? "Dashboard" : "Get Started"}
+                  Dashboard
                 </Button>
               </motion.div>
             )}
@@ -169,9 +173,11 @@ export default function LandingNavbar() {
               ))}
               <Link to="/docs" onClick={closeMenu} className="py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors min-h-[44px] flex items-center">Docs</Link>
               <div className="pt-3 border-t border-border/50 flex flex-col gap-2">
-                <Button className="w-full" onClick={handleGetStarted}>
-                  {isConnected ? "Open Dashboard" : "Get Started"}
-                </Button>
+                {isConnected && (
+                  <Button className="w-full" onClick={handleGetStarted}>
+                    Open dashboard
+                  </Button>
+                )}
                 <WalletButton />
               </div>
             </div>

@@ -4,18 +4,16 @@ import { Link } from "react-router-dom";
 import { Code, Copy, Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-const SNIPPET = `<!-- Embed sBTC Pay in any webpage -->
-<iframe
-  src="https://sbtc-pay.com/widget/invoice?id=inv_28f4a3"
-  width="420"
-  height="380"
-  style="border:none;border-radius:16px"
-></iframe>`;
+const SNIPPET = `<!-- Load the SDK once per page -->
+<script src="https://sbtc-pay.com/sbtcpay.js" async></script>
+
+<!-- Drop a Pay button anywhere -->
+<div data-sbtcpay="invoice" data-sbtcpay-invoice="123"></div>`;
 
 const BENEFITS = [
   "Works in any HTML page, React, Vue, or plain site",
-  "Real-time payment status via webhooks",
-  "Customisable token, amount, and expiry",
+  "Real-time payment status via webhooks + window events",
+  "Customisable token, amount, memo, expiry",
   "Generate the code instantly in your dashboard",
 ];
 
@@ -44,12 +42,13 @@ export default function DeveloperSection() {
               Developer First
             </span>
             <h2 className="text-heading-lg sm:text-display font-display text-foreground mb-4">
-              One iframe.{" "}
+              One script tag.{" "}
               <span className="text-secondary">Any website.</span>
             </h2>
             <p className="text-body-lg text-muted-foreground mb-6">
-              Embed a fully functional Bitcoin payment widget into any webpage with a single line of
-              HTML. No SDK, no backend, no build step required.
+              Drop in the SDK, add a <code className="font-mono text-secondary">data-sbtcpay</code>{" "}
+              attribute, and a styled Pay button appears wherever you want it. Click opens a modal
+              — no backend, no build step, no layout work.
             </p>
             <ul className="flex flex-col gap-3 mb-8">
               {BENEFITS.map((item) => (
@@ -99,13 +98,16 @@ export default function DeveloperSection() {
               </div>
               {/* Code */}
               <pre className="p-5 text-caption font-mono overflow-x-auto leading-6">
-                <span className="text-muted-foreground/50">{`<!-- Embed sBTC Pay in any webpage -->\n`}</span>
-                <span className="text-secondary">{`<iframe\n`}</span>
-                <span className="text-foreground">{`  src`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"https://sbtc-pay.com/widget/invoice?id=inv_28f4a3"`}</span>{`\n`}
-                <span className="text-foreground">{`  width`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"420"`}</span>{`\n`}
-                <span className="text-foreground">{`  height`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"380"`}</span>{`\n`}
-                <span className="text-foreground">{`  style`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"border:none;border-radius:16px"`}</span>{`\n`}
-                <span className="text-secondary">{`></iframe>`}</span>
+                <span className="text-muted-foreground/50">{`<!-- Load the SDK once per page -->\n`}</span>
+                <span className="text-secondary">{`<script `}</span>
+                <span className="text-foreground">{`src`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"https://sbtc-pay.com/sbtcpay.js"`}</span>
+                <span className="text-foreground">{` async`}</span>
+                <span className="text-secondary">{`></script>`}</span>{`\n\n`}
+                <span className="text-muted-foreground/50">{`<!-- Drop a Pay button anywhere -->\n`}</span>
+                <span className="text-secondary">{`<div `}</span>
+                <span className="text-foreground">{`data-sbtcpay`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"invoice"`}</span>
+                <span className="text-foreground">{` data-sbtcpay-invoice`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"123"`}</span>
+                <span className="text-secondary">{`></div>`}</span>
               </pre>
             </div>
           </motion.div>
