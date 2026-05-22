@@ -5,13 +5,16 @@ import { format } from "date-fns";
 import {
   Shield, Pause, Play, Settings, Users, FileText, Repeat,
   TrendingUp, AlertTriangle, ArrowRightLeft,
-  Bitcoin, ChevronDown, ChevronUp, BadgeCheck, Ban, Loader2,
+  Bitcoin, ChevronDown, ChevronUp, ChevronLeft, ChevronRight,
+  BadgeCheck, Ban, Loader2, Download,
   Copy, ExternalLink, Search, RefreshCw, CheckCircle2, Eye,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -24,6 +27,7 @@ import { useAdminStore } from "@/stores/admin-store";
 import type { MerchantEntry } from "@/stores/admin-store";
 import { MerchantActivitySheet } from "@/components/admin/MerchantActivitySheet";
 import { useWalletStore } from "@/stores/wallet-store";
+import { supabaseWithWallet } from "@/lib/supabase/client";
 import { getExplorerAddressUrl } from "@/lib/stacks/config";
 import { formatAmount, amountToUsd } from "@/lib/constants";
 import { useLivePrices } from "@/stores/wallet-store";
@@ -31,6 +35,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
+import { exportToCSV } from "@/lib/export-csv";
 import { IndexerHealthPanel } from "@/components/admin/IndexerHealthPanel";
 import { PlatformPaymentsFeed } from "@/components/admin/PlatformPaymentsFeed";
 import { PlatformAnalyticsPanel } from "@/components/admin/PlatformAnalyticsPanel";
@@ -55,9 +60,18 @@ const accentBorderMap: Record<AccentColor, string> = {
   info: "card-accent-info",
 };
 
-function StatCard({ label, value, icon: Icon, accent = "primary" }: { label: string; value: string; icon: React.ElementType; accent?: AccentColor }) {
-  return (
-    <Card className={cn("animate-fade-slide-up", accentBorderMap[accent])}>
+function StatCard({
+  label, value, icon: Icon, accent = "primary", onClick, ariaLabel,
+}: {
+  label: string;
+  value: string;
+  icon: React.ElementType;
+  accent?: AccentColor;
+  onClick?: () => void;
+  ariaLabel?: string;
+}) {
+  const card = (
+    <Card className={cn("animate-fade-slide-up", accentBorderMap[accent], onClick && "transition-colors hover:bg-accent/40 focus-within:ring-2 focus-within:ring-primary")}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-body-sm font-medium text-muted-foreground">{label}</CardTitle>
         <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", iconBgMap[accent])}>
@@ -68,6 +82,50 @@ function StatCard({ label, value, icon: Icon, accent = "primary" }: { label: str
         <div className="font-mono-nums text-sats text-foreground">{value}</div>
       </CardContent>
     </Card>
+  );
+  if (!onClick) return card;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={ariaLabel ?? `View ${label}`}
+      className="text-left rounded-lg focus:outline-none w-full"
+    >
+      {card}
+    </button>
+  );
+}
+
+// Sortable column header. Active column shows a chevron indicating direction.
+function SortHeader<F extends string>({
+  field, label, sortField, sortDir, onClick, align,
+}: {
+  field: F;
+  label: string;
+  sortField: string;
+  sortDir: "asc" | "desc";
+  onClick: (field: F) => void;
+  align?: "right";
+}) {
+  const isActive = sortField === field;
+  return (
+    <button
+      type="button"
+      onClick={() => onClick(field)}
+      aria-label={`Sort by ${label}${isActive ? `, currently ${sortDir === "asc" ? "ascending" : "descending"}` : ""}`}
+      className={cn(
+        "inline-flex items-center gap-1 hover:text-foreground transition-colors focus-ring rounded-sm",
+        align === "right" && "ml-auto",
+        isActive ? "text-foreground" : "text-muted-foreground",
+      )}
+    >
+      <span>{label}</span>
+      {isActive ? (
+        sortDir === "asc" ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />
+      ) : (
+        <ChevronDown className="h-3.5 w-3.5 opacity-0 group-hover:opacity-30" />
+      )}
+    </button>
   );
 }
 
@@ -92,6 +150,27 @@ export default function AdminPage() {
     }
   }, [address, fetchAdminData]);
 
+  // Realtime: refresh admin stats + merchant list when anything material lands
+  // on-chain (new merchant registers, new payment, new direct payment). Throttle
+  // to one refetch per 1.5s so a burst of events doesn't hammer the contract.
+  useEffect(() => {
+    if (!address) return;
+    let pending = false;
+    const scheduleRefetch = () => {
+      if (pending) return;
+      pending = true;
+      setTimeout(() => { pending = false; fetchAdminData(address); }, 1500);
+    };
+    const client = supabaseWithWallet(address);
+    const channel = client
+      .channel(`admin-realtime-${address}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "merchants" }, scheduleRefetch)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "payments" }, scheduleRefetch)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "direct_payments" }, scheduleRefetch)
+      .subscribe();
+    return () => { client.removeChannel(channel); };
+  }, [address, fetchAdminData]);
+
   const [newFeeBps, setNewFeeBps] = useState(feeBps.toString());
   const [feeBpsError, setFeeBpsError] = useState<string | null>(null);
   const [newFeeRecipient, setNewFeeRecipient] = useState(feeRecipient);
@@ -100,6 +179,47 @@ export default function AdminPage() {
   const [merchantSearch, setMerchantSearch] = useState("");
   const [selectedMerchant, setSelectedMerchant] = useState<MerchantEntry | null>(null);
   const [merchantSheetOpen, setMerchantSheetOpen] = useState(false);
+
+  // Scroll-target for stat-card click-through (Merchants stat → table)
+  const merchantTableRef = useRef<HTMLDivElement | null>(null);
+  const scrollToMerchants = (filter: StatusFilter = "all") => {
+    setStatusFilter(filter);
+    merchantTableRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  // Status filter pills. "all" shows everyone; the others drill into a single status.
+  type StatusFilter = "all" | "verified" | "unverified" | "suspended";
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+
+  // Pagination state for the merchant table.
+  const [pageSize, setPageSize] = useState<number>(20);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Bulk-verify state — set of merchant ids currently checked.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkVerifying, setIsBulkVerifying] = useState(false);
+  const [bulkVerifyOpen, setBulkVerifyOpen] = useState(false);
+
+  // Merchant table sort state. Default: newest registrations first.
+  type SortField = "name" | "status" | "registered" | "volume";
+  const [sortField, setSortField] = useState<SortField>("registered");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortField(field);
+      // Sensible per-field default direction
+      setSortDir(field === "name" ? "asc" : "desc");
+    }
+  };
+  // Combined USD volume per merchant so the sort key is comparable across tokens
+  const merchantVolumeUsd = (m: MerchantEntry) =>
+    (m.totalVolumeSbtc > 0 ? parseFloat(amountToUsd(m.totalVolumeSbtc, "sbtc", btcPriceUsd, stxPriceUsd)) || 0 : 0) +
+    (m.totalVolumeStx > 0 ? parseFloat(amountToUsd(m.totalVolumeStx, "stx", btcPriceUsd, stxPriceUsd)) || 0 : 0);
+  // Status sort order: suspended last, unverified middle, verified first
+  const statusRank = (m: MerchantEntry) =>
+    m.isSuspended ? 2 : m.isVerified ? 0 : 1;
 
   const isInitialLoading = isLoading && merchants.length === 0 && stats.totalMerchants === 0;
 
@@ -113,11 +233,136 @@ export default function AdminPage() {
     else setFeeBpsError(null);
   };
 
-  const filteredMerchants = merchants.filter((m) => {
-    if (!merchantSearch) return true;
-    const q = merchantSearch.trim().toLowerCase();
-    return m.name.toLowerCase().includes(q) || m.address.toLowerCase().includes(q);
-  });
+  // Per-status counts for the filter pills (independent of search so the pill
+  // counts always reflect the total population, not the filtered subset).
+  const statusCounts = {
+    all: merchants.length,
+    verified: merchants.filter((m) => m.isVerified && !m.isSuspended).length,
+    unverified: merchants.filter((m) => !m.isVerified && !m.isSuspended).length,
+    suspended: merchants.filter((m) => m.isSuspended).length,
+  };
+
+  const filteredMerchants = (() => {
+    const list = merchants.filter((m) => {
+      // Status filter
+      if (statusFilter === "verified" && !(m.isVerified && !m.isSuspended)) return false;
+      if (statusFilter === "unverified" && !(!m.isVerified && !m.isSuspended)) return false;
+      if (statusFilter === "suspended" && !m.isSuspended) return false;
+      // Search filter
+      if (!merchantSearch) return true;
+      const q = merchantSearch.trim().toLowerCase();
+      return m.name.toLowerCase().includes(q) || m.address.toLowerCase().includes(q);
+    });
+    const dir = sortDir === "asc" ? 1 : -1;
+    return [...list].sort((a, b) => {
+      switch (sortField) {
+        case "name":
+          return a.name.localeCompare(b.name) * dir;
+        case "status":
+          return (statusRank(a) - statusRank(b)) * dir;
+        case "registered":
+          return (a.registeredAt.getTime() - b.registeredAt.getTime()) * dir;
+        case "volume":
+          return (merchantVolumeUsd(a) - merchantVolumeUsd(b)) * dir;
+      }
+    });
+  })();
+
+  // Pagination derived
+  const totalPages = Math.max(1, Math.ceil(filteredMerchants.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStart = (safePage - 1) * pageSize;
+  const pageEnd = Math.min(pageStart + pageSize, filteredMerchants.length);
+  const paginatedMerchants = filteredMerchants.slice(pageStart, pageEnd);
+
+  // Reset to page 1 whenever filters / sort / page size change
+  useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIds(new Set());
+  }, [merchantSearch, statusFilter, sortField, sortDir, pageSize]);
+
+  // CSV export — uses the same filter + sort the user is currently looking at.
+  // Volumes are written in human units (sBTC, STX) since base-unit integers are
+  // unfriendly when opened in a spreadsheet.
+  const handleExportCsv = () => {
+    if (filteredMerchants.length === 0) {
+      toast.info("No merchants to export");
+      return;
+    }
+    const rows = filteredMerchants.map((m) => ({
+      Name: m.name,
+      Address: m.address,
+      Status: m.isSuspended ? "Suspended" : m.isVerified ? "Verified" : "Unverified",
+      Registered: format(m.registeredAt, "yyyy-MM-dd"),
+      "Volume (sBTC)": (m.totalVolumeSbtc / 1e8).toFixed(8),
+      "Volume (STX)": (m.totalVolumeStx / 1e6).toFixed(6),
+      "Volume (USD)": merchantVolumeUsd(m).toFixed(2),
+      Invoices: m.invoiceCount,
+    }));
+    exportToCSV(rows, `merchants-${format(new Date(), "yyyy-MM-dd")}.csv`);
+    toast.success(`Exported ${rows.length} merchant${rows.length !== 1 ? "s" : ""}`);
+  };
+
+  // Bulk verify — sequentially calls verifyMerchant for every selected
+  // unverified merchant. Each one is its own on-chain tx; the wallet will
+  // prompt once per merchant. We show progress in the toast.
+  const handleBulkVerify = async () => {
+    const ids = Array.from(selectedIds).filter((id) => {
+      const m = merchants.find((x) => x.id === id);
+      return m && !m.isVerified && !m.isSuspended;
+    });
+    if (ids.length === 0) {
+      toast.info("No unverified merchants selected");
+      setBulkVerifyOpen(false);
+      return;
+    }
+    setIsBulkVerifying(true);
+    setBulkVerifyOpen(false);
+    let ok = 0;
+    let fail = 0;
+    for (const id of ids) {
+      try {
+        await verifyMerchant(id);
+        ok += 1;
+      } catch {
+        fail += 1;
+      }
+    }
+    setIsBulkVerifying(false);
+    setSelectedIds(new Set());
+    if (fail === 0) toast.success(`Verified ${ok} merchant${ok !== 1 ? "s" : ""}`);
+    else toast.warning(`Verified ${ok}, ${fail} failed`);
+  };
+
+  // Select-all helper bound to the current page (not the full filtered set)
+  // so users don't accidentally bulk-action thousands of unseen rows.
+  const allOnPageSelected =
+    paginatedMerchants.length > 0 &&
+    paginatedMerchants.every((m) => selectedIds.has(m.id));
+  const someOnPageSelected =
+    paginatedMerchants.some((m) => selectedIds.has(m.id)) && !allOnPageSelected;
+  const togglePageSelection = (checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      for (const m of paginatedMerchants) {
+        if (checked) next.add(m.id);
+        else next.delete(m.id);
+      }
+      return next;
+    });
+  };
+  const toggleRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+  const selectedUnverifiedCount = Array.from(selectedIds).filter((id) => {
+    const m = merchants.find((x) => x.id === id);
+    return m && !m.isVerified && !m.isSuspended;
+  }).length;
 
   // Sync local input state when chain data loads
   useEffect(() => {
@@ -220,7 +465,14 @@ export default function AdminPage() {
 
       {/* Platform Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-space-md">
-        <StatCard label="Merchants" value={Math.max(stats.totalMerchants, merchants.length).toString()} icon={Users} accent="info" />
+        <StatCard
+          label="Merchants"
+          value={Math.max(stats.totalMerchants, merchants.length).toString()}
+          icon={Users}
+          accent="info"
+          onClick={() => scrollToMerchants("all")}
+          ariaLabel="Scroll to merchant management"
+        />
         <Card className="card-accent-primary animate-fade-slide-up">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">Invoices</CardTitle>
@@ -437,29 +689,109 @@ export default function AdminPage() {
       </Card>
 
       {/* Merchant Management */}
-      <Card>
-        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle className="text-heading-sm">Merchant Management</CardTitle>
-            <p className="text-body-sm text-muted-foreground mt-1">
-              {merchants.length} registered merchant{merchants.length !== 1 ? "s" : ""}
-              {stats.totalMerchants > merchants.length && (
-                <span className="text-warning ml-2">
-                  ({stats.totalMerchants - merchants.length} pending indexing)
-                </span>
-              )}
-            </p>
+      <Card ref={merchantTableRef as React.RefObject<HTMLDivElement>}>
+        <CardHeader className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle className="text-heading-sm">Merchant Management</CardTitle>
+              <p className="text-body-sm text-muted-foreground mt-1">
+                {merchants.length} registered merchant{merchants.length !== 1 ? "s" : ""}
+                {stats.totalMerchants > merchants.length && (
+                  <span className="text-warning ml-2">
+                    ({stats.totalMerchants - merchants.length} pending indexing)
+                  </span>
+                )}
+              </p>
+            </div>
+            {merchants.length > 0 && (
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:flex-initial sm:w-64 md:w-72">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search merchants…"
+                    value={merchantSearch}
+                    onChange={(e) => setMerchantSearch(e.target.value)}
+                    className="pl-9"
+                    aria-label="Search merchants by name or address"
+                  />
+                </div>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleExportCsv}
+                      aria-label="Export merchants to CSV"
+                      className="h-10 w-10 shrink-0"
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Export filtered merchants to CSV</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </div>
+
+          {/* Status filter pills + bulk action toolbar */}
           {merchants.length > 0 && (
-            <div className="relative w-full sm:w-64 md:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search merchants…"
-                value={merchantSearch}
-                onChange={(e) => setMerchantSearch(e.target.value)}
-                className="pl-9"
-                aria-label="Search merchants by name or address"
-              />
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Filter merchants by status">
+                {([
+                  { value: "all" as const, label: "All", count: statusCounts.all },
+                  { value: "verified" as const, label: "Verified", count: statusCounts.verified },
+                  { value: "unverified" as const, label: "Unverified", count: statusCounts.unverified },
+                  { value: "suspended" as const, label: "Suspended", count: statusCounts.suspended },
+                ]).map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setStatusFilter(opt.value)}
+                    aria-pressed={statusFilter === opt.value}
+                    className={cn(
+                      "rounded-full px-3 py-1 text-caption font-medium transition-colors focus-ring",
+                      statusFilter === opt.value
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    {opt.label}
+                    <span className={cn("ml-1.5 font-mono", statusFilter === opt.value ? "opacity-90" : "opacity-60")}>
+                      {opt.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-1.5">
+                  <span className="text-caption text-foreground">
+                    {selectedIds.size} selected
+                  </span>
+                  <Separator orientation="vertical" className="h-4" />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setBulkVerifyOpen(true)}
+                    disabled={selectedUnverifiedCount === 0 || isBulkVerifying || !isContractOwner}
+                    className="h-8 gap-1.5 text-success border-success/30 hover:bg-success/10"
+                  >
+                    {isBulkVerifying ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <BadgeCheck className="h-3.5 w-3.5" />
+                    )}
+                    Verify {selectedUnverifiedCount}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="h-8 text-caption"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardHeader>
@@ -469,30 +801,55 @@ export default function AdminPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Merchant</TableHead>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allOnPageSelected ? true : someOnPageSelected ? "indeterminate" : false}
+                      onCheckedChange={(c) => togglePageSelection(c === true)}
+                      aria-label="Select all on this page"
+                      disabled={paginatedMerchants.length === 0}
+                    />
+                  </TableHead>
+                  <TableHead>
+                    <SortHeader field="name" label="Merchant" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  </TableHead>
                   <TableHead className="hidden md:table-cell">Address</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden lg:table-cell">Registered</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell">Volume</TableHead>
+                  <TableHead>
+                    <SortHeader field="status" label="Status" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    <SortHeader field="registered" label="Registered" sortField={sortField} sortDir={sortDir} onClick={toggleSort} />
+                  </TableHead>
+                  <TableHead className="text-right hidden sm:table-cell">
+                    <SortHeader field="volume" label="Volume" sortField={sortField} sortDir={sortDir} onClick={toggleSort} align="right" />
+                  </TableHead>
                   <TableHead className="w-[100px] sm:w-[140px] text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {merchants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
                       <Users className="h-8 w-8 mx-auto mb-2 opacity-40" />
                       <p>No merchants registered yet</p>
                     </TableCell>
                   </TableRow>
                 ) : filteredMerchants.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No merchants match "{merchantSearch}"
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      {merchantSearch
+                        ? `No merchants match "${merchantSearch}"`
+                        : `No ${statusFilter} merchants`}
                     </TableCell>
                   </TableRow>
-                ) : filteredMerchants.map((m) => (
-                  <TableRow key={m.id}>
+                ) : paginatedMerchants.map((m) => (
+                  <TableRow key={m.id} data-state={selectedIds.has(m.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(m.id)}
+                        onCheckedChange={() => toggleRow(m.id)}
+                        aria-label={`Select ${m.name}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium text-foreground max-w-[180px] truncate">{m.name}</p>
@@ -702,8 +1059,78 @@ export default function AdminPage() {
             </Table>
           </ScrollableTable>
           </TooltipProvider>
+
+          {/* Pagination footer */}
+          {filteredMerchants.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-4 border-t border-border">
+              <div className="flex items-center gap-3 text-caption text-muted-foreground">
+                <span>
+                  Showing {pageStart + 1}–{pageEnd} of {filteredMerchants.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span>Rows per page:</span>
+                  <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                    <SelectTrigger className="h-8 w-[72px]" aria-label="Rows per page">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[10, 20, 50, 100].map((n) => (
+                        <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-caption text-muted-foreground px-2 font-mono">
+                  {safePage} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Bulk verify confirmation */}
+      <AlertDialog open={bulkVerifyOpen} onOpenChange={setBulkVerifyOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Verify {selectedUnverifiedCount} merchant{selectedUnverifiedCount !== 1 ? "s" : ""}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Each verification is a separate on-chain transaction. Your wallet will prompt
+              {" "}{selectedUnverifiedCount} time{selectedUnverifiedCount !== 1 ? "s" : ""} —
+              approve or reject each one. Already-verified or suspended merchants in your
+              selection are skipped.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkVerify}>
+              Verify {selectedUnverifiedCount}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Indexer Health */}
       <IndexerHealthPanel />
