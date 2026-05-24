@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { toast } from 'sonner';
 import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
 import { amountToUsd as amountToUsdFn } from '@/lib/constants';
 import { authenticateWallet, hasValidAuth, clearWalletAuth } from '@/lib/supabase/client';
@@ -427,6 +428,19 @@ export const useWalletStore = create<WalletState>()(
           return;
         }
 
+        // The wallet extension's sign-message popup commonly steals OS focus,
+        // and after the user signs, focus often does NOT return to the
+        // originating tab — it bounces to the wallet's UI, the desktop, or
+        // a different window. Two mitigations applied here:
+        //   1. Change document.title while waiting so the user can find this
+        //      tab in their tab bar even if focus shifted away.
+        //   2. Call window.focus() once the result resolves; best-effort
+        //      since browsers may reject it without a fresh user gesture.
+        // Plus a post-result toast so even if the user returns to the tab
+        // late, they get clear confirmation the sign-in worked or failed.
+        const originalTitle = document.title;
+        document.title = "🔐 Sign in to sBTC Pay";
+
         try {
           const { request } = await loadStacksConnect();
           await authenticateWallet(address, async (message: string) => {
@@ -434,11 +448,27 @@ export const useWalletStore = create<WalletState>()(
             return { signature: result.signature };
           });
           set({ isAuthenticated: true });
+          try { window.focus(); } catch { /* focus may be blocked */ }
+          toast.success("Signed in", {
+            description: `${address.slice(0, 6)}…${address.slice(-4)} · 24h session`,
+          });
         } catch (err) {
           console.warn("[wallet-auth] Authentication failed:", err);
           // Don't block the user — they can still browse, but writes will fail.
           // isAuthenticated stays false; UI can show a "sign in" prompt if needed.
           set({ isAuthenticated: false });
+          try { window.focus(); } catch { /* */ }
+          const msg = err instanceof Error ? err.message : String(err);
+          const lower = msg.toLowerCase();
+          if (lower.includes("cancel") || lower.includes("reject") || lower.includes("denied")) {
+            toast.info("Sign-in canceled", {
+              description: "You can browse the app, but writes need a signed-in wallet.",
+            });
+          } else {
+            toast.error("Sign-in failed", { description: msg });
+          }
+        } finally {
+          document.title = originalTitle;
         }
       },
 
