@@ -3,6 +3,7 @@
 // Flow: client signs a timestamped message → this function verifies → returns JWT.
 
 import { SignJWT } from "https://deno.land/x/jose@v5.2.0/index.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { secp256k1 } from "npm:@noble/curves@1.8.1/secp256k1";
 import { sha256 } from "npm:@noble/hashes@1.7.1/sha256";
 import { bytesToHex, hexToBytes, concatBytes, utf8ToBytes } from "npm:@noble/hashes@1.7.1/utils";
@@ -18,6 +19,22 @@ const CORS_HEADERS: Record<string, string> = {
 /** Max age of signed message before it's rejected (prevents replay). */
 const MAX_MESSAGE_AGE_MS = 5 * 60 * 1000; // 5 minutes
 const TOKEN_EXPIRY = "24h";
+const SIG_HEX_LENGTH = 130; // 65 bytes: r(32) + s(32) + v(1)
+
+// ── Supabase admin client (service-role) for nonce store ───────────────────
+// SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are auto-injected into edge
+// functions by the Supabase runtime. The service-role key bypasses RLS so we
+// can read/write the used_signatures table; this table is gated by RLS with
+// zero policies, so no public role can touch it.
+
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+
+const adminClient = SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    })
+  : null;
 
 // ── Stacks message hashing ──────────────────────────────────────────────────
 // Exact replica of @stacks/encryption encodeMessage + hashMessage.
@@ -71,8 +88,8 @@ function verifySignatureForAddress(
 ): VerifyResult {
   const cleanSig = signatureHex.startsWith("0x") ? signatureHex.slice(2) : signatureHex;
 
-  if (cleanSig.length !== 130) {
-    return { valid: false, debug: `bad sig hex length: ${cleanSig.length} (expected 130)` };
+  if (cleanSig.length !== SIG_HEX_LENGTH) {
+    return { valid: false, debug: `bad sig hex length: ${cleanSig.length} (expected ${SIG_HEX_LENGTH})` };
   }
 
   const isTestnet = claimedAddress.startsWith("ST");
@@ -85,7 +102,9 @@ function verifySignatureForAddress(
       ? [{
           name: "byteLen",
           hash: sha256(concatBytes(
-            utf8ToBytes(`\x18Stacks Signed Message:\n${msgBytes.length}`),
+            // \x17 is the length of "Stacks Signed Message:\n" (23 bytes); this
+            // fallback only triggers for non-ASCII messages.
+            utf8ToBytes(`\x17Stacks Signed Message:\n${msgBytes.length}`),
             msgBytes,
           )),
         }]
@@ -163,6 +182,25 @@ function pubKeyToStxAddress(publicKeyHex: string, isTestnet: boolean): string {
   return c32address(version, bytesToHex(hash));
 }
 
+// ── Helpers ─────────────────────────────────────────────────────────────────
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json" },
+  });
+}
+
+function isPlausibleStxAddress(addr: string): boolean {
+  // Mainnet "SP..." or testnet "ST..." c32-encoded — 28-41 chars typical.
+  return /^S[PT][0-9A-HJ-NP-Z]{20,50}$/.test(addr);
+}
+
+function isPlausibleSigHex(sig: string): boolean {
+  const clean = sig.startsWith("0x") ? sig.slice(2) : sig;
+  return clean.length === SIG_HEX_LENGTH && /^[0-9a-fA-F]+$/.test(clean);
+}
+
 // ── Main handler ────────────────────────────────────────────────────────────
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -170,63 +208,86 @@ Deno.serve(async (req) => {
   }
 
   if (req.method !== "POST") {
-    return new Response(
-      JSON.stringify({ error: "Method not allowed" }),
-      { status: 405, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-    );
+    return jsonResponse({ error: "Method not allowed" }, 405);
   }
 
   try {
     const body = await req.json();
-    const { message, signature, publicKey, address } = body as {
+    // Note: client may also send a publicKey field, but we ignore it — we
+    // recover the pubkey from the signature ourselves (more secure).
+    const { message, signature, address } = body as {
       message?: string;
       signature?: string;
-      publicKey?: string;
       address?: string;
     };
 
+    // 1. Cheap shape checks first — reject obviously malformed requests before
+    //    we spend any crypto. Saves CPU under spam / scanning.
     if (!message || !signature || !address) {
-      return new Response(
-        JSON.stringify({ error: "Missing required fields: message, signature, address" }),
-        { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
+      return jsonResponse({ error: "Missing required fields: message, signature, address" }, 400);
+    }
+    if (typeof message !== "string" || message.length < 16 || message.length > 1024) {
+      return jsonResponse({ error: "Invalid message length" }, 400);
+    }
+    if (!isPlausibleSigHex(signature)) {
+      return jsonResponse({ error: "Invalid signature format" }, 400);
+    }
+    if (!isPlausibleStxAddress(address)) {
+      return jsonResponse({ error: "Invalid Stacks address" }, 400);
     }
 
-    // 1. Verify message freshness (prevents replay attacks)
+    // 2. Verify message freshness (prevents replay attacks beyond the window)
     const tsMatch = message.match(/Timestamp: (\d+)/);
     if (!tsMatch) {
-      return new Response(
-        JSON.stringify({ error: "Invalid message format — missing timestamp" }),
-        { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
+      return jsonResponse({ error: "Invalid message format — missing timestamp" }, 400);
     }
     const timestamp = parseInt(tsMatch[1], 10);
     if (isNaN(timestamp) || Math.abs(Date.now() - timestamp) > MAX_MESSAGE_AGE_MS) {
-      return new Response(
-        JSON.stringify({ error: "Message expired. Please sign again." }),
-        { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
+      return jsonResponse({ error: "Message expired. Please sign again." }, 401);
     }
 
-    // 2. Verify the signature was produced by a key that derives to the claimed address
+    // 3. Verify the signature was produced by a key that derives to the
+    //    claimed address. This is the expensive step.
     const result = verifySignatureForAddress(message, signature, address);
     if (!result.valid) {
       console.warn("[wallet-auth] Verification failed:", result.debug);
-      return new Response(
-        JSON.stringify({ error: "Invalid signature", debug: result.debug }),
-        { status: 401, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
+      return jsonResponse({ error: "Invalid signature", debug: result.debug }, 401);
     }
 
-    // 3. Issue Supabase-compatible JWT (no separate address derivation needed —
+    // 4. Replay protection: within the 5-minute window the same signature
+    //    could be used multiple times without this step. Record the SHA-256
+    //    of the signature in used_signatures (UNIQUE on signature_hash); a
+    //    duplicate INSERT means we've seen it before → reject.
+    if (adminClient) {
+      const cleanSig = signature.startsWith("0x") ? signature.slice(2) : signature;
+      const sigHash = bytesToHex(sha256(utf8ToBytes(cleanSig.toLowerCase())));
+      const expiresAt = new Date(timestamp + MAX_MESSAGE_AGE_MS).toISOString();
+      const { error: insertError } = await adminClient
+        .from("used_signatures")
+        .insert({ signature_hash: sigHash, expires_at: expiresAt });
+      if (insertError) {
+        // Postgres unique-violation = signature already used within the window
+        if (insertError.code === "23505") {
+          return jsonResponse(
+            { error: "Signature already used. Please sign a fresh message." },
+            401,
+          );
+        }
+        // Some other DB error — fail closed: better to block than to silently
+        // allow replays.
+        console.error("[wallet-auth] Nonce store error:", insertError);
+        return jsonResponse({ error: "Authentication service unavailable" }, 503);
+      }
+    } else {
+      console.warn("[wallet-auth] Admin client not configured — replay protection disabled");
+    }
+
+    // 5. Issue Supabase-compatible JWT (no separate address derivation needed —
     //    verifySignatureForAddress already proved the signer owns the address)
     const jwtSecret = Deno.env.get("JWT_SIGNING_SECRET");
     if (!jwtSecret) {
       console.error("[wallet-auth] JWT_SIGNING_SECRET not configured");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-      );
+      return jsonResponse({ error: "Server configuration error" }, 500);
     }
 
     const secret = new TextEncoder().encode(jwtSecret);
@@ -242,15 +303,12 @@ Deno.serve(async (req) => {
       .setIssuer("supabase")
       .sign(secret);
 
-    return new Response(
-      JSON.stringify({ token, expiresIn: 86400 }),
-      { headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
-    );
+    return jsonResponse({ token, expiresIn: 86400 });
   } catch (err) {
     console.error("[wallet-auth] Error:", err);
-    return new Response(
-      JSON.stringify({ error: err instanceof Error ? err.message : "Authentication failed" }),
-      { status: 400, headers: { ...CORS_HEADERS, "Content-Type": "application/json" } },
+    return jsonResponse(
+      { error: err instanceof Error ? err.message : "Authentication failed" },
+      400,
     );
   }
 });
