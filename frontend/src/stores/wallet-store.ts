@@ -9,6 +9,36 @@ import { authenticateWallet, hasValidAuth, clearWalletAuth } from '@/lib/supabas
 // The module is cached after first import, so subsequent calls are instant.
 const loadStacksConnect = () => import('@stacks/connect');
 
+// Audio cue played when wallet auth resolves so the user knows the action
+// landed even when OS focus has shifted away from the browser tab.
+// Uses Web Audio API directly — no asset to load, no permission to request.
+// Higher pitch = success, lower = failure.
+function playAuthCueBeep(success: boolean) {
+  try {
+    type WindowWithWebkit = Window & { webkitAudioContext?: typeof AudioContext };
+    const AudioCtx = window.AudioContext ?? (window as WindowWithWebkit).webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    osc.frequency.value = success ? 880 : 440; // A5 vs A4
+    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.32);
+    // Close the context shortly after so it doesn't hold an audio device handle
+    setTimeout(() => { ctx.close().catch(() => {}); }, 500);
+  } catch {
+    // Audio context blocked (Safari requires user gesture; very old browsers
+    // may lack the API entirely) — silently degrade. The toast + title still
+    // give the user feedback.
+  }
+}
+
 // ── Synchronous session restore from @stacks/connect's localStorage ────────
 // This lets us hydrate wallet state instantly on page load without importing
 // the 1 MB library. Key: "@stacks/connect" (set by the library itself).
@@ -428,16 +458,23 @@ export const useWalletStore = create<WalletState>()(
           return;
         }
 
-        // The wallet extension's sign-message popup commonly steals OS focus,
-        // and after the user signs, focus often does NOT return to the
-        // originating tab — it bounces to the wallet's UI, the desktop, or
-        // a different window. Two mitigations applied here:
-        //   1. Change document.title while waiting so the user can find this
-        //      tab in their tab bar even if focus shifted away.
-        //   2. Call window.focus() once the result resolves; best-effort
-        //      since browsers may reject it without a fresh user gesture.
-        // Plus a post-result toast so even if the user returns to the tab
-        // late, they get clear confirmation the sign-in worked or failed.
+        // The wallet extension's sign-message popup commonly steals OS focus
+        // (especially on macOS + Chrome). After the user signs, focus often
+        // does NOT return to the originating tab — it bounces to the wallet's
+        // UI, the desktop, or another window entirely. We CANNOT prevent this
+        // from the webapp: browsers deliberately gate window.focus() behind a
+        // fresh user gesture, and the gesture is consumed by the wallet popup.
+        //
+        // What we can do (all four applied here):
+        //   1. Change document.title while waiting — the lock icon makes the
+        //      tab easy to find in the tab bar.
+        //   2. Best-effort window.focus() once the result resolves. Often
+        //      blocked but free to try.
+        //   3. Audio cue (Web Audio API, no asset/permission) — different
+        //      tone for success vs failure so you can tell *from elsewhere*
+        //      whether the auth landed.
+        //   4. Post-result toast so the visual confirmation is present
+        //      whenever the user does return to the tab.
         const originalTitle = document.title;
         document.title = "🔐 Sign in to sBTC Pay";
 
@@ -449,6 +486,7 @@ export const useWalletStore = create<WalletState>()(
           });
           set({ isAuthenticated: true });
           try { window.focus(); } catch { /* focus may be blocked */ }
+          playAuthCueBeep(true);
           toast.success("Signed in", {
             description: `${address.slice(0, 6)}…${address.slice(-4)} · 24h session`,
           });
@@ -460,7 +498,9 @@ export const useWalletStore = create<WalletState>()(
           try { window.focus(); } catch { /* */ }
           const msg = err instanceof Error ? err.message : String(err);
           const lower = msg.toLowerCase();
-          if (lower.includes("cancel") || lower.includes("reject") || lower.includes("denied")) {
+          const canceled = lower.includes("cancel") || lower.includes("reject") || lower.includes("denied");
+          playAuthCueBeep(false);
+          if (canceled) {
             toast.info("Sign-in canceled", {
               description: "You can browse the app, but writes need a signed-in wallet.",
             });
