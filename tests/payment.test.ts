@@ -9,7 +9,11 @@ const merchant2 = accounts.get("wallet_2")!;
 const payer1 = accounts.get("wallet_3")!;
 const payer2 = accounts.get("wallet_4")!;
 
-const CONTRACT_NAME = "payment-v5";
+// Matches the [contracts.sbtc-pay] entry in Clarinet.toml (path is
+// contracts/sbtc-pay-mainnet.clar). The historical "payment-v5" name was
+// renamed to the brand-aligned "sbtc-pay" during M1; tests now point at the
+// canonical name.
+const CONTRACT_NAME = "sbtc-pay";
 
 // Helper: register a merchant with full v4 args
 function registerMerchant(sender: string, name = "Test Merchant") {
@@ -26,7 +30,16 @@ function registerMerchant(sender: string, name = "Test Merchant") {
   );
 }
 
-// Helper: create a simple invoice via the advanced create-invoice
+// Token-type constants — must match the on-chain values in sbtc-pay.clar.
+// TOKEN_STX is retained for parity / future STX-path tests even though current
+// suite defaults to sBTC; suppress the unused-warning explicitly.
+const TOKEN_SBTC = 0;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const TOKEN_STX = 1;
+
+// Helper: create a simple invoice via the advanced create-invoice.
+// The contract gained a `token-type` parameter when STX support landed
+// (migration 002). Tests default to sBTC for backward compatibility.
 function createInvoice(
   sender: string,
   amount: number,
@@ -34,6 +47,7 @@ function createInvoice(
   expiresInBlocks = 1000,
   allowPartial = false,
   allowOverpay = false,
+  tokenType: number = TOKEN_SBTC,
 ) {
   return simnet.callPublicFn(
     CONTRACT_NAME,
@@ -45,6 +59,7 @@ function createInvoice(
       Cl.uint(expiresInBlocks),
       Cl.bool(allowPartial),
       Cl.bool(allowOverpay),
+      Cl.uint(tokenType),
     ],
     sender,
   );
@@ -192,6 +207,7 @@ describe("sBTC Pay v4 — Contract Tests", () => {
           Cl.uint(500),
           Cl.bool(true),  // allow-partial
           Cl.bool(false),
+          Cl.uint(TOKEN_SBTC),
         ],
         merchant1,
       );
