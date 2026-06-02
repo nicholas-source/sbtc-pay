@@ -226,9 +226,38 @@ describe("sBTC Pay v4 — Contract Tests", () => {
       createInvoice(merchant1, 100000, "Test payment", 1000);
     });
 
-    // These tests require sBTC token balance in simnet (ft-transfer fails without tokens)
-    it.todo("allows payer to pay an invoice");
-    it.todo("allows pay-invoice-exact shortcut");
+    // sBTC happy-path tests are exercised via the STX path below — the contract's
+    // pay-invoice (sBTC) and pay-invoice-stx (STX) share the same authorization
+    // checks, accounting, status transitions, and event shape; only the actual
+    // token transfer differs (ft-transfer? vs stx-transfer?). Simnet accounts
+    // hold STX by default, so the STX flow exercises every line of the shared
+    // payment codepath end-to-end without needing a mock SIP-010 deployment.
+    // The sBTC-only error-path tests further below (cancelled, overpayment,
+    // underpayment) verify the input-validation branches that fire before any
+    // token transfer is attempted.
+
+    it("allows payer to pay an invoice (STX flow)", () => {
+      // Override the beforeEach invoice with a STX one
+      createInvoice(merchant1, 100000, "STX invoice", 1000, false, false, TOKEN_STX);
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "pay-invoice-stx",
+        [Cl.uint(2), Cl.uint(100000)],
+        payer1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
+
+    it("allows pay-invoice-exact shortcut (STX flow)", () => {
+      createInvoice(merchant1, 100000, "STX invoice", 1000, false, false, TOKEN_STX);
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "pay-invoice-exact-stx",
+        [Cl.uint(2)],
+        payer1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
 
     it("prevents paying same invoice twice", () => {
       simnet.callPublicFn(CONTRACT_NAME, "pay-invoice", [Cl.uint(1), Cl.uint(100000)], payer1);
@@ -262,7 +291,15 @@ describe("sBTC Pay v4 — Contract Tests", () => {
       expect(result.result).toBeErr(Cl.uint(4002)); // ERR_INSUFFICIENT_PAYMENT
     });
 
-    it.todo("allows direct payment to merchant");
+    it("allows direct payment to merchant (STX flow)", () => {
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "pay-merchant-direct-stx",
+        [Cl.principal(merchant1), Cl.uint(50000), Cl.stringUtf8("Thanks!")],
+        payer1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
 
     it("prevents direct payment to non-merchant", () => {
       const result = simnet.callPublicFn(
@@ -291,14 +328,112 @@ describe("sBTC Pay v4 — Contract Tests", () => {
 
   describe("Refunds", () => {
 
-    // All refund tests require sBTC token balance in simnet.
-    // The refund-invoice function checks (get payer invoice) first,
-    // which is none on unpaid invoices → ERR_NO_REFUND_AVAILABLE.
-    it.todo("allows merchant to process partial refund");
-    it.todo("allows merchant to process full refund");
-    it.todo("prevents non-merchant from refunding");
-    it.todo("prevents refunding more than paid");
-    it.todo("prevents zero amount refund");
+    // Refunds are tested via the contract's STX path (refund-invoice-stx +
+    // refund-invoice-full-stx). The sBTC variant (refund-invoice) shares
+    // identical logic: same authorization check (caller == merchant), same
+    // refund-window enforcement, same accounting (amount-refunded delta,
+    // total-refunded-{token} merchant aggregate, refunds map insert,
+    // refund-counter bump), and same event shape — the only line that differs
+    // between the two paths is the transfer call (ft-transfer? sbtc-token vs
+    // stx-transfer?). Testing the STX flow end-to-end exercises every branch
+    // of the shared refund codepath, including the error paths.
+    //
+    // We chose this over a mock SIP-010 deployment because:
+    //   • Simnet accounts hold STX by default — no mock minting needed.
+    //   • The deployed mainnet contract's sBTC reference is hardcoded to
+    //     SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token, so a mock
+    //     would need a divergent test-only contract copy. The STX path
+    //     tests the production contract as-deployed.
+
+    beforeEach(() => {
+      registerMerchant(merchant1);
+      // Create + pay a STX invoice so each refund test has something to refund
+      createInvoice(merchant1, 100000, "Refund test", 1000, false, false, TOKEN_STX);
+      const payResult = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "pay-invoice-stx",
+        [Cl.uint(1), Cl.uint(100000)],
+        payer1,
+      );
+      // Sanity-check the setup — if payment fails, refund tests are meaningless
+      expect(payResult.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
+
+    it("allows merchant to process partial refund", () => {
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "refund-invoice-stx",
+        [
+          Cl.uint(1),
+          Cl.uint(50000), // half of the 100000 paid
+          Cl.stringUtf8("Partial refund — customer dissatisfied"),
+        ],
+        merchant1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+
+      // After partial refund, the invoice should still show 50000 refundable
+      const refundable = simnet.callReadOnlyFn(
+        CONTRACT_NAME,
+        "get-refundable-amount",
+        [Cl.uint(1)],
+        deployer,
+      );
+      expect(refundable.result).toBeUint(50000);
+    });
+
+    it("allows merchant to process full refund", () => {
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "refund-invoice-full-stx",
+        [Cl.uint(1), Cl.stringUtf8("Full refund — order cancelled")],
+        merchant1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+
+      // After full refund, refundable should be 0 and invoice status should be refunded
+      const refundable = simnet.callReadOnlyFn(
+        CONTRACT_NAME,
+        "get-refundable-amount",
+        [Cl.uint(1)],
+        deployer,
+      );
+      expect(refundable.result).toBeUint(0);
+    });
+
+    it("prevents non-merchant from refunding", () => {
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "refund-invoice-stx",
+        [Cl.uint(1), Cl.uint(50000), Cl.stringUtf8("Hacked")],
+        payer1, // not the merchant
+      );
+      expect(result.result).toBeErr(Cl.uint(1001)); // ERR_NOT_AUTHORIZED
+    });
+
+    it("prevents refunding more than paid", () => {
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "refund-invoice-stx",
+        [
+          Cl.uint(1),
+          Cl.uint(200000), // 2x the paid amount
+          Cl.stringUtf8("Over-refund attempt"),
+        ],
+        merchant1,
+      );
+      expect(result.result).toBeErr(Cl.uint(4004)); // ERR_REFUND_EXCEEDS_PAID
+    });
+
+    it("prevents zero amount refund", () => {
+      const result = simnet.callPublicFn(
+        CONTRACT_NAME,
+        "refund-invoice-stx",
+        [Cl.uint(1), Cl.uint(0), Cl.stringUtf8("Zero refund")],
+        merchant1,
+      );
+      expect(result.result).toBeErr(Cl.uint(3006)); // ERR_INVALID_AMOUNT
+    });
   });
 
   // =============================================
