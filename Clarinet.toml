@@ -20,6 +20,21 @@ epoch = 'latest'
 path = 'contracts/sbtc-pay-mainnet.clar'
 clarity_version = 4
 epoch = 'latest'
+
+# Mock SIP-010 token used only by sbtc-pay-test (simnet-only). NOT DEPLOYED.
+[contracts.mock-sbtc-token]
+path = 'contracts/mock-sbtc-token.clar'
+clarity_version = 4
+epoch = 'latest'
+
+# Test-only variant of sbtc-pay-mainnet with sBTC reference swapped to the
+# mock above. Used by sBTC refund/payment tests in tests/payment.test.ts.
+# NOT DEPLOYED TO MAINNET.
+[contracts.sbtc-pay-test]
+path = 'contracts/sbtc-pay-test.clar'
+clarity_version = 4
+epoch = 'latest'
+
 [repl.analysis]
 passes = ['check_checker']
 
