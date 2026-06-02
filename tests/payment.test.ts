@@ -437,6 +437,214 @@ describe("sBTC Pay v4 — Contract Tests", () => {
   });
 
   // =============================================
+  // sBTC PAYMENT + REFUND TESTS (via mock SIP-010)
+  // =============================================
+  // These tests exercise the actual sBTC code paths — pay-invoice (ft-transfer?),
+  // pay-merchant-direct, refund-invoice — against a test-only contract variant
+  // (sbtc-pay-test.clar) that substitutes the mainnet sBTC token reference
+  // with a local mock SIP-010 (mock-sbtc-token.clar). Every other line of the
+  // contract is byte-for-byte identical to sbtc-pay-mainnet.clar; only the
+  // sBTC principal differs at six call sites. This pattern is the standard
+  // approach for testing Stacks contracts that call mainnet token contracts
+  // for which simnet has no balance source.
+
+  const TEST_CONTRACT = "sbtc-pay-test";
+  const MOCK_TOKEN = "mock-sbtc-token";
+
+  function mintMockSbtc(recipient: string, amount: number) {
+    return simnet.callPublicFn(
+      MOCK_TOKEN,
+      "mint",
+      [Cl.uint(amount), Cl.principal(recipient)],
+      deployer,
+    );
+  }
+
+  function registerMerchantTest(sender: string, name = "Test Merchant") {
+    return simnet.callPublicFn(
+      TEST_CONTRACT,
+      "register-merchant",
+      [Cl.stringUtf8(name), Cl.none(), Cl.none(), Cl.none()],
+      sender,
+    );
+  }
+
+  function createInvoiceTest(
+    sender: string,
+    amount: number,
+    memo = "Test invoice",
+    expiresInBlocks = 1000,
+    allowPartial = false,
+    allowOverpay = false,
+    tokenType: number = TOKEN_SBTC,
+  ) {
+    return simnet.callPublicFn(
+      TEST_CONTRACT,
+      "create-invoice",
+      [
+        Cl.uint(amount),
+        Cl.stringUtf8(memo),
+        Cl.none(),
+        Cl.uint(expiresInBlocks),
+        Cl.bool(allowPartial),
+        Cl.bool(allowOverpay),
+        Cl.uint(tokenType),
+      ],
+      sender,
+    );
+  }
+
+  describe("Payments (sBTC variant via mock SIP-010)", () => {
+
+    beforeEach(() => {
+      // Mint generous balance to payer so payments succeed
+      mintMockSbtc(payer1, 10_000_000);
+      registerMerchantTest(merchant1);
+    });
+
+    it("allows payer to pay an invoice (sBTC flow)", () => {
+      createInvoiceTest(merchant1, 100000);
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "pay-invoice",
+        [Cl.uint(1), Cl.uint(100000)],
+        payer1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
+
+    it("allows pay-invoice-exact shortcut (sBTC flow)", () => {
+      createInvoiceTest(merchant1, 100000);
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "pay-invoice-exact",
+        [Cl.uint(1)],
+        payer1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
+
+    it("allows direct payment to merchant (sBTC flow)", () => {
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "pay-merchant-direct",
+        [Cl.principal(merchant1), Cl.uint(50000), Cl.stringUtf8("Thanks!")],
+        payer1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
+
+    it("prevents underpayment when partial not allowed (sBTC flow)", () => {
+      createInvoiceTest(merchant1, 100000);
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "pay-invoice",
+        [Cl.uint(1), Cl.uint(50000)],
+        payer1,
+      );
+      expect(result.result).toBeErr(Cl.uint(4002)); // ERR_INSUFFICIENT_PAYMENT
+    });
+  });
+
+  describe("Refunds (sBTC variant via mock SIP-010)", () => {
+
+    beforeEach(() => {
+      // Mint generous balances:
+      //   payer1 — needs balance to pay the invoice
+      //   merchant1 — receives payment minus fee, then needs balance to
+      //     fund the refund. The post-payment merchant balance is amount-fee;
+      //     for a full refund (which transfers `amount` back to the payer)
+      //     they would be slightly short. Minting extra balance here avoids
+      //     bookkeeping noise so tests assert only refund-logic behaviour.
+      mintMockSbtc(payer1, 10_000_000);
+      mintMockSbtc(merchant1, 10_000_000);
+      registerMerchantTest(merchant1);
+      createInvoiceTest(merchant1, 100000, "Refund test");
+      const payResult = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "pay-invoice",
+        [Cl.uint(1), Cl.uint(100000)],
+        payer1,
+      );
+      expect(payResult.result).toHaveClarityType(ClarityType.ResponseOk);
+    });
+
+    it("allows merchant to process partial refund (sBTC flow)", () => {
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "refund-invoice",
+        [
+          Cl.uint(1),
+          Cl.uint(50000),
+          Cl.stringUtf8("Partial refund — customer dissatisfied"),
+        ],
+        merchant1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+
+      const refundable = simnet.callReadOnlyFn(
+        TEST_CONTRACT,
+        "get-refundable-amount",
+        [Cl.uint(1)],
+        deployer,
+      );
+      expect(refundable.result).toBeUint(50000);
+    });
+
+    it("allows merchant to process full refund (sBTC flow)", () => {
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "refund-invoice-full",
+        [Cl.uint(1), Cl.stringUtf8("Full refund — order cancelled")],
+        merchant1,
+      );
+      expect(result.result).toHaveClarityType(ClarityType.ResponseOk);
+
+      const refundable = simnet.callReadOnlyFn(
+        TEST_CONTRACT,
+        "get-refundable-amount",
+        [Cl.uint(1)],
+        deployer,
+      );
+      expect(refundable.result).toBeUint(0);
+    });
+
+    it("prevents non-merchant from refunding (sBTC flow)", () => {
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "refund-invoice",
+        [Cl.uint(1), Cl.uint(50000), Cl.stringUtf8("Hacked")],
+        payer1, // not the merchant
+      );
+      expect(result.result).toBeErr(Cl.uint(1001)); // ERR_NOT_AUTHORIZED
+    });
+
+    it("prevents refunding more than paid (sBTC flow)", () => {
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "refund-invoice",
+        [
+          Cl.uint(1),
+          Cl.uint(200000), // 2x the paid amount
+          Cl.stringUtf8("Over-refund attempt"),
+        ],
+        merchant1,
+      );
+      expect(result.result).toBeErr(Cl.uint(4004)); // ERR_REFUND_EXCEEDS_PAID
+    });
+
+    it("prevents zero amount refund (sBTC flow)", () => {
+      const result = simnet.callPublicFn(
+        TEST_CONTRACT,
+        "refund-invoice",
+        [Cl.uint(1), Cl.uint(0), Cl.stringUtf8("Zero refund")],
+        merchant1,
+      );
+      expect(result.result).toBeErr(Cl.uint(3006)); // ERR_INVALID_AMOUNT
+    });
+  });
+
+  // =============================================
   // SUBSCRIPTION TESTS
   // =============================================
 
