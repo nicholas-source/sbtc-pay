@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { animate, useInView, useReducedMotion } from "framer-motion";
 import { Reveal } from "./Reveal";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -12,6 +14,36 @@ const checkpoints = [
   "Real-time webhook notifications",
   "Script tag, iframe, or programmatic SDK — your choice",
 ];
+
+// The headline stat counts up to 0.5% as it scrolls in — a reveal that fits
+// what it reveals. Defaults to the final value, so reduced-motion users and any
+// non-scrolling render see "0.5%" immediately (never a stuck 0).
+function PriceCounter() {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.6 });
+  const reduceMotion = useReducedMotion();
+  const [value, setValue] = useState(0.5);
+
+  useEffect(() => {
+    if (reduceMotion || !inView) return;
+    setValue(0);
+    const controls = animate(0, 0.5, {
+      duration: 0.9,
+      ease: [0.22, 1, 0.36, 1],
+      onUpdate: setValue,
+    });
+    return () => controls.stop();
+  }, [inView, reduceMotion]);
+
+  return (
+    <span
+      ref={ref}
+      className="text-display sm:text-display-lg md:text-display-xl text-primary font-black tabular-nums"
+    >
+      {value.toFixed(1)}%
+    </span>
+  );
+}
 
 export default function PricingSection() {
   const { isConnected, connect } = useWalletStore();
@@ -35,7 +67,7 @@ export default function PricingSection() {
             <span className="text-primary">pricing</span>
           </h2>
           <p className="mt-4 text-body-lg text-muted-foreground">
-            No subscriptions. No hidden fees. Just 0.5% per transaction.
+            A flat 0.5% per transaction, deducted on-chain at payment time.
           </p>
         </Reveal>
 
@@ -47,13 +79,7 @@ export default function PricingSection() {
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
             <CardContent className="p-4 sm:p-6 md:p-8">
               <div className="text-center">
-                <Reveal
-                  className="text-display sm:text-display-lg md:text-display-xl text-primary font-black"
-                  from={{ opacity: 0, y: 8 }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                >
-                  0.5%
-                </Reveal>
+                <PriceCounter />
                 <p className="mt-2 text-body text-muted-foreground">per transaction</p>
               </div>
 
