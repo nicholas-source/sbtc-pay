@@ -10,6 +10,32 @@ const SNIPPET = `<!-- Load the SDK once per page -->
 <!-- Drop a Pay button anywhere -->
 <div data-sbtcpay="invoice" data-sbtcpay-invoice="123"></div>`;
 
+// Code as tokenised lines so each one can reveal in sequence — it reads like
+// the snippet is being written, instead of the whole block fading in at once.
+const CODE_LINES: { t: string; c: string }[][] = [
+  [{ t: "<!-- Load the SDK once per page -->", c: "text-muted-foreground/50" }],
+  [
+    { t: "<script ", c: "text-secondary" },
+    { t: "src", c: "text-foreground" },
+    { t: "=", c: "text-muted-foreground" },
+    { t: '"https://sbtc-pay.com/sbtcpay.js"', c: "text-primary" },
+    { t: " async", c: "text-foreground" },
+    { t: "></script>", c: "text-secondary" },
+  ],
+  [],
+  [{ t: "<!-- Drop a Pay button anywhere -->", c: "text-muted-foreground/50" }],
+  [
+    { t: "<div ", c: "text-secondary" },
+    { t: "data-sbtcpay", c: "text-foreground" },
+    { t: "=", c: "text-muted-foreground" },
+    { t: '"invoice"', c: "text-primary" },
+    { t: " data-sbtcpay-invoice", c: "text-foreground" },
+    { t: "=", c: "text-muted-foreground" },
+    { t: '"123"', c: "text-primary" },
+    { t: "></div>", c: "text-secondary" },
+  ],
+];
+
 const BENEFITS = [
   "Works in any HTML page, React, Vue, or plain site",
   "Real-time payment status via webhooks + window events",
@@ -42,8 +68,8 @@ export default function DeveloperSection() {
             </h2>
             <p className="text-body-lg text-muted-foreground mb-6">
               Drop in the SDK, add a <code className="font-mono text-secondary">data-sbtcpay</code>{" "}
-              attribute, and a styled Pay button appears wherever you want it. Click opens a modal
-              — no backend, no build step, no layout work.
+              attribute, and a styled Pay button appears wherever you want it. Click opens a checkout
+              modal that handles the rest — that snippet is the whole integration.
             </p>
             <ul className="flex flex-col gap-3 mb-8">
               {BENEFITS.map((item) => (
@@ -86,19 +112,25 @@ export default function DeveloperSection() {
                   {copied ? "Copied!" : "Copy"}
                 </button>
               </div>
-              {/* Code */}
-              <pre className="p-5 text-caption font-mono overflow-x-auto leading-6">
-                <span className="text-muted-foreground/50">{`<!-- Load the SDK once per page -->\n`}</span>
-                <span className="text-secondary">{`<script `}</span>
-                <span className="text-foreground">{`src`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"https://sbtc-pay.com/sbtcpay.js"`}</span>
-                <span className="text-foreground">{` async`}</span>
-                <span className="text-secondary">{`></script>`}</span>{`\n\n`}
-                <span className="text-muted-foreground/50">{`<!-- Drop a Pay button anywhere -->\n`}</span>
-                <span className="text-secondary">{`<div `}</span>
-                <span className="text-foreground">{`data-sbtcpay`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"invoice"`}</span>
-                <span className="text-foreground">{` data-sbtcpay-invoice`}</span><span className="text-muted-foreground">{`=`}</span><span className="text-primary">{`"123"`}</span>
-                <span className="text-secondary">{`></div>`}</span>
-              </pre>
+              {/* Code — each line reveals in sequence as it scrolls in */}
+              <div className="p-5 text-caption font-mono leading-6 overflow-x-auto" aria-label="Embed snippet">
+                {CODE_LINES.map((line, i) => (
+                  <Reveal
+                    key={i}
+                    className="whitespace-pre"
+                    from={{ opacity: 0 }}
+                    transition={{ delay: 0.35 + i * 0.09, duration: 0.25 }}
+                  >
+                    {line.length === 0
+                      ? " "
+                      : line.map((tok, j) => (
+                          <span key={j} className={tok.c}>
+                            {tok.t}
+                          </span>
+                        ))}
+                  </Reveal>
+                ))}
+              </div>
             </div>
           </Reveal>
         </div>
