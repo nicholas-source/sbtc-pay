@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { postToParent } from "@/lib/widget-bridge";
+import { postToParent, isEmbedded } from "@/lib/widget-bridge";
 import { AlertTriangle, Wallet, Loader2, Check } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -155,7 +155,10 @@ export default function DirectPaymentWidget() {
               <Badge variant="outline" className="text-micro border-stacks text-stacks">Widget</Badge>
             </div>
 
-            <div className="flex justify-center">
+            {/* QR encodes this widget's URL (scan to pay from a phone). Inside a
+                short SDK embed it's redundant and pushes content past the fold,
+                so hide it only when embedded in a low iframe. */}
+            <div className={`flex justify-center${isEmbedded() ? " [@media(max-height:560px)]:hidden" : ""}`}>
               <div className="rounded-lg bg-white p-2.5 sm:p-3">
                 <QRCodeSVG value={window.location.href} size={140} level="M" className="h-[100px] w-[100px] sm:h-[120px] sm:w-[120px] md:h-[140px] md:w-[140px]" />
               </div>
