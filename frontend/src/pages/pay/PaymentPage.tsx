@@ -15,6 +15,7 @@ import { PaymentQRCode } from "@/components/pay/PaymentQRCode";
 import { ExpirationCountdown } from "@/components/pay/ExpirationCountdown";
 import { PaymentConfirmation } from "@/components/pay/PaymentConfirmation";
 import { toast } from "sonner";
+import { safeStorage } from "@/lib/safe-storage";
 import { payInvoice, getInvoice as getInvoiceOnChain, getContractConfig, CONTRACT_ERRORS, waitForTransaction, fetchPaymentEventsForInvoice } from "@/lib/stacks/contract";
 import { truncateAddress, NETWORK_MODE, PAYMENT_CONTRACT, fetchBurnBlockHeight, fetchBurnBlockTimestamp, getExplorerTxUrl, type TokenType, TOKEN_DECIMALS } from "@/lib/stacks/config";
 
@@ -179,20 +180,20 @@ function PaymentPage() {
 
   function savePendingPayment(txIdVal: string, amount: number) {
     if (!pendingKey) return;
-    localStorage.setItem(pendingKey, JSON.stringify({ txId: txIdVal, amount, submittedAt: Date.now() }));
+    safeStorage.set(pendingKey, JSON.stringify({ txId: txIdVal, amount, submittedAt: Date.now() }));
   }
   function clearPendingPayment() {
-    if (pendingKey) localStorage.removeItem(pendingKey);
+    if (pendingKey) safeStorage.remove(pendingKey);
   }
   function loadPendingPayment(): { txId: string; amount: number; submittedAt: number } | null {
     if (!pendingKey) return null;
     try {
-      const raw = localStorage.getItem(pendingKey);
+      const raw = safeStorage.get(pendingKey);
       if (!raw) return null;
       const parsed = JSON.parse(raw);
       // Expire after 10 minutes (tx should have finalized by then)
       if (Date.now() - parsed.submittedAt > 10 * 60 * 1000) {
-        localStorage.removeItem(pendingKey);
+        safeStorage.remove(pendingKey);
         return null;
       }
       return parsed;
