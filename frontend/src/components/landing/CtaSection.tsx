@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
@@ -23,13 +23,7 @@ export default function CtaSection() {
       <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-secondary/30 to-transparent" />
 
       <div className="container relative">
-        <motion.div
-          className="mx-auto max-w-2xl text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
+        <Reveal className="mx-auto max-w-2xl text-center">
           <h2 className="text-heading-lg sm:text-display lg:text-display-lg font-display text-foreground mb-4">
             Ready when{" "}
             <span className="text-primary">you are.</span>
@@ -49,7 +43,7 @@ export default function CtaSection() {
               </Link>
             </Button>
           </div>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
