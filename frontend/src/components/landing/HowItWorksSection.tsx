@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import { Wallet, Link2, Zap } from "lucide-react";
 
 const STEPS = [
@@ -38,13 +38,7 @@ export default function HowItWorksSection() {
     <section id="how-it-works" className="py-12 sm:py-16 md:py-24 relative">
       <div className="absolute inset-0 bg-surface-1/40" aria-hidden="true" />
       <div className="container relative">
-        <motion.div
-          className="text-center mb-12 md:mb-16"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
+        <Reveal className="text-center mb-12 md:mb-16">
           <h2 className="text-heading-lg sm:text-display font-display text-foreground">
             Up and running in{" "}
             <span className="text-primary">60 seconds</span>
@@ -52,7 +46,7 @@ export default function HowItWorksSection() {
           <p className="mt-4 text-body-lg text-muted-foreground max-w-lg mx-auto">
             No signups, no credit cards — just connect your wallet.
           </p>
-        </motion.div>
+        </Reveal>
 
         <div className="relative grid grid-cols-1 sm:grid-cols-3 gap-8 lg:gap-12">
           {/* Dashed connector line (desktop only) */}
@@ -64,12 +58,10 @@ export default function HowItWorksSection() {
           {STEPS.map((step, i) => {
             const s = STYLE[step.color];
             return (
-              <motion.div
+              <Reveal
                 key={step.title}
                 className="flex flex-col items-center text-center"
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
+                from={{ opacity: 0, y: 20 }}
                 transition={{ delay: i * 0.12, duration: 0.4 }}
               >
                 <div className="relative mb-5">
@@ -82,7 +74,7 @@ export default function HowItWorksSection() {
                 </div>
                 <h3 className="text-heading-sm text-foreground mb-2">{step.title}</h3>
                 <p className="text-body-sm text-muted-foreground max-w-[240px]">{step.desc}</p>
-              </motion.div>
+              </Reveal>
             );
           })}
         </div>
