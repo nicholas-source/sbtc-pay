@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "./types";
+import { safeStorage } from "@/lib/safe-storage";
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
@@ -36,8 +37,8 @@ interface StoredAuth {
 
 function getStoredAuth(): StoredAuth | null {
   try {
-    const token = localStorage.getItem(JWT_STORAGE_KEY);
-    const address = localStorage.getItem(JWT_ADDRESS_KEY);
+    const token = safeStorage.get(JWT_STORAGE_KEY);
+    const address = safeStorage.get(JWT_ADDRESS_KEY);
     if (!token || !address) return null;
 
     // Decode JWT payload to check expiry
@@ -58,13 +59,13 @@ function getStoredAuth(): StoredAuth | null {
 }
 
 function storeAuth(token: string, address: string) {
-  localStorage.setItem(JWT_STORAGE_KEY, token);
-  localStorage.setItem(JWT_ADDRESS_KEY, address);
+  safeStorage.set(JWT_STORAGE_KEY, token);
+  safeStorage.set(JWT_ADDRESS_KEY, address);
 }
 
 function clearStoredAuth() {
-  localStorage.removeItem(JWT_STORAGE_KEY);
-  localStorage.removeItem(JWT_ADDRESS_KEY);
+  safeStorage.remove(JWT_STORAGE_KEY);
+  safeStorage.remove(JWT_ADDRESS_KEY);
 }
 
 /**
