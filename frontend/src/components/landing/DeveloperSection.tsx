@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import { Link } from "react-router-dom";
 import { Code, Copy, Check, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,12 +31,7 @@ export default function DeveloperSection() {
       <div className="container">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
           {/* Left — description */}
-          <motion.div
-            initial={{ opacity: 0, x: -20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
+          <Reveal from={{ opacity: 0, x: -20 }} transition={{ duration: 0.5 }}>
             <span className="inline-flex items-center gap-2 rounded-full border border-secondary/30 bg-secondary/10 px-3 py-1.5 text-caption font-semibold text-secondary mb-4">
               <Code className="h-3.5 w-3.5" />
               Developer First
@@ -65,15 +60,10 @@ export default function DeveloperSection() {
                 Read the Docs <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>
-          </motion.div>
+          </Reveal>
 
           {/* Right — syntax-highlighted code block */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-          >
+          <Reveal from={{ opacity: 0, x: 20 }} transition={{ duration: 0.5, delay: 0.1 }}>
             <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xl">
               {/* Toolbar */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
@@ -110,7 +100,7 @@ export default function DeveloperSection() {
                 <span className="text-secondary">{`></div>`}</span>
               </pre>
             </div>
-          </motion.div>
+          </Reveal>
         </div>
       </div>
     </section>
