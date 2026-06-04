@@ -561,10 +561,10 @@ export function PaymentConfirmation({
         </div>
 
         {/* ── Card footer / actions — rounded bottom corners here ── */}
-        <div className="flex items-center justify-between gap-2 border-t border-border/50 bg-muted/20 px-5 py-3 rounded-b-2xl">
+        <div className="flex flex-col items-start gap-2 border-t border-border/50 bg-muted/20 px-5 py-3 rounded-b-2xl sm:flex-row sm:items-center sm:justify-between">
           <p className="text-[11px] text-muted-foreground">Blockchain-verified receipt</p>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex w-full flex-wrap items-center justify-end gap-1.5 sm:w-auto">
             {/* Share / copy link */}
             {confirmed && (
               <Button
