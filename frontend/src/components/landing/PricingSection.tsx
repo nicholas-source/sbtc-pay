@@ -1,4 +1,4 @@
-import { motion } from "framer-motion";
+import { Reveal } from "./Reveal";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,12 +29,7 @@ export default function PricingSection() {
     <section id="pricing" className="py-12 sm:py-16 md:py-24 relative">
       <div className="absolute inset-0 bg-surface-1/50" />
       <div className="container relative">
-        <motion.div
-          className="mx-auto max-w-lg text-center"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-        >
+        <Reveal className="mx-auto max-w-lg text-center">
           <h2 className="text-heading-lg sm:text-display font-display text-foreground">
             Simple, transparent{" "}
             <span className="text-primary">pricing</span>
@@ -42,28 +37,23 @@ export default function PricingSection() {
           <p className="mt-4 text-body-lg text-muted-foreground">
             No subscriptions. No hidden fees. Just 0.5% per transaction.
           </p>
-        </motion.div>
+        </Reveal>
 
-        <motion.div
+        <Reveal
           className="mt-12 mx-auto max-w-sm sm:max-w-md px-2 sm:px-0"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
           transition={{ delay: 0.15 }}
         >
           <Card className="border-primary/30 relative overflow-hidden">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
             <CardContent className="p-4 sm:p-6 md:p-8">
               <div className="text-center">
-                <motion.div
+                <Reveal
                   className="text-display sm:text-display-lg md:text-display-xl text-primary font-black"
-                  initial={{ opacity: 0, y: 8 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                  from={{ opacity: 0, y: 8 }}
                   transition={{ duration: 0.6, ease: "easeOut" }}
                 >
                   0.5%
-                </motion.div>
+                </Reveal>
                 <p className="mt-2 text-body text-muted-foreground">per transaction</p>
               </div>
 
@@ -82,7 +72,7 @@ export default function PricingSection() {
               </Button>
             </CardContent>
           </Card>
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
