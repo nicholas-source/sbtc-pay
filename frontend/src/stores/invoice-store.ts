@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { safeStorage } from "@/lib/safe-storage";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, updateInvoice as updateInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain, fetchPaymentEventsForInvoice, fetchRefundEventsForInvoice } from "@/lib/stacks/contract";
 import { API_URL, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight, type TokenType } from "@/lib/stacks/config";
@@ -51,15 +52,15 @@ function saveOptimisticToStorage(invoices: Invoice[]) {
   // backfilled (dbId>0 but Supabase insert may have failed).
   const pending = invoices.filter((inv) => inv.txId);
   if (pending.length === 0) {
-    localStorage.removeItem(OPTIMISTIC_STORAGE_KEY);
+    safeStorage.remove(OPTIMISTIC_STORAGE_KEY);
     return;
   }
-  localStorage.setItem(OPTIMISTIC_STORAGE_KEY, JSON.stringify(pending));
+  safeStorage.set(OPTIMISTIC_STORAGE_KEY, JSON.stringify(pending));
 }
 
 function loadOptimisticFromStorage(): Invoice[] {
   try {
-    const raw = localStorage.getItem(OPTIMISTIC_STORAGE_KEY);
+    const raw = safeStorage.get(OPTIMISTIC_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as Invoice[];
     // Rehydrate Date objects
@@ -71,13 +72,13 @@ function loadOptimisticFromStorage(): Invoice[] {
       refunds: (inv.refunds || []).map((r) => ({ ...r, timestamp: new Date(r.timestamp) })),
     }));
   } catch {
-    localStorage.removeItem(OPTIMISTIC_STORAGE_KEY);
+    safeStorage.remove(OPTIMISTIC_STORAGE_KEY);
     return [];
   }
 }
 
 function clearOptimisticFromStorage() {
-  localStorage.removeItem(OPTIMISTIC_STORAGE_KEY);
+  safeStorage.remove(OPTIMISTIC_STORAGE_KEY);
 }
 
 interface CreateInvoiceData {
