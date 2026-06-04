@@ -5,7 +5,7 @@ const STEPS = [
   {
     Icon: Wallet,
     title: "Connect & register",
-    desc: "Link Leather or Xverse, then register your account on-chain — one transaction, about 10 seconds. No email, no password, no KYC.",
+    desc: "Link Leather or Xverse, then register your account on-chain — one transaction, about 10 seconds. Your wallet is your login.",
     color: "primary" as const,
   },
   {
@@ -44,7 +44,7 @@ export default function HowItWorksSection() {
             <span className="text-primary">60 seconds</span>
           </h2>
           <p className="mt-4 text-body-lg text-muted-foreground max-w-lg mx-auto">
-            No signups, no credit cards — just connect your wallet.
+            Connect a wallet, register once on-chain, and share your first payment link.
           </p>
         </Reveal>
 
