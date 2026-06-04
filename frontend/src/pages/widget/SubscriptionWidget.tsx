@@ -25,6 +25,17 @@ const INTERVAL_BLOCKS: Record<string, number> = {
   yearly: BURN_BLOCKS_PER_DAY * 365,
 };
 
+// Period nouns for billing copy — the interval param is an adjective
+// ("monthly"), so "per {interval}" reads "per monthly". Map to a noun.
+const INTERVAL_PERIOD: Record<string, string> = {
+  daily: "day",
+  weekly: "week",
+  biweekly: "2 weeks",
+  monthly: "month",
+  quarterly: "quarter",
+  yearly: "year",
+};
+
 export default function SubscriptionWidget() {
   const { merchantAddress } = useParams();
   const [params] = useSearchParams();
@@ -46,6 +57,7 @@ export default function SubscriptionWidget() {
   const baseAmount = parsedAmount;
   const humanAmount = baseToHuman(baseAmount, tokenType);
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
+  const periodLabel = INTERVAL_PERIOD[interval.toLowerCase()] || "cycle";
 
   const { isConnected, address, sbtcBalance, stxBalance, balancesLoading, provider, connect, switchWallet } = useWalletStore();
   const { btcPriceUsd, stxPriceUsd } = useLivePrices();
@@ -120,7 +132,7 @@ export default function SubscriptionWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Subscribed!</p>
               <p className="text-body-sm text-muted-foreground">
-                {humanAmount} {tokenLabel(tokenType)} (≈ ${amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD) / {interval}
+                {humanAmount} {tokenLabel(tokenType)} (≈ ${amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD) / {periodLabel}
               </p>
               <a href={getExplorerTxUrl(txId)} target="_blank" rel="noopener noreferrer"
                 className="text-primary text-body-sm underline">
@@ -161,7 +173,7 @@ export default function SubscriptionWidget() {
               <Repeat className="h-8 w-8 text-primary mx-auto" />
               <p className="text-heading-sm text-foreground">{plan}</p>
               <p className="text-heading sm:text-sats text-primary font-tabular">{humanAmount} {tokenLabel(tokenType)}</p>
-              <p className="text-caption text-muted-foreground">≈ ${amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD per {interval}</p>
+              <p className="text-caption text-muted-foreground">≈ ${amountToUsd(baseAmount, tokenType, btcPriceUsd, stxPriceUsd)} USD per {periodLabel}</p>
               <PriceStatusBadge />
             </div>
 
