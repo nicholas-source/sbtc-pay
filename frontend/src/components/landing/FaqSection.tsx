@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Reveal } from "./Reveal";
 
 interface FaqItem {
   q: string;
@@ -88,26 +89,18 @@ export default function FaqSection() {
     <section id="faq" className="py-12 sm:py-16 md:py-24 relative">
       <div className="absolute inset-0 bg-surface-1/40" aria-hidden="true" />
       <div className="container relative">
-        <motion.div
-          className="text-center mb-12 md:mb-16"
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.5 }}
-        >
+        <Reveal className="text-center mb-12 md:mb-16">
           <h2 className="text-heading-lg sm:text-display font-display text-foreground">
             Common questions
           </h2>
           <p className="mt-4 text-body-lg text-muted-foreground max-w-lg mx-auto">
             Everything you need to know before getting paid in sBTC.
           </p>
-        </motion.div>
+        </Reveal>
 
-        <motion.div
+        <Reveal
           className="mx-auto max-w-2xl"
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
+          from={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.4, delay: 0.1 }}
         >
           {FAQS.map((item, i) => (
@@ -118,7 +111,7 @@ export default function FaqSection() {
               onToggle={() => toggle(i)}
             />
           ))}
-        </motion.div>
+        </Reveal>
       </div>
     </section>
   );
