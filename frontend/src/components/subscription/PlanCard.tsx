@@ -120,7 +120,7 @@ export default function PlanCard({ plan }: PlanCardProps) {
           <div className="flex items-center gap-2 text-body-sm text-muted-foreground">
             <Users className="h-4 w-4" />
             <span>{activeCount} active</span>
-            <span className="text-muted-foreground/50">/ {subscribers.length} total</span>
+            <span className="text-muted-foreground-subtle">/ {subscribers.length} total</span>
           </div>
           <div className="flex items-center gap-1">
             <Tooltip>
