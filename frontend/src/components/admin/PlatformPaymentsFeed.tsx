@@ -247,7 +247,7 @@ export function PlatformPaymentsFeed() {
                       </span>
                       <span className="ml-1 text-caption text-muted-foreground">{tokenLabel(r.tokenType)}</span>
                       {r.invoiceId && (
-                        <p className="text-micro text-muted-foreground/70">#{r.invoiceId}</p>
+                        <p className="text-micro text-muted-foreground-subtle">#{r.invoiceId}</p>
                       )}
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">
