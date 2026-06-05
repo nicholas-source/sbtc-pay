@@ -392,10 +392,10 @@ export default function TransactionsPage() {
                           </span>
                         </div>
                         {r.invoiceId && (
-                          <p className="text-micro text-muted-foreground/70">#{r.invoiceId}</p>
+                          <p className="text-micro text-muted-foreground-subtle">#{r.invoiceId}</p>
                         )}
                         {r.memo && (
-                          <p className="text-micro text-muted-foreground/70 max-w-[120px] truncate">{r.memo}</p>
+                          <p className="text-micro text-muted-foreground-subtle max-w-[120px] truncate">{r.memo}</p>
                         )}
                       </TableCell>
                       <TableCell className="hidden sm:table-cell">
