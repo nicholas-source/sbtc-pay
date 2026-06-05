@@ -31,6 +31,10 @@
     /* Warm neutral muted */
     --muted: 220 12% 14%;
     --muted-foreground: 220 10% 58%;
+    /* Subtle tertiary text — dimmer than muted-foreground but still WCAG-AA
+       (≈4.9:1 on bg, ≈4.6:1 on card). Use this instead of stacking /opacity
+       on muted-foreground, which drops contrast below 4.5:1. */
+    --muted-foreground-subtle: 220 10% 52%;
 
     /* Accent — subtle warm */
     --accent: 220 12% 14%;
