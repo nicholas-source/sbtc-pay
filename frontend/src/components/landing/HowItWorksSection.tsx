@@ -5,7 +5,7 @@ const STEPS = [
   {
     Icon: Wallet,
     title: "Connect & register",
-    desc: "Link Leather or Xverse, then register your account on-chain — one transaction, about 10 seconds. Your wallet is your login.",
+    desc: "Link Leather or Xverse, then register your account on-chain: one transaction, about 10 seconds. Your wallet is your login.",
     color: "primary" as const,
   },
   {
@@ -17,7 +17,7 @@ const STEPS = [
   {
     Icon: Zap,
     title: "Receive funds on-chain",
-    desc: "Anyone with sBTC pays directly into your wallet. One Stacks block — ~10 seconds — and it's final.",
+    desc: "Anyone with sBTC pays directly into your wallet. One Stacks block (~10 seconds) and it's final.",
     color: "primary" as const,
   },
 ];

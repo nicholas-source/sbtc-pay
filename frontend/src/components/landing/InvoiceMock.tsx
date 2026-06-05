@@ -1,9 +1,9 @@
 /**
  * InvoiceMock — animated cycling invoice widget for the hero section.
  *
- * Cycles through 4 real-world business scenarios (partial, pending, paid)
- * with smooth Framer Motion transitions, animated progress bar, and
- * live BTC price from the wallet store.
+ * Cycles through 6 real-world business scenarios (partial, pending, paid)
+ * across both supported tokens (sBTC and STX), with smooth Framer Motion
+ * transitions, animated progress bar, and live prices from the wallet store.
  *
  * Layout:
  *  - Mobile: card only, no browser chrome
@@ -12,8 +12,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Bitcoin, Clock, CheckCircle2 } from "lucide-react";
-import { useBtcPrice, useSatsToUsd } from "@/stores/wallet-store";
-import { formatSbtc } from "@/lib/constants";
+import { useLivePrices } from "@/stores/wallet-store";
+import { formatAmount, amountToUsd, tokenLabel, type TokenType } from "@/lib/constants";
 import { cn } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -21,16 +21,23 @@ import { cn } from "@/lib/utils";
 type Status = "pending" | "partial" | "paid";
 type Wallet = "Leather" | "Xverse";
 
+interface Prices {
+  btcPriceUsd: number | null;
+  stxPriceUsd: number | null;
+}
+
 interface Scenario {
   id: string;
   merchant: string;
   initial: string;
   invoiceId: string;
   url: string;
-  /** Amount in satoshis */
-  amountSats: number;
-  /** Amount paid so far in satoshis */
-  paidSats: number;
+  /** Which token this invoice is denominated in */
+  token: TokenType;
+  /** Total amount due, in base units (sats for sBTC, microSTX for STX) */
+  amount: number;
+  /** Amount paid so far, in the same base units */
+  paid: number;
   status: Status;
   wallet: Wallet;
   expiresIn: string | null;
@@ -45,11 +52,25 @@ const SCENARIOS: Scenario[] = [
     initial: "C",
     invoiceId: "INV-2026-0042",
     url: "sbtc-pay.com/pay/inv-28f4a3",
-    amountSats: 500_000,    // 0.005 sBTC
-    paidSats: 310_000,      // 62 %
+    token: "sbtc",
+    amount: 500_000,    // 0.005 sBTC
+    paid: 310_000,      // 62 %
     status: "partial",
     wallet: "Leather",
     expiresIn: "23h 41m",
+  },
+  {
+    id: "indiegame",
+    merchant: "Pixel Forge Studio",
+    initial: "P",
+    invoiceId: "INV-2026-0173",
+    url: "sbtc-pay.com/pay/inv-3b1c90",
+    token: "stx",
+    amount: 120_000_000,  // 120 STX
+    paid: 120_000_000,    // 100 %
+    status: "paid",
+    wallet: "Xverse",
+    expiresIn: null,
   },
   {
     id: "freelance",
@@ -57,8 +78,9 @@ const SCENARIOS: Scenario[] = [
     initial: "F",
     invoiceId: "INV-2026-0118",
     url: "sbtc-pay.com/pay/inv-7c9e21",
-    amountSats: 1_200_000,  // 0.012 sBTC
-    paidSats: 0,
+    token: "sbtc",
+    amount: 1_200_000,  // 0.012 sBTC
+    paid: 0,
     status: "pending",
     wallet: "Xverse",
     expiresIn: "47h 20m",
@@ -69,11 +91,25 @@ const SCENARIOS: Scenario[] = [
     initial: "D",
     invoiceId: "SUB-2026-0008",
     url: "sbtc-pay.com/pay/sub-9a2b14",
-    amountSats: 200_000,    // 0.002 sBTC
-    paidSats: 200_000,      // 100 %
+    token: "sbtc",
+    amount: 200_000,    // 0.002 sBTC
+    paid: 200_000,      // 100 %
     status: "paid",
     wallet: "Leather",
     expiresIn: null,
+  },
+  {
+    id: "newsletter",
+    merchant: "Indie Newsletter",
+    initial: "N",
+    invoiceId: "SUB-2026-0021",
+    url: "sbtc-pay.com/pay/sub-5e7d33",
+    token: "stx",
+    amount: 45_000_000,   // 45 STX
+    paid: 0,
+    status: "pending",
+    wallet: "Leather",
+    expiresIn: "12h 03m",
   },
   {
     id: "bakery",
@@ -81,8 +117,9 @@ const SCENARIOS: Scenario[] = [
     initial: "B",
     invoiceId: "INV-2026-0205",
     url: "sbtc-pay.com/pay/inv-4d8f67",
-    amountSats: 800_000,    // 0.008 sBTC
-    paidSats: 640_000,      // 80 %
+    token: "sbtc",
+    amount: 800_000,    // 0.008 sBTC
+    paid: 640_000,      // 80 %
     status: "partial",
     wallet: "Xverse",
     expiresIn: "6h 14m",
@@ -116,16 +153,19 @@ const WALLET_CTA: Record<Wallet, string> = {
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
 
-function InvoiceCard({ s, satsToUsd, btcPrice }: {
+function InvoiceCard({ s, prices }: {
   s: Scenario;
-  satsToUsd: (sats: number) => string;
-  btcPrice: number | null;
+  prices: Prices;
 }) {
-  const pct = s.amountSats > 0 ? Math.round((s.paidSats / s.amountSats) * 100) : 0;
-  const remainingSats = s.amountSats - s.paidSats;
+  const pct = s.amount > 0 ? Math.round((s.paid / s.amount) * 100) : 0;
+  const remaining = s.amount - s.paid;
   const cfg = STATUS_CFG[s.status];
   const isPaid = s.status === "paid";
   const isPending = s.status === "pending";
+  const isStx = s.token === "stx";
+  const label = tokenLabel(s.token);
+  const usd = amountToUsd(s.amount, s.token, prices.btcPriceUsd, prices.stxPriceUsd);
+  const unitPrice = isStx ? prices.stxPriceUsd : prices.btcPriceUsd;
 
   return (
     <motion.div
@@ -167,17 +207,17 @@ function InvoiceCard({ s, satsToUsd, btcPrice }: {
         <p className="text-micro text-muted-foreground mb-1">Amount Due</p>
         <div className="flex items-baseline gap-1.5">
           <span className="font-mono text-2xl font-bold text-foreground leading-none">
-            {formatSbtc(s.amountSats)}
+            {formatAmount(s.amount, s.token)}
           </span>
-          <span className="text-sm font-normal text-muted-foreground">sBTC</span>
+          <span className="text-sm font-normal text-muted-foreground">{label}</span>
         </div>
         <div className="flex items-center gap-2 mt-1">
           <span className="text-caption text-muted-foreground">
-            ≈ ${satsToUsd(s.amountSats)} USD
+            ≈ ${usd} USD
           </span>
-          {btcPrice !== null && (
+          {unitPrice !== null && (
             <span className="text-micro text-muted-foreground/45 font-mono">
-              ₿&thinsp;${btcPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+              {isStx ? "STX" : "₿"}&thinsp;${unitPrice.toLocaleString("en-US", { maximumFractionDigits: isStx ? 2 : 0 })}
             </span>
           )}
         </div>
@@ -208,8 +248,8 @@ function InvoiceCard({ s, satsToUsd, btcPrice }: {
             />
           </div>
           <div className="flex justify-between text-micro text-muted-foreground mt-1.5">
-            <span>{formatSbtc(s.paidSats)} sBTC paid</span>
-            <span>{formatSbtc(remainingSats)} remaining</span>
+            <span>{formatAmount(s.paid, s.token)} {label} paid</span>
+            <span>{formatAmount(remaining, s.token)} remaining</span>
           </div>
         </div>
       )}
@@ -234,7 +274,7 @@ function InvoiceCard({ s, satsToUsd, btcPrice }: {
         {isPaid ? (
           <>
             <CheckCircle2 className="h-3 w-3 shrink-0 text-success" />
-            <span className="text-success font-medium">Settled on Bitcoin</span>
+            <span className="text-success font-medium">Settled on {isStx ? "Stacks" : "Bitcoin"}</span>
           </>
         ) : (
           <>
@@ -319,8 +359,7 @@ const INTERVAL_MS = 4500;
 export default function InvoiceMock() {
   const [activeIdx, setActiveIdx] = useState(0);
   const [paused, setPaused] = useState(false);
-  const btcPrice = useBtcPrice();
-  const satsToUsd = useSatsToUsd();
+  const prices = useLivePrices();
 
   const advance = useCallback(() => {
     setActiveIdx((i) => (i + 1) % SCENARIOS.length);
@@ -376,7 +415,7 @@ export default function InvoiceMock() {
         {/* Page area */}
         <div className="bg-background py-10 px-4 flex flex-col items-center">
           <AnimatePresence mode="wait">
-            <InvoiceCard key={s.id} s={s} satsToUsd={satsToUsd} btcPrice={btcPrice} />
+            <InvoiceCard key={s.id} s={s} prices={prices} />
           </AnimatePresence>
           <ScenarioDots
             count={SCENARIOS.length}
@@ -389,7 +428,7 @@ export default function InvoiceMock() {
       {/* ── Mobile: card only ─────────────────────────────────────────────────── */}
       <div className="md:hidden flex flex-col items-center px-2">
         <AnimatePresence mode="wait">
-          <InvoiceCard key={s.id} s={s} satsToUsd={satsToUsd} btcPrice={btcPrice} />
+          <InvoiceCard key={s.id} s={s} prices={prices} />
         </AnimatePresence>
         <ScenarioDots
           count={SCENARIOS.length}

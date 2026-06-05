@@ -33,7 +33,7 @@ export default function LandingFooter() {
               <span className="text-lg font-bold text-foreground">sBTC Pay</span>
             </div>
             <p className="text-body-sm text-muted-foreground max-w-xs">
-              Get paid in sBTC. Invoices, subscriptions, embeds — paid directly to your wallet on Bitcoin.
+              Get paid in sBTC. Invoices, subscriptions, embeds, paid directly to your wallet on Bitcoin.
             </p>
             <div className="flex items-center gap-4">
               {/* Twitter/X */}

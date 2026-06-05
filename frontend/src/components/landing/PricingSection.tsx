@@ -10,9 +10,9 @@ import { useWalletStore } from "@/stores/wallet-store";
 const checkpoints = [
   "0.5% platform fee, deducted on-chain at payment time",
   "No monthly fees, no hidden costs",
-  "Settles directly to your wallet — no intermediary holds funds",
+  "Settles directly to your wallet, no intermediary holds funds",
   "Real-time webhook notifications",
-  "Script tag, iframe, or programmatic SDK — your choice",
+  "Script tag, iframe, or programmatic SDK: your choice",
 ];
 
 // The headline stat counts up to 0.5% as it scrolls in — a reveal that fits

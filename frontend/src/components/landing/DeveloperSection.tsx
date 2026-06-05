@@ -69,7 +69,7 @@ export default function DeveloperSection() {
             <p className="text-body-lg text-muted-foreground mb-6">
               Drop in the SDK, add a <code className="font-mono text-secondary">data-sbtcpay</code>{" "}
               attribute, and a styled Pay button appears wherever you want it. Click opens a checkout
-              modal that handles the rest — that snippet is the whole integration.
+              modal that handles the rest. That snippet is the whole integration.
             </p>
             <ul className="flex flex-col gap-3 mb-8">
               {BENEFITS.map((item) => (

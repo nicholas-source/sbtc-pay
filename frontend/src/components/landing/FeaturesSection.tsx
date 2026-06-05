@@ -15,13 +15,13 @@ const spotlights = [
   {
     icon: Shield,
     title: "No Chargebacks",
-    desc: "Once a payment confirms on-chain, the money is yours to keep — it can't be clawed back weeks later the way a card charge can. Zero fraud risk, zero disputes.",
+    desc: "Once a payment confirms on-chain, the money is yours to keep; it can't be clawed back weeks later the way a card charge can. Zero fraud risk, zero disputes.",
     color: "primary" as const,
   },
   {
     icon: Zap,
     title: "Instant Settlement",
-    desc: "Funds land in your wallet the moment a payment confirms, about ten seconds — instead of the two-to-seven-day payout wait you'd get from a card processor.",
+    desc: "Funds land in your wallet the moment a payment confirms in about ten seconds, instead of the two-to-seven-day payout wait you'd get from a card processor.",
     color: "secondary" as const,
   },
 ];
@@ -29,7 +29,7 @@ const spotlights = [
 const features = [
   { icon: SplitSquareHorizontal, title: "Partial Payments", desc: "Accept partial payments with progress tracking and automatic reconciliation.", color: "primary" as const },
   { icon: RefreshCcw, title: "Instant Refunds", desc: "Full or partial refunds with complete audit trail and on-chain transparency.", color: "secondary" as const },
-  { icon: Repeat, title: "Subscriptions", desc: "Recurring billing with pause, resume, and cancel — all trustlessly on-chain.", color: "primary" as const },
+  { icon: Repeat, title: "Subscriptions", desc: "Recurring billing with pause, resume, and cancel, all trustlessly on-chain.", color: "primary" as const },
   { icon: Code, title: "Developer First", desc: "Drop in a script tag. Listen for webhooks. Ship in an afternoon.", color: "secondary" as const },
 ];
 
@@ -48,7 +48,7 @@ export default function FeaturesSection() {
             <span className="text-secondary">get paid in sBTC.</span>
           </h2>
           <p className="mt-4 text-body-lg text-muted-foreground max-w-xl mx-auto">
-            Invoices, subscriptions, refunds, embeds — all the boring parts, handled.
+            Invoices, subscriptions, refunds, embeds: all the boring parts, handled.
           </p>
         </Reveal>
 
