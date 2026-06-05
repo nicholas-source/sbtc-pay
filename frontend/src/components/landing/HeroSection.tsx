@@ -27,55 +27,62 @@ export default function HeroSection() {
   };
 
   return (
-    <section id="main-content" className="relative pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-44 lg:pb-32 bg-grid">
+    <section id="main-content" className="relative pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-32 bg-grid">
       <div className="container relative">
-        <motion.div
-          className="mx-auto max-w-4xl text-center"
-          initial="hidden"
-          animate="visible"
-          variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
-        >
-          <motion.h1
-            variants={fadeUp}
-            custom={0}
-            className="text-display sm:text-display-lg lg:text-display-xl tracking-tight text-balance"
+        <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-16 xl:gap-20 items-center">
+          {/* Left — copy */}
+          <motion.div
+            className="text-center lg:text-left"
+            initial="hidden"
+            animate="visible"
+            variants={{ visible: { transition: { staggerChildren: 0.12 } } }}
           >
-            Get paid in sBTC.{" "}
-            <span className="text-primary whitespace-nowrap">Nothing weird.</span>
-          </motion.h1>
+            <motion.h1
+              variants={fadeUp}
+              custom={0}
+              className="text-display sm:text-display-lg lg:text-display-xl tracking-tight text-balance"
+            >
+              Get paid in sBTC.{" "}
+              <span className="text-primary whitespace-nowrap">Nothing weird.</span>
+            </motion.h1>
 
-          <motion.p
-            variants={fadeUp}
-            custom={1}
-            className="mt-6 text-body-lg text-muted-foreground max-w-xl mx-auto text-balance"
-          >
-            A working payment link in 60 seconds. Invoices, subscriptions,
-            one-time payments — paid directly to your wallet in sBTC or STX.
-          </motion.p>
+            <motion.p
+              variants={fadeUp}
+              custom={1}
+              className="mt-6 text-body-lg text-muted-foreground max-w-xl mx-auto lg:mx-0 text-balance"
+            >
+              A working payment link in 60 seconds. Invoices, subscriptions,
+              one-time payments, paid directly to your wallet in sBTC or STX.
+            </motion.p>
 
-          <motion.div variants={fadeUp} custom={2} className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center gap-2.5 sm:gap-3 md:gap-4">
-            <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" onClick={handleGetStarted}>
-              {isConnected ? "Open dashboard" : "Get your link"}
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
-              <a href="#how-it-works">How it works</a>
-            </Button>
+            <motion.div
+              variants={fadeUp}
+              custom={2}
+              className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-2.5 sm:gap-3 md:gap-4"
+            >
+              <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" onClick={handleGetStarted}>
+                {isConnected ? "Open dashboard" : "Get your link"}
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="lg" className="h-12 px-6 text-base w-full sm:w-auto" asChild>
+                <a href="#how-it-works">How it works</a>
+              </Button>
+            </motion.div>
+
+            <motion.p
+              variants={fadeUp}
+              custom={3}
+              className="mt-6 text-caption text-muted-foreground"
+            >
+              Live on Stacks mainnet · Non-custodial
+            </motion.p>
           </motion.div>
 
-          <motion.p
-            variants={fadeUp}
-            custom={3}
-            className="mt-6 text-caption text-muted-foreground"
-          >
-            Live on Stacks mainnet · Non-custodial
-          </motion.p>
-
-          {/* Animated invoice mock — visible on all screen sizes */}
-          <div className="mt-10 sm:mt-12 md:mt-14">
+          {/* Right — animated invoice mock */}
+          <div className="w-full">
             <InvoiceMock />
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
