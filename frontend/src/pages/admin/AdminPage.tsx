@@ -803,7 +803,7 @@ export default function AdminPage() {
                         {pendingAction === "transfer" ? <Loader2 className="h-4 w-4 animate-spin" /> : <><ArrowRightLeft className="h-4 w-4 mr-1" /> Transfer</>}
                       </Button>
                     </div>
-                    <p className="text-micro text-muted-foreground/70 mt-1">
+                    <p className="text-micro text-muted-foreground-subtle mt-1">
                       The new owner must call <code className="font-mono">accept-ownership</code> on the contract to complete the transfer.
                       On-chain acceptance UI — <span className="text-muted-foreground">coming soon</span>.
                     </p>
