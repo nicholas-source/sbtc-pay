@@ -715,13 +715,13 @@ function PaymentPage() {
             <label className="text-caption text-muted-foreground">
               Payment amount ({tokenLabel(tt)})
               {invoice.allowPartial && !invoice.allowOverpay && (
-                <span className="ml-1 text-muted-foreground/60">· min any, max {formatAmount(remaining, tt)}</span>
+                <span className="ml-1 text-muted-foreground-subtle">· min any, max {formatAmount(remaining, tt)}</span>
               )}
               {invoice.allowOverpay && !invoice.allowPartial && (
-                <span className="ml-1 text-muted-foreground/60">· min {formatAmount(remaining, tt)}</span>
+                <span className="ml-1 text-muted-foreground-subtle">· min {formatAmount(remaining, tt)}</span>
               )}
               {invoice.allowPartial && invoice.allowOverpay && (
-                <span className="ml-1 text-muted-foreground/60">· any amount</span>
+                <span className="ml-1 text-muted-foreground-subtle">· any amount</span>
               )}
             </label>
             <Input
