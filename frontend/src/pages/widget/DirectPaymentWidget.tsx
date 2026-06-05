@@ -127,7 +127,7 @@ export default function DirectPaymentWidget() {
               <Check className="h-12 w-12 text-success mx-auto" />
               <p className="text-heading-sm text-foreground">Payment Submitted</p>
               <p className="text-body-sm text-muted-foreground">
-                {payAmount} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">(≈ ${amountToUsd(humanToBaseUnits(Number(payAmount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD)</span> sent to merchant
+                {payAmount} {tokenLabel(tokenType)} <span className="text-muted-foreground-subtle">(≈ ${amountToUsd(humanToBaseUnits(Number(payAmount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD)</span> sent to merchant
               </p>
               <a
                 href={getExplorerTxUrl(txId)}
@@ -177,7 +177,7 @@ export default function DirectPaymentWidget() {
                 disabled={payState === "confirming"}
               />
               {payAmount && Number(payAmount) > 0 && (
-                <p className="text-caption text-muted-foreground">{Number(payAmount)} {tokenLabel(tokenType)} <span className="text-muted-foreground/70">≈ ${amountToUsd(humanToBaseUnits(Number(payAmount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD</span></p>
+                <p className="text-caption text-muted-foreground">{Number(payAmount)} {tokenLabel(tokenType)} <span className="text-muted-foreground-subtle">≈ ${amountToUsd(humanToBaseUnits(Number(payAmount), tokenType), tokenType, btcPriceUsd, stxPriceUsd)} USD</span></p>
               )}
               <PriceStatusBadge />
             </div>
