@@ -13,7 +13,7 @@ const SNIPPET = `<!-- Load the SDK once per page -->
 // Code as tokenised lines so each one can reveal in sequence — it reads like
 // the snippet is being written, instead of the whole block fading in at once.
 const CODE_LINES: { t: string; c: string }[][] = [
-  [{ t: "<!-- Load the SDK once per page -->", c: "text-muted-foreground/50" }],
+  [{ t: "<!-- Load the SDK once per page -->", c: "text-muted-foreground-subtle" }],
   [
     { t: "<script ", c: "text-secondary" },
     { t: "src", c: "text-foreground" },
@@ -23,7 +23,7 @@ const CODE_LINES: { t: string; c: string }[][] = [
     { t: "></script>", c: "text-secondary" },
   ],
   [],
-  [{ t: "<!-- Drop a Pay button anywhere -->", c: "text-muted-foreground/50" }],
+  [{ t: "<!-- Drop a Pay button anywhere -->", c: "text-muted-foreground-subtle" }],
   [
     { t: "<div ", c: "text-secondary" },
     { t: "data-sbtcpay", c: "text-foreground" },
