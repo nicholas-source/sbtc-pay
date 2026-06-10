@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://sbtc-pay.com/</loc>
+    <lastmod>2026-06-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://sbtc-pay.com/docs</loc>
+    <lastmod>2026-06-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url><loc>https://sbtc-pay.com/docs/quickstart</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/invoices</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/subscriptions</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/refunds</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/dashboard</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/notifications</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/fees</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/widgets</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/widget-parameters</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/examples/static-site</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/architecture</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/settlement</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/timing</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/contract</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/errors</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://sbtc-pay.com/docs/faq</loc><lastmod>2026-06-05</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+</urlset>
