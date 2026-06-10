@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { ChevronRight } from "lucide-react";
 import { PageNav } from "./PageNav";
+import { setTitleAndDescription, DOCS_DESCRIPTION } from "@/lib/seo";
 
 interface DocsPageProps {
   slug: string;
@@ -14,8 +15,10 @@ interface DocsPageProps {
 
 export function DocsPage({ slug, section, title, description, children }: DocsPageProps) {
   useEffect(() => {
-    document.title = `${title} | sBTC Pay Docs`;
-  }, [title]);
+    // Docs pages own their <title> + description + social tags. Canonical,
+    // og:url, and robots are handled centrally in RouteAnnouncer.
+    setTitleAndDescription(`${title} | sBTC Pay Docs`, description || DOCS_DESCRIPTION);
+  }, [title, description]);
 
   return (
     <article className="mx-auto max-w-3xl">

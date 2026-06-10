@@ -80,6 +80,19 @@ function FaqRow({ item, isOpen, onToggle }: { item: FaqItem; isOpen: boolean; on
   );
 }
 
+// FAQPage structured data for rich results. Built from the same FAQS so the
+// markup and the schema never drift. Lives on the landing page (where the FAQ
+// is actually visible) and is baked into the prerendered HTML.
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: FAQS.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+
 export default function FaqSection() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
 
@@ -87,6 +100,10 @@ export default function FaqSection() {
 
   return (
     <section id="faq" className="py-12 sm:py-16 md:py-24 relative">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="absolute inset-0 bg-surface-1/40" aria-hidden="true" />
       <div className="container relative">
         <Reveal className="text-center mb-12 md:mb-16">

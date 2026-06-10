@@ -7,6 +7,7 @@ import { MotionConfig } from "framer-motion";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import CustomerLayout from "@/components/layout/CustomerLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
+import { setCanonical, setRobots, setTitleAndDescription, DEFAULT_DESCRIPTION } from "@/lib/seo";
 const CommandPalette = lazy(() => import("@/components/dashboard/CommandPalette"));
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import InvoicesSkeleton from "@/components/dashboard/InvoicesSkeleton";
@@ -84,6 +85,12 @@ const ROUTE_TITLES: Record<string, string> = {
   "/docs": "Documentation | sBTC Pay",
 };
 
+// Public, indexable surfaces. Everything else (dashboard, admin, customer, pay,
+// widget) is auth-gated or transient and must not be indexed.
+function isIndexable(pathname: string): boolean {
+  return pathname === "/" || pathname === "/docs" || pathname.startsWith("/docs/");
+}
+
 // Scroll to top, move focus for screen readers, and set page title on route change
 function RouteAnnouncer() {
   const { pathname } = useLocation();
@@ -91,20 +98,18 @@ function RouteAnnouncer() {
   const isFirstRender = useRef(true);
 
   useEffect(() => {
-    // Set dynamic page title
-    const title = ROUTE_TITLES[pathname] || "sBTC Pay";
-    document.title = title;
+    // Canonical + og:url + index/noindex apply to every route and don't depend
+    // on a page-supplied title, so set them here for all routes.
+    setCanonical(pathname);
+    setRobots(isIndexable(pathname));
 
-    // Self-referencing per-route canonical. Static markup can't do this in an
-    // SPA without canonicalizing every route to "/", so we set it here.
-    const canonicalHref = `https://sbtc-pay.com${pathname === "/" ? "" : pathname.replace(/\/$/, "")}`;
-    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.setAttribute("rel", "canonical");
-      document.head.appendChild(canonical);
+    // Title + description: docs routes own their own (DocsPage sets a specific
+    // title and description, and its effect runs after this one), so skip them
+    // here to avoid clobbering. Handle everything else.
+    if (!pathname.startsWith("/docs")) {
+      const title = ROUTE_TITLES[pathname] || "sBTC Pay";
+      setTitleAndDescription(title, DEFAULT_DESCRIPTION);
     }
-    canonical.setAttribute("href", canonicalHref);
 
     window.scrollTo(0, 0);
 
