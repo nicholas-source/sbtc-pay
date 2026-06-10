@@ -56,6 +56,34 @@
     <meta name="twitter:description" content="A working payment link in 60 seconds. Invoices, subscriptions, and one-time payments are paid directly to your wallet in sBTC or STX." />
     <meta name="twitter:image" content="https://sbtc-pay.com/og-image.png" />
     <meta name="twitter:image:alt" content="sBTC Pay: get paid in sBTC. A sample payment invoice showing an on-chain payment settled to a wallet." />
+
+    <!-- Structured data: site-wide Organization + WebSite entities. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://sbtc-pay.com/#organization",
+            "name": "sBTC Pay",
+            "url": "https://sbtc-pay.com",
+            "logo": "https://sbtc-pay.com/icon-512.png",
+            "sameAs": [
+              "https://x.com/sbtcpay",
+              "https://github.com/nicholas-source/sbtc-pay"
+            ]
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://sbtc-pay.com/#website",
+            "url": "https://sbtc-pay.com",
+            "name": "sBTC Pay",
+            "description": "A working payment link in 60 seconds. Invoices, subscriptions, and one-time payments are paid directly to your wallet in sBTC or STX.",
+            "publisher": { "@id": "https://sbtc-pay.com/#organization" }
+          }
+        ]
+      }
+    </script>
   </head>
 
   <body class="bg-[hsl(220,16%,6%)]">
