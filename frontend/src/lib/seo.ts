@@ -10,7 +10,7 @@
 export const SITE_ORIGIN = "https://sbtc-pay.com";
 
 export const DEFAULT_DESCRIPTION =
-  "A working payment link in 60 seconds. Invoices, subscriptions, and one-time payments are paid directly to your wallet in sBTC or STX.";
+  "Get paid in sBTC or STX. Create a payment link in 60 seconds for invoices, subscriptions, and one-time payments.";
 
 export const DOCS_DESCRIPTION =
   "sBTC Pay documentation: integrate payment links, invoices, subscriptions, refunds, and embeddable widgets for sBTC and STX.";
