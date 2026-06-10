@@ -95,6 +95,17 @@ function RouteAnnouncer() {
     const title = ROUTE_TITLES[pathname] || "sBTC Pay";
     document.title = title;
 
+    // Self-referencing per-route canonical. Static markup can't do this in an
+    // SPA without canonicalizing every route to "/", so we set it here.
+    const canonicalHref = `https://sbtc-pay.com${pathname === "/" ? "" : pathname.replace(/\/$/, "")}`;
+    let canonical = document.querySelector<HTMLLinkElement>('link[rel="canonical"]');
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
+    }
+    canonical.setAttribute("href", canonicalHref);
+
     window.scrollTo(0, 0);
 
     // Skip focus management on initial load
