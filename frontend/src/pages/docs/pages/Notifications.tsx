@@ -10,7 +10,7 @@ export default function Notifications() {
       slug="notifications"
       section="For Merchants"
       title="Payment Notifications"
-      description="Three ways to know when a payment lands — outbound webhooks (push), polling the indexer (pull), or running your own Chainhook."
+      description="Three ways to know when a payment lands: webhooks (push), polling the indexer (pull), or running your own Chainhook."
     >
       <p className="lead">
         When a payment hits your wallet, you'll want to react — fulfill an order, grant access

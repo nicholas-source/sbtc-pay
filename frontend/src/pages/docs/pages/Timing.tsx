@@ -8,7 +8,7 @@ export default function Timing() {
       slug="timing"
       section="Concepts"
       title="Burn-Block Timing"
-      description="Why sBTC Pay measures all time-based logic in Bitcoin burn blocks, not Stacks blocks — and why this matters after the Nakamoto upgrade."
+      description="Why sBTC Pay measures time in Bitcoin burn blocks, not Stacks blocks, and why that matters after the Nakamoto upgrade."
     >
       <p className="lead">
         Every time-sensitive piece of the contract — invoice expiry, refund window, subscription

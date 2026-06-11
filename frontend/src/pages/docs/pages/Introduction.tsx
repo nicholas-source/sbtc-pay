@@ -9,7 +9,7 @@ export default function Introduction() {
       slug=""
       section="Get Started"
       title="Introduction"
-      description="sBTC Pay is a Stacks-native payment platform for receiving sBTC and STX with Stripe-style ergonomics. This guide takes you from never heard of it to first live payment."
+      description="Accept sBTC and STX on Stacks with Stripe-style ergonomics. This guide takes you from zero to your first live payment."
     >
       <p className="lead">
         If you've used Stripe, PayPal, or Paddle, sBTC Pay will feel familiar. The difference: settlement

@@ -9,7 +9,7 @@ export default function Architecture() {
       slug="architecture"
       section="Concepts"
       title="Architecture"
-      description="The three-layer system that powers sBTC Pay — and why it isn't just a smart contract plus a frontend."
+      description="The three-layer system that powers sBTC Pay, and why it isn't just a smart contract plus a frontend."
     >
       <p className="lead">
         sBTC Pay is structured as three layers: a Clarity smart contract (truth), an indexing layer

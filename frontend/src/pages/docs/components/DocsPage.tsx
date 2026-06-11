@@ -17,8 +17,8 @@ export function DocsPage({ slug, section, title, description, children }: DocsPa
   useEffect(() => {
     // Docs pages own their <title> + description + social tags. Canonical,
     // og:url, and robots are handled centrally in RouteAnnouncer.
-    setTitleAndDescription(`${title} | sBTC Pay Docs`, description || DOCS_DESCRIPTION);
-  }, [title, description]);
+    setTitleAndDescription(`${title} · ${section} | sBTC Pay Docs`, description || DOCS_DESCRIPTION);
+  }, [title, section, description]);
 
   return (
     <article className="mx-auto max-w-3xl">

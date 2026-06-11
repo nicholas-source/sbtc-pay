@@ -10,7 +10,7 @@ export default function Subscriptions() {
       slug="subscriptions"
       section="For Merchants"
       title="Subscriptions"
-      description="Recurring billing — daily, weekly, monthly, or any custom interval — all settled on-chain in sBTC or STX."
+      description="Recurring billing (daily, weekly, monthly, or any custom interval), all settled on-chain in sBTC or STX."
     >
       <p className="lead">
         A subscription is an agreement between a recipient and a subscriber: a fixed amount paid on

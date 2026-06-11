@@ -9,7 +9,7 @@ export default function Dashboard() {
       slug="dashboard"
       section="Receiving Payments"
       title="Dashboard Guide"
-      description="A tour of the dashboard — what every screen shows and how to get what you need fast."
+      description="A tour of the dashboard: what every screen shows and how to get what you need fast."
     >
       <p className="lead">
         The dashboard is your home base. Once your wallet is connected, you can see every invoice,

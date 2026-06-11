@@ -9,7 +9,7 @@ export default function StaticSiteExample() {
       slug="examples/static-site"
       section="Embedding"
       title="Static HTML Example"
-      description="A copy-paste integration for a plain HTML site — no framework, no build step, no backend. You can ship this in 5 minutes."
+      description="A copy-paste integration for a plain HTML site: no framework, no build step, no backend. You can ship this in 5 minutes."
     >
       <p className="lead">
         The simplest possible integration. One script tag, one button, a payment modal your customers

@@ -8,7 +8,7 @@ export default function Settlement() {
       slug="settlement"
       section="Concepts"
       title="Settlement Model"
-      description="How funds actually move through sBTC Pay — and why settlement is instant, direct, and custodial-free."
+      description="How funds actually move through sBTC Pay, and why settlement is instant, direct, and custodial-free."
     >
       <p className="lead">
         Every payment on sBTC Pay is a direct wallet-to-wallet transfer that settles in one Stacks

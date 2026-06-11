@@ -10,7 +10,7 @@ export default function Fees() {
       slug="fees"
       section="For Merchants"
       title="Fees"
-      description="The current protocol fee is 0.5%. This page breaks down exactly what it applies to, how it splits, and what else costs money on-chain."
+      description="The protocol fee is 0.5%. What it applies to, how it splits, and what else costs money on-chain."
     >
       <p className="lead">
         There are two kinds of fees on every sBTC Pay transaction: a <strong>protocol fee</strong>{" "}
