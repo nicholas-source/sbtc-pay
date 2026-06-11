@@ -37,13 +37,13 @@
       "source": "/",
       "has": [{ "type": "host", "value": "docs.sbtc-pay.com" }],
       "destination": "https://sbtc-pay.com/docs",
-      "permanent": false
+      "permanent": true
     },
     {
       "source": "/:path*",
       "has": [{ "type": "host", "value": "docs.sbtc-pay.com" }],
       "destination": "https://sbtc-pay.com/docs/:path*",
-      "permanent": false
+      "permanent": true
     }
   ],
   "rewrites": [
