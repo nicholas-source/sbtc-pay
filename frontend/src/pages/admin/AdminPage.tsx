@@ -90,7 +90,7 @@ function StatCard({
       type="button"
       onClick={onClick}
       aria-label={ariaLabel ?? `View ${label}`}
-      className="text-left rounded-lg focus:outline-none w-full"
+      className="text-left rounded-lg focus:outline-none w-full grid"
     >
       {card}
     </button>
