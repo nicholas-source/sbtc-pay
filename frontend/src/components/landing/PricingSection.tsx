@@ -66,7 +66,7 @@ export default function PricingSection() {
             Simple, transparent{" "}
             <span className="text-primary">pricing</span>
           </h2>
-          <p className="mt-4 text-body-lg text-muted-foreground">
+          <p className="mt-4 text-body-lg text-muted-foreground text-balance">
             A flat 0.5% per transaction, deducted on-chain at payment time.
           </p>
         </Reveal>

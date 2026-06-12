@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Calendar, Copy, ExternalLink, FileText, Repeat,
-  BadgeCheck, Ban, CheckCircle2,
+  BadgeCheck, Ban, CheckCircle2, ArrowDownLeft,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,8 +20,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { supabaseWithWallet } from "@/lib/supabase/client";
 import type { MerchantEntry } from "@/stores/admin-store";
 import { formatAmount, tokenLabel, type TokenType } from "@/lib/constants";
-import { getExplorerAddressUrl } from "@/lib/stacks/config";
+import { getExplorerAddressUrl, getExplorerTxUrl, truncateAddress } from "@/lib/stacks/config";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import type { Tables } from "@/lib/supabase/types";
 
 type InvoiceRow = Pick<
@@ -32,6 +33,22 @@ type SubscriptionRow = Pick<
   Tables<"subscriptions">,
   "id" | "name" | "amount" | "token_type" | "status" | "subscriber" | "payments_made" | "created_at"
 >;
+
+// Unified row for the Payments tab — combines invoice payments and direct
+// payments so the admin can audit every on-chain transaction the merchant
+// received, with a clickable tx hash for each.
+interface PaymentRow {
+  id: string;
+  kind: "invoice" | "direct";
+  tokenType: TokenType;
+  amount: number;
+  merchantReceived: number;
+  payer: string;
+  txId: string | null;
+  blockHeight: number;
+  createdAt: string;
+  invoiceId?: number;
+}
 
 const INVOICE_STATUS_LABELS: Record<number, string> = {
   0: "Pending", 1: "Partial", 2: "Paid", 3: "Expired", 4: "Cancelled", 5: "Refunded",
@@ -71,6 +88,7 @@ export function MerchantActivitySheet({
 }: Props) {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [subscriptions, setSubscriptions] = useState<SubscriptionRow[]>([]);
+  const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -80,6 +98,7 @@ export function MerchantActivitySheet({
     setLoading(true);
     setInvoices([]);
     setSubscriptions([]);
+    setPayments([]);
 
     const db = supabaseWithWallet(walletAddress);
 
@@ -94,10 +113,54 @@ export function MerchantActivitySheet({
         .eq("merchant_principal", merchant.address)
         .order("created_at", { ascending: false })
         .limit(100),
-    ]).then(([invRes, subRes]) => {
+      db.from("payments")
+        .select("id, amount, merchant_received, payer, tx_id, block_height, created_at, token_type, invoice_id")
+        .eq("merchant_principal", merchant.address)
+        .order("block_height", { ascending: false })
+        .limit(100),
+      db.from("direct_payments")
+        .select("id, amount, merchant_received, payer, tx_id, block_height, created_at, token_type")
+        .eq("merchant_principal", merchant.address)
+        .order("block_height", { ascending: false })
+        .limit(100),
+    ]).then(([invRes, subRes, payRes, directRes]) => {
       if (cancelled) return;
       if (invRes.status === "fulfilled" && invRes.value.data) setInvoices(invRes.value.data);
       if (subRes.status === "fulfilled" && subRes.value.data) setSubscriptions(subRes.value.data);
+
+      // Merge invoice + direct payments into one chronological feed
+      const invoicePayments: PaymentRow[] = payRes.status === "fulfilled" && payRes.value.data
+        ? payRes.value.data.map((r) => ({
+            id: `p-${r.id}`,
+            kind: "invoice" as const,
+            tokenType: (r.token_type === "stx" ? "stx" : "sbtc") as TokenType,
+            amount: r.amount,
+            merchantReceived: r.merchant_received ?? r.amount,
+            payer: r.payer,
+            txId: r.tx_id,
+            blockHeight: r.block_height,
+            createdAt: r.created_at,
+            invoiceId: r.invoice_id,
+          }))
+        : [];
+      const directRows: PaymentRow[] = directRes.status === "fulfilled" && directRes.value.data
+        ? directRes.value.data.map((r) => ({
+            id: `d-${r.id}`,
+            kind: "direct" as const,
+            tokenType: (r.token_type === "stx" ? "stx" : "sbtc") as TokenType,
+            amount: r.amount,
+            merchantReceived: r.merchant_received ?? r.amount,
+            payer: r.payer,
+            txId: r.tx_id,
+            blockHeight: r.block_height,
+            createdAt: r.created_at,
+          }))
+        : [];
+      setPayments(
+        [...invoicePayments, ...directRows]
+          .sort((a, b) => b.blockHeight - a.blockHeight)
+      );
+
       setLoading(false);
     });
 
@@ -175,6 +238,16 @@ export function MerchantActivitySheet({
                 <span className="text-micro text-muted-foreground">({subscriptions.length})</span>
               )}
             </TabsTrigger>
+            <TabsTrigger
+              value="payments"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none gap-1.5 text-body-sm px-0 h-full"
+            >
+              <ArrowDownLeft className="h-3.5 w-3.5" />
+              Payments
+              {!loading && (
+                <span className="text-micro text-muted-foreground">({payments.length})</span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           {/* Invoices */}
@@ -229,6 +302,100 @@ export function MerchantActivitySheet({
                   </TableBody>
                 </Table>
               </ScrollableTable>
+            )}
+          </TabsContent>
+
+          {/* Payments — on-chain transactions with tx hashes */}
+          <TabsContent value="payments" className="flex-1 overflow-auto m-0 data-[state=inactive]:hidden">
+            {loading ? (
+              <div className="flex flex-col gap-2 px-4 pt-3">
+                {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+              </div>
+            ) : payments.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full py-16 text-center px-6">
+                <ArrowDownLeft className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                <p className="text-body-sm text-muted-foreground">No payments received yet</p>
+                <p className="text-caption text-muted-foreground mt-1">
+                  Every on-chain payment to this merchant will appear here with a link to the Stacks Explorer
+                </p>
+              </div>
+            ) : (
+              <TooltipProvider delayDuration={200}>
+                <ScrollableTable label="Merchant payments">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="hidden sm:table-cell">Type</TableHead>
+                        <TableHead className="hidden md:table-cell">Payer</TableHead>
+                        <TableHead className="hidden sm:table-cell">When</TableHead>
+                        <TableHead className="w-10 text-right">Tx</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {payments.map((p) => (
+                        <TableRow key={p.id}>
+                          <TableCell>
+                            <div className="font-mono text-sm">
+                              {formatAmount(p.amount, p.tokenType)}{" "}
+                              <span className="text-muted-foreground text-xs">{tokenLabel(p.tokenType)}</span>
+                            </div>
+                            {p.kind === "invoice" && p.invoiceId !== undefined && (
+                              <div className="text-micro text-muted-foreground">#INV-{p.invoiceId}</div>
+                            )}
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-micro",
+                                p.kind === "invoice"
+                                  ? "border-info/40 text-info"
+                                  : "border-muted-foreground/30 text-muted-foreground"
+                              )}
+                            >
+                              {p.kind === "invoice" ? "Invoice" : "Direct"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <code className="font-mono text-caption text-muted-foreground cursor-default">
+                                  {truncateAddress(p.payer, 5)}
+                                </code>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="font-mono text-micro">{p.payer}</TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                          <TableCell className="hidden sm:table-cell text-caption text-muted-foreground">
+                            {formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            {p.txId ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <a
+                                    href={getExplorerTxUrl(p.txId)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-8 w-8 items-center justify-center rounded-md transition-colors hover:bg-accent focus-ring"
+                                    aria-label="View transaction on explorer"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                                  </a>
+                                </TooltipTrigger>
+                                <TooltipContent side="left">View on explorer</TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              <span className="text-micro text-muted-foreground/40 px-2">—</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </ScrollableTable>
+              </TooltipProvider>
             )}
           </TabsContent>
 

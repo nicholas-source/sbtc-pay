@@ -11,8 +11,8 @@ interface FaqItem {
 
 const FAQS: FaqItem[] = [
   {
-    q: "Who can use sBTC Pay?",
-    a: "Anyone with a Stacks wallet who needs to receive sBTC or STX: creators getting paid for their work, freelancers invoicing clients, DAOs collecting contributions, indie SaaS billing subscriptions, and businesses accepting on-chain payments. The dashboard refers to every recipient as a \"merchant\" because that's the smart contract's term for a registered Stacks principal, not a description of who has to use it. Registration is a single on-chain transaction (a few seconds and a small amount of STX for gas) and you're set up.",
+    q: "Who is sBTC Pay for?",
+    a: "Anyone who needs to receive sBTC or STX: creators getting paid for their work, freelancers invoicing clients, DAOs collecting contributions, SaaS apps billing subscriptions, and businesses accepting on-chain payments. If you have a Stacks wallet, you can register in a single on-chain transaction and start sharing payment links.",
   },
   {
     q: "Which wallets are supported?",
@@ -41,6 +41,10 @@ const FAQS: FaqItem[] = [
   {
     q: "Can I embed a payment widget on my existing website?",
     a: "Yes. The Widget Generator in your dashboard outputs a <script> tag and a data-sbtcpay element you paste into any HTML page, React app, or static site. A styled Pay button appears wherever you drop it and opens a payment modal on click. An <iframe> embed is also available if you'd rather show the widget inline.",
+  },
+  {
+    q: "Why does the dashboard call me a \"merchant\"?",
+    a: "It's the smart contract's term for any registered Stacks principal that can receive payments, not a description of who you are. Whether you're a creator, a freelancer, or a DAO, the contract and dashboard label every recipient a \"merchant.\"",
   },
 ];
 
