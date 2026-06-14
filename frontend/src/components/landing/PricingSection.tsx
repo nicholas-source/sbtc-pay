@@ -6,9 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { useWalletStore } from "@/stores/wallet-store";
+import { LAUNCH_PROMO, isPromoActive } from "@/lib/promo";
+
+const promoActive = isPromoActive();
 
 const checkpoints = [
-  "0.5% platform fee, deducted on-chain at payment time",
+  promoActive
+    ? `0% fees through ${LAUNCH_PROMO.endDateDisplay}, then 0.5% per transaction`
+    : "0.5% platform fee, deducted on-chain at payment time",
   "No monthly fees, no hidden costs",
   "Settles directly to your wallet, no intermediary holds funds",
   "Real-time webhook notifications",
@@ -62,13 +67,33 @@ export default function PricingSection() {
       <div className="absolute inset-0 bg-surface-1/50" />
       <div className="container relative">
         <Reveal className="mx-auto max-w-lg text-center">
-          <h2 className="text-heading-lg sm:text-display font-display text-foreground">
-            Simple, transparent{" "}
-            <span className="text-primary">pricing</span>
-          </h2>
-          <p className="mt-4 text-body-lg text-muted-foreground text-balance">
-            A flat 0.5% per transaction, deducted on-chain at payment time.
-          </p>
+          {promoActive ? (
+            <>
+              <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 border border-primary/30 px-3 py-1 mb-4">
+                <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <span className="text-body-sm font-medium text-primary">
+                  Launch promotion
+                </span>
+              </div>
+              <h2 className="text-heading-lg sm:text-display font-display text-foreground">
+                <span className="text-primary">0% fees</span> through {LAUNCH_PROMO.endDateDisplay}
+              </h2>
+              <p className="mt-4 text-body-lg text-muted-foreground text-balance">
+                We're waiving the 0.5% platform fee until {LAUNCH_PROMO.endDateDisplay}.
+                After that, the standard 0.5% per transaction resumes.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-heading-lg sm:text-display font-display text-foreground">
+                Simple, transparent{" "}
+                <span className="text-primary">pricing</span>
+              </h2>
+              <p className="mt-4 text-body-lg text-muted-foreground text-balance">
+                A flat 0.5% per transaction, deducted on-chain at payment time.
+              </p>
+            </>
+          )}
         </Reveal>
 
         <Reveal
@@ -79,8 +104,22 @@ export default function PricingSection() {
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
             <CardContent className="p-4 sm:p-6 md:p-8">
               <div className="text-center">
-                <PriceCounter />
-                <p className="mt-2 text-body text-muted-foreground">per transaction</p>
+                {promoActive ? (
+                  <>
+                    <span className="text-display sm:text-display-lg md:text-display-xl text-primary font-black tabular-nums">
+                      0%
+                    </span>
+                    <p className="mt-2 text-body text-muted-foreground">
+                      per transaction
+                      {" "}<span className="line-through opacity-60">(0.5%)</span>
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <PriceCounter />
+                    <p className="mt-2 text-body text-muted-foreground">per transaction</p>
+                  </>
+                )}
               </div>
 
               <div className="mt-8 flex flex-col gap-space-sm">

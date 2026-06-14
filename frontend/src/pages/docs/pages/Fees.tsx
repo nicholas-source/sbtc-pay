@@ -3,8 +3,10 @@ import { DocsPage } from "../components/DocsPage";
 import { InlineCode } from "../components/CodeBlock";
 import { Callout } from "../components/Callout";
 import { PropTable } from "../components/PropTable";
+import { LAUNCH_PROMO, isPromoActive } from "@/lib/promo";
 
 export default function Fees() {
+  const promoActive = isPromoActive();
   return (
     <DocsPage
       slug="fees"
@@ -12,6 +14,17 @@ export default function Fees() {
       title="Fees"
       description="The protocol fee is 0.5%. What it applies to, how it splits, and what else costs money on-chain."
     >
+      {promoActive && (
+        <Callout variant="info" title={`Launch promotion: 0% fees through ${LAUNCH_PROMO.endDateDisplay}`}>
+          During the launch window, the on-chain platform fee is set to 0 bps.
+          Every payment settles in full to the merchant (minus the Stacks network
+          fee, which is unrelated and goes to miners). After {LAUNCH_PROMO.endDateDisplay},
+          the standard 0.5% described below resumes. Subscriptions started during
+          the promo will pay 0.5% on renewals after the end date — the contract
+          reads the current fee at the moment of each payment, not at creation time.
+        </Callout>
+      )}
+
       <p className="lead">
         There are two kinds of fees on every sBTC Pay transaction: a <strong>protocol fee</strong>{" "}
         (sBTC Pay's cut, currently 0.5%) and a <strong>network fee</strong> (paid to Stacks miners to
@@ -55,7 +68,14 @@ export default function Fees() {
 
       <PropTable
         rows={[
-          { name: "Current fee", type: "uint", defaultValue: "50 bps (0.5%)", description: "The fee applied to every payment today." },
+          {
+            name: "Current fee",
+            type: "uint",
+            defaultValue: promoActive ? "0 bps (launch promo)" : "50 bps (0.5%)",
+            description: promoActive
+              ? `Set to 0 for the launch promotion through ${LAUNCH_PROMO.endDateDisplay}. Reverts to 50 bps after.`
+              : "The fee applied to every payment today.",
+          },
           { name: "Maximum fee ever", type: "uint", defaultValue: "500 bps (5%)", description: "Hard-coded ceiling. The contract rejects any fee change above this." },
           { name: "Max change per update", type: "uint", defaultValue: "100 bps (1%)", description: "One adjustment cannot move the fee by more than this. Prevents surprise jumps." },
           { name: "Who can update", type: "principal", description: "Contract deployer (governance controlled). Changes are public, on-chain, and emit an event." },
