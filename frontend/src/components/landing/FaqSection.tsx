@@ -14,7 +14,7 @@ const promoActive = isPromoActive();
 
 const promoFaq: FaqItem = {
   q: "Is there really a 0% fee right now?",
-  a: `Yes — we ran at the standard 0.5% fee through launch, and we're now waiving it as a promotion through ${LAUNCH_PROMO.endDateDisplay}. During this window every sBTC and STX payment lands in the merchant's wallet at 100% of the customer's amount (minus only the small Stacks network fee, which goes to miners). The fee change is enforced on-chain by the contract's set-platform-fee function — you can see the platform-fee-updated event in the explorer, and any merchant can verify the current rate by reading the platform-fee-bps data var. After ${LAUNCH_PROMO.endDateDisplay}, the standard 0.5% per transaction resumes. Subscriptions follow the rate at the moment of each renewal payment — a subscription started before or during the promo will pay 0.5% on renewals after the end date.`,
+  a: `Yes. We ran at the standard 0.5% fee through launch, and we're now waiving it as a promotion through ${LAUNCH_PROMO.endDateDisplay}. During this window every sBTC and STX payment lands in the merchant's wallet at 100% of the customer's amount (minus only the small Stacks network fee, which goes to miners). The fee change is enforced on-chain by the contract's set-platform-fee function. You can see the platform-fee-updated event in the explorer, and any merchant can verify the current rate by reading the platform-fee-bps data var. After ${LAUNCH_PROMO.endDateDisplay}, the standard 0.5% per transaction resumes. Subscriptions follow the rate at the moment of each renewal payment, so a subscription started before or during the promo will pay 0.5% on renewals after the end date.`,
 };
 
 const FAQS: FaqItem[] = [
