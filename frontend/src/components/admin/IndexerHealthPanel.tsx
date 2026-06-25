@@ -19,6 +19,17 @@ interface IndexerState {
   lastEventAt: string | null;
   stacksTip: number | null;
   stacksTipFailed: boolean;
+  /** processed_at of the latest reconciliation cron run — proves the on-chain
+   *  drift-correction safety net is alive (separate from chain-event aliveness). */
+  lastReconcileAt: string | null;
+  /** Count of reconcile runs in the last 24h that corrected ≥1 row. A non-zero
+   *  number means chainhook missed events that reconcile had to repair — useful
+   *  trend signal even when each correction is small. */
+  reconcileDriftCount24h: number;
+  /** Number of webhook_dlq rows where resolved_at IS NULL. Should be 0 in a
+   *  healthy system; any positive count is a "things went silently wrong"
+   *  signal (chainhook event handler threw and the row was DLQ'd). */
+  dlqUnresolvedCount: number | null;
   recentEvents: Array<{ id: number; event_type: string; tx_id: string; block_height: number; processed_at: string }>;
   loading: boolean;
   error: string | null;
@@ -29,6 +40,8 @@ export function IndexerHealthPanel() {
   const [state, setState] = useState<IndexerState>({
     lastHeartbeatAt: null,
     lastEventBlock: null, lastEventAt: null, stacksTip: null, stacksTipFailed: false,
+    lastReconcileAt: null, reconcileDriftCount24h: 0,
+    dlqUnresolvedCount: null,
     recentEvents: [], loading: true, error: null,
   });
 
@@ -38,7 +51,9 @@ export function IndexerHealthPanel() {
       // Use the wallet-authenticated client — events table requires a JWT
       // (RLS: requesting_wallet_address() IS NOT NULL).
       const db = supabaseWithWallet(address ?? "");
-      const [heartbeatRes, latestEventRes, eventsRes, infoRes] = await Promise.all([
+      // 24-hour window for the reconcile drift-count signal.
+      const reconcileCutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const [heartbeatRes, latestEventRes, eventsRes, reconcileRes, dlqRes, infoRes] = await Promise.all([
         // Latest pg_cron heartbeat — primary aliveness signal (time-based)
         db
           .from("events")
@@ -47,29 +62,64 @@ export function IndexerHealthPanel() {
           .order("processed_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
-        // Latest real on-chain event — informational ("last activity X ago")
+        // Latest real on-chain event — informational ("last activity X ago").
+        // System bookkeeping (heartbeats every 1m, reconciliation every 5m) is
+        // excluded; those have their own status pills and would otherwise drown
+        // out chain activity on a quiet mainnet.
         db
           .from("events")
           .select("block_height, processed_at")
-          .neq("event_type", "heartbeat")
+          .not("event_type", "in", "(heartbeat,reconciliation)")
           .order("block_height", { ascending: false })
           .limit(1)
           .maybeSingle(),
-        // Last 20 real tx events — shown in table (heartbeats excluded)
+        // Last 20 real chain events — shown in table.
         db
           .from("events")
           .select("id, event_type, tx_id, block_height, processed_at")
-          .neq("event_type", "heartbeat")
+          .not("event_type", "in", "(heartbeat,reconciliation)")
           .order("processed_at", { ascending: false })
           .limit(20),
+        // All reconciliation runs in the last 24h. We fetch the payload to
+        // compute drift count client-side (Supabase REST can't easily express
+        // an OR across nested JSON fields). ~288 max rows per day @ 5-min
+        // cadence — small enough to ship to the browser without pagination.
+        db
+          .from("events")
+          .select("processed_at, payload")
+          .eq("event_type", "reconciliation")
+          .gte("processed_at", reconcileCutoff)
+          .order("processed_at", { ascending: false }),
+        // Unresolved webhook_dlq count — gated by migration 022's RLS policy
+        // (admins read-only). On non-admin sessions this returns null silently.
+        db
+          .from("webhook_dlq")
+          .select("*", { count: "exact", head: true })
+          .is("resolved_at", null),
         fetch(`${API_URL}/v2/info`).then((r) => r.ok ? r.json() : null).catch(() => null),
       ]);
+
+      const reconciles = reconcileRes.data ?? [];
+      // A "drift event" = a reconcile run that corrected ≥1 row in any
+      // category (merchants, invoices, subscriptions). 0 corrections = healthy
+      // bookkeeping run; >0 = chainhook missed something that reconcile fixed.
+      const driftCount = reconciles.filter((r) => {
+        const p = (r.payload as { merchants?: { corrected?: number }; invoices?: { corrected?: number }; subscriptions?: { corrected?: number } } | null) ?? null;
+        return (
+          (p?.merchants?.corrected ?? 0) > 0 ||
+          (p?.invoices?.corrected ?? 0) > 0 ||
+          (p?.subscriptions?.corrected ?? 0) > 0
+        );
+      }).length;
       setState({
         lastHeartbeatAt: heartbeatRes.data?.processed_at ?? null,
         lastEventBlock: latestEventRes.data?.block_height ?? null,
         lastEventAt: latestEventRes.data?.processed_at ?? null,
         stacksTip: (infoRes?.stacks_tip_height as number | undefined) ?? null,
         stacksTipFailed: infoRes === null,
+        lastReconcileAt: reconciles[0]?.processed_at ?? null,
+        reconcileDriftCount24h: driftCount,
+        dlqUnresolvedCount: dlqRes.error ? null : (dlqRes.count ?? 0),
         recentEvents: eventsRes.data ?? [],
         loading: false,
         error: null,
@@ -108,6 +158,34 @@ export function IndexerHealthPanel() {
     unknown: "text-muted-foreground border-border bg-muted/10",
   };
 
+  // Reconcile cron fires every 5 minutes. Healthy = a run within the last 10 min
+  // (one missed tick tolerated). Drift count > 0 = chainhook missed events that
+  // the safety net repaired — surface as a warning, not critical (the system
+  // self-healed; this is signal, not failure).
+  const reconcileAgeSec = state.lastReconcileAt
+    ? Math.max(0, Math.floor((Date.now() - new Date(state.lastReconcileAt).getTime()) / 1000))
+    : null;
+  const reconcileStatus =
+    reconcileAgeSec === null ? "unknown"
+    : reconcileAgeSec > 900 ? "critical"  // > 15 min: cron likely broken
+    : state.reconcileDriftCount24h > 0 ? "warning"
+    : "healthy";
+  const reconcileLabel =
+    reconcileAgeSec === null ? "Reconcile: no data yet"
+    : reconcileStatus === "critical" ? `Reconcile stale · ${Math.round(reconcileAgeSec / 60)}m ago`
+    : reconcileStatus === "warning" ? `Reconcile · ${formatDistanceToNow(new Date(state.lastReconcileAt!), { addSuffix: true })} · ${state.reconcileDriftCount24h} drift${state.reconcileDriftCount24h === 1 ? "" : "s"} (24h)`
+    : `Reconcile · ${formatDistanceToNow(new Date(state.lastReconcileAt!), { addSuffix: true })} · 0 drifts (24h)`;
+
+  // DLQ pill: 0 = empty (green), >0 = something's wrong (critical), null = no
+  // read access (not an admin) so we hide the pill entirely.
+  const dlqStatus =
+    state.dlqUnresolvedCount === null ? "hidden"
+    : state.dlqUnresolvedCount === 0 ? "healthy"
+    : "critical";
+  const dlqLabel =
+    state.dlqUnresolvedCount === 0 ? "DLQ empty"
+    : `DLQ: ${state.dlqUnresolvedCount} unresolved`;
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
@@ -142,6 +220,24 @@ export function IndexerHealthPanel() {
             </span>
             {lagLabel}
           </div>
+          <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-body-sm font-medium", lagColor[reconcileStatus])}>
+            <span className="relative inline-flex h-2 w-2 rounded-full" aria-hidden>
+              <span className={cn("inline-flex h-2 w-2 rounded-full",
+                reconcileStatus === "healthy" ? "bg-success" : reconcileStatus === "warning" ? "bg-warning" : reconcileStatus === "critical" ? "bg-destructive" : "bg-muted-foreground"
+              )} />
+            </span>
+            {reconcileLabel}
+          </div>
+          {dlqStatus !== "hidden" && (
+            <div className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-body-sm font-medium", lagColor[dlqStatus])}>
+              <span className="relative inline-flex h-2 w-2 rounded-full" aria-hidden>
+                <span className={cn("inline-flex h-2 w-2 rounded-full",
+                  dlqStatus === "healthy" ? "bg-success" : "bg-destructive"
+                )} />
+              </span>
+              {dlqLabel}
+            </div>
+          )}
           {state.stacksTip && (
             <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-body-sm text-muted-foreground">
               Stacks tip: <span className="font-mono-nums text-foreground ml-1">{state.stacksTip.toLocaleString()}</span>
