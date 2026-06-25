@@ -168,7 +168,7 @@ async function reconcilePlatformStats(
 async function reconcileMerchants(): Promise<{ total: number; corrected: number }> {
   const { data: rows } = await supabase
     .from("merchants")
-    .select("id, principal, name, is_active, is_verified, total_received_sbtc, total_refunded_sbtc, total_received_stx, total_refunded_stx");
+    .select("id, principal, name, description, webhook_url, logo_url, is_active, is_verified, total_received_sbtc, total_refunded_sbtc, total_received_stx, total_refunded_stx");
 
   if (!rows || rows.length === 0) return { total: 0, corrected: 0 };
 
@@ -183,11 +183,17 @@ async function reconcileMerchants(): Promise<{ total: number; corrected: number 
         const chain = await callReadOnly("get-merchant", [Cl.principal(row.principal)]);
         if (!chain) return; // merchant not on chain (shouldn't happen)
 
+        // Only enqueue an update when the on-chain value actually differs from
+        // cache. Previously these three fields wrote unconditionally on every
+        // run (when the chain returned a value at all), which made every
+        // merchant report as "corrected" each 5-minute tick — pure write
+        // amplification, and it hid real drift behind a constant non-zero
+        // count in the admin's Reconcile health pill.
         const updates: Record<string, unknown> = {};
         if (chain.name && chain.name !== row.name) updates.name = chain.name;
-        if (chain.description !== undefined) updates.description = chain.description;
-        if (chain["webhook-url"] !== undefined) updates.webhook_url = chain["webhook-url"];
-        if (chain["logo-url"] !== undefined) updates.logo_url = chain["logo-url"];
+        if (chain.description !== undefined && chain.description !== row.description) updates.description = chain.description;
+        if (chain["webhook-url"] !== undefined && chain["webhook-url"] !== row.webhook_url) updates.webhook_url = chain["webhook-url"];
+        if (chain["logo-url"] !== undefined && chain["logo-url"] !== row.logo_url) updates.logo_url = chain["logo-url"];
 
         const chainActive = Boolean(chain["is-active"]);
         const chainVerified = Boolean(chain["is-verified"]);
