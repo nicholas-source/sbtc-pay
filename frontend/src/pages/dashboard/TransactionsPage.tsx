@@ -242,7 +242,7 @@ export default function TransactionsPage() {
 
       {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md">
-        <Card className="card-accent-success animate-fade-slide-up stagger-1">
+        <Card className="animate-fade-slide-up stagger-1">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">Net Received</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success">
@@ -264,7 +264,7 @@ export default function TransactionsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-accent-primary animate-fade-slide-up stagger-2">
+        <Card className="animate-fade-slide-up stagger-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">sBTC Fees Paid</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
@@ -279,7 +279,7 @@ export default function TransactionsPage() {
           </CardContent>
         </Card>
 
-        <Card className="card-accent-secondary animate-fade-slide-up stagger-3">
+        <Card className="animate-fade-slide-up stagger-3">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">STX Fees Paid</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-secondary/15 text-secondary">

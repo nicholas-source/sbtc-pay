@@ -65,9 +65,9 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
           p_id: onChain.id,
           p_principal: principal,
           p_name: onChain.name,
-          p_description: onChain.description ?? null,
-          p_logo_url: onChain.logoUrl ?? null,
-          p_webhook_url: onChain.webhookUrl ?? null,
+          p_description: onChain.description ?? undefined,
+          p_logo_url: onChain.logoUrl ?? undefined,
+          p_webhook_url: onChain.webhookUrl ?? undefined,
           p_is_active: onChain.isActive,
           p_is_verified: onChain.isVerified,
           p_registered_at: onChain.registeredAt,
@@ -147,9 +147,9 @@ export const useMerchantStore = create<MerchantState>((set, get) => ({
               p_id: merchant.id,
               p_principal: current.id,
               p_name: updated.name,
-              p_description: updated.description || null,
-              p_logo_url: updated.logoUrl || null,
-              p_webhook_url: updated.webhookUrl || null,
+              p_description: updated.description || undefined,
+              p_logo_url: updated.logoUrl || undefined,
+              p_webhook_url: updated.webhookUrl || undefined,
             })
             .then(({ error }) => {
               if (error) console.warn('Supabase cache update failed:', error.message);

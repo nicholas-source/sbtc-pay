@@ -9,19 +9,14 @@
  * without code edits.
  */
 
-import { STACKS_TESTNET, STACKS_MAINNET } from '@stacks/network';
-
 // Current network mode (defaults to testnet)
 export const NETWORK_MODE: 'testnet' | 'mainnet' =
   (import.meta.env.VITE_NETWORK_MODE as 'testnet' | 'mainnet') || 'testnet';
 
-// Network configurations
-export const NETWORKS = {
-  testnet: STACKS_TESTNET,
-  mainnet: STACKS_MAINNET,
-} as const;
-
-export const CURRENT_NETWORK = NETWORKS[NETWORK_MODE];
+// NOTE: no @stacks/network import here. This module loads eagerly on every
+// route (wallet-store imports it), and @stacks/connect + @stacks/transactions
+// accept NETWORK_MODE strings directly — the network objects were dead weight
+// that pulled the whole Stacks vendor chunk into the initial bundle.
 
 // API endpoints
 export const API_ENDPOINTS = {
