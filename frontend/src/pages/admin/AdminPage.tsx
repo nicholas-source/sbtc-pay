@@ -52,15 +52,6 @@ const iconBgMap: Record<AccentColor, string> = {
   info: "bg-info/15 text-info",
 };
 
-const accentBorderMap: Record<AccentColor, string> = {
-  primary: "card-accent-primary",
-  secondary: "card-accent-secondary",
-  success: "card-accent-success",
-  warning: "card-accent-warning",
-  destructive: "card-accent-destructive",
-  info: "card-accent-info",
-};
-
 function StatCard({
   label, value, icon: Icon, accent = "primary", onClick, ariaLabel,
 }: {
@@ -72,7 +63,7 @@ function StatCard({
   ariaLabel?: string;
 }) {
   const card = (
-    <Card className={cn("animate-fade-slide-up", accentBorderMap[accent], onClick && "transition-colors hover:bg-accent/40 focus-within:ring-2 focus-within:ring-primary")}>
+    <Card className={cn("animate-fade-slide-up", onClick && "transition-colors hover:bg-accent/40 focus-within:ring-2 focus-within:ring-primary")}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-body-sm font-medium text-muted-foreground">{label}</CardTitle>
         <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", iconBgMap[accent])}>
@@ -600,7 +591,7 @@ export default function AdminPage() {
           onClick={() => scrollToMerchants("all")}
           ariaLabel="Scroll to merchant management"
         />
-        <Card className="card-accent-primary animate-fade-slide-up">
+        <Card className="animate-fade-slide-up">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">Invoices</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/15 text-primary">
@@ -634,7 +625,7 @@ export default function AdminPage() {
           </CardContent>
         </Card>
         <StatCard label="Subscriptions" value={effective.totalSubscriptions.toString()} icon={Repeat} accent="secondary" />
-        <Card className="card-accent-success animate-fade-slide-up">
+        <Card className="animate-fade-slide-up">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">Total Volume</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-success/15 text-success">
@@ -655,7 +646,7 @@ export default function AdminPage() {
             )}
           </CardContent>
         </Card>
-        <Card className="card-accent-warning animate-fade-slide-up">
+        <Card className="animate-fade-slide-up">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-body-sm font-medium text-muted-foreground">Fees Collected</CardTitle>
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-warning/15 text-warning">

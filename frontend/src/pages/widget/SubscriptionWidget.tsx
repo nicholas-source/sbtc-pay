@@ -47,14 +47,10 @@ export default function SubscriptionWidget() {
 
   const addr = merchantAddress || "";
   const parsedAmount = parseInt(amount);
-  if (!parsedAmount || parsedAmount <= 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[200px] text-destructive text-sm">
-        Invalid or missing amount parameter.
-      </div>
-    );
-  }
-  const baseAmount = parsedAmount;
+  // Invalid params render an error below — but only AFTER all hooks have run,
+  // so every render calls the same hooks (rules-of-hooks).
+  const validAmount = !!parsedAmount && parsedAmount > 0;
+  const baseAmount = validAmount ? parsedAmount : 0;
   const humanAmount = baseToHuman(baseAmount, tokenType);
   const intervalBlocks = INTERVAL_BLOCKS[interval.toLowerCase()] || parseInt(interval) || 4320;
   const periodLabel = INTERVAL_PERIOD[interval.toLowerCase()] || "cycle";
@@ -119,6 +115,14 @@ export default function SubscriptionWidget() {
   }, [addr, plan, baseAmount, intervalBlocks, subState, isConnected, address, connect, tokenType]);
 
   useEffect(() => { postToParent({ type: "sbtcpay:ready" }); }, []);
+
+  if (!validAmount) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px] text-destructive text-sm">
+        Invalid or missing amount parameter.
+      </div>
+    );
+  }
 
   if (subState === "subscribed" && txId) {
     // Subscription registered on-chain — direct user to Customer Portal for first payment
