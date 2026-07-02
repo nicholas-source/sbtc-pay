@@ -44,6 +44,22 @@ try {
   warn("could not read sitemap.xml; prerendering only '/'");
 }
 
+// Stamp <lastmod> with the deploy date in the copy that ships (dist/), leaving
+// public/sitemap.xml as the route manifest. Every deploy re-snapshots every
+// page, so the deploy date is the accurate value — a hand-maintained date in
+// the source file only ever goes stale. Runs before any puppeteer bail so the
+// sitemap stays fresh even when prerendering is skipped.
+try {
+  const stamped = readFileSync(SITEMAP, "utf8").replace(
+    /<lastmod>[^<]*<\/lastmod>/g,
+    `<lastmod>${new Date().toISOString().slice(0, 10)}</lastmod>`,
+  );
+  writeFileSync(join(DIST, "sitemap.xml"), stamped);
+  info("stamped dist/sitemap.xml lastmod with build date");
+} catch (e) {
+  warn(`could not stamp sitemap lastmod: ${e.message || e}`);
+}
+
 // Resolve a browser. On Vercel (and other serverless Linux builds) puppeteer's
 // usual Chromium can't launch — missing shared libraries — so use the
 // self-contained @sparticuz/chromium. Locally, use an installed system Chrome.

@@ -1,11 +1,19 @@
+import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { PageTransition } from "@/components/layout/PageTransition";
 import { Bitcoin, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { setTitleAndDescription, DEFAULT_DESCRIPTION } from "@/lib/seo";
 
 function NotFound() {
   const location = useLocation();
+
+  useEffect(() => {
+    // RouteAnnouncer already sets noindex + canonical for unknown paths; this
+    // gives the 404 a distinct title instead of the generic "sBTC Pay" fallback.
+    setTitleAndDescription("Page not found | sBTC Pay", DEFAULT_DESCRIPTION);
+  }, []);
 
   return (
     <PageTransition>
