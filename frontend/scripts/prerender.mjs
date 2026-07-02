@@ -157,18 +157,48 @@ try {
     try {
       await page.setViewport({ width: 1280, height: 800 });
       await page.goto(`http://localhost:${PORT}${route}`, { waitUntil: "domcontentloaded", timeout: 20000 });
-      // Wait until the app has actually rendered content (bounded; never hang on
-      // polling/websockets). Capture whatever we have when it resolves or times out.
+      // Wait until the app has actually rendered content AND the h1's entrance
+      // animation has finished (bounded; never hang on polling/websockets).
+      // Checking only for the h1's existence is a race: framer-motion mounts it
+      // at inline opacity:0, and a snapshot captured before the entrance ends
+      // bakes an invisible headline into the HTML crawlers receive.
       await page
         .waitForFunction(
           () => {
             const root = document.getElementById("root");
-            return !!root && root.childElementCount > 0 && !!document.querySelector("h1");
+            const h1 = document.querySelector("h1");
+            return !!root && root.childElementCount > 0 && !!h1 && getComputedStyle(h1).opacity === "1";
           },
           { timeout: 12000 },
         )
         .catch(() => warn(`content signal timed out for ${route}, capturing as-is`));
-      await new Promise((r) => setTimeout(r, 500)); // settle late renders
+      // Settle late renders — long enough for the hero's staggered siblings
+      // (last starts ~0.4s after the h1, 0.5s duration) to finish too.
+      await new Promise((r) => setTimeout(r, 1200));
+
+      // Below-the-fold Reveals never scroll into view here, so their content
+      // reaches full opacity only via the client-side safety net; wait for the
+      // last of those animations to finish (polls between InvoiceMock cycle
+      // transitions, so this resolves quickly), then force any straggler
+      // visible. The snapshot must never ship hidden content — that is the
+      // entire point of prerendering for no-JS crawlers.
+      await page
+        .waitForFunction(
+          () =>
+            ![...document.querySelectorAll('#root [style*="opacity"]')].some(
+              (el) => parseFloat(el.style.opacity) < 1,
+            ),
+          { timeout: 6000 },
+        )
+        .catch(() => warn(`reveal settle timed out for ${route}, forcing visibility`));
+      await page.evaluate(() => {
+        document.querySelectorAll('#root [style*="opacity"]').forEach((el) => {
+          if (parseFloat(el.style.opacity) < 1) {
+            el.style.opacity = "1";
+            el.style.transform = "none";
+          }
+        });
+      });
 
       const html = await page.content();
 
