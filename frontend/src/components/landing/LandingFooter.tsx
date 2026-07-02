@@ -30,7 +30,7 @@ export default function LandingFooter() {
                 className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-xl object-contain"
                 alt="sBTC Pay"
               />
-              <span className="text-lg font-bold text-foreground">sBTC Pay</span>
+              <span className="text-lg font-display font-bold text-foreground">sBTC Pay</span>
             </div>
             <p className="text-body-sm text-muted-foreground max-w-xs">
               Get paid in sBTC. Invoices, subscriptions, embeds, paid directly to your wallet on Bitcoin.

@@ -4,8 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { lazy, Suspense, useEffect, useRef } from "react";
 import { MotionConfig } from "framer-motion";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
-import CustomerLayout from "@/components/layout/CustomerLayout";
 import { ProtectedRoute } from "@/components/layout/ProtectedRoute";
 import { setCanonical, setRobots, setTitleAndDescription, DEFAULT_DESCRIPTION } from "@/lib/seo";
 const CommandPalette = lazy(() => import("@/components/dashboard/CommandPalette"));
@@ -22,6 +20,13 @@ import { NetworkStatus } from "@/components/ui/network-status";
 
 // Lazy-loaded pages
 const LandingPage = lazy(() => import("./pages/Index"));
+// Layouts stay lazy too: DashboardLayout pulls the merchant/invoice/
+// subscription/admin stores (and through them the Supabase + Stacks vendor
+// chunks), which landing/docs visitors never need.
+const DashboardLayout = lazy(() =>
+  import("@/components/layout/DashboardLayout").then((m) => ({ default: m.DashboardLayout })),
+);
+const CustomerLayout = lazy(() => import("@/components/layout/CustomerLayout"));
 const DashboardOverview = lazy(() => import("./pages/dashboard/DashboardOverview"));
 const InvoicesPage = lazy(() => import("./pages/dashboard/InvoicesPage"));
 const RefundsPage = lazy(() => import("./pages/dashboard/RefundsPage"));
@@ -156,6 +161,18 @@ function WalletInitializer() {
   return null;
 }
 
+// The palette only offers dashboard/admin navigation and actions, so mount it
+// only there — landing and docs visitors shouldn't download the cmdk chunk.
+function DashboardCommandPalette() {
+  const { pathname } = useLocation();
+  if (!pathname.startsWith("/dashboard") && !pathname.startsWith("/admin")) return null;
+  return (
+    <Suspense fallback={null}>
+      <CommandPalette />
+    </Suspense>
+  );
+}
+
 function PageLoader() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-background" role="status" aria-busy="true" aria-label="Loading page">
@@ -233,7 +250,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <RouteAnnouncer />
-        <Suspense fallback={null}><CommandPalette /></Suspense>
+        <DashboardCommandPalette />
         <Suspense fallback={<PageLoader />}>
           <AnimatedRoutes />
         </Suspense>

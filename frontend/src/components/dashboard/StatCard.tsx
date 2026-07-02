@@ -13,15 +13,6 @@ const iconBgMap: Record<AccentColor, string> = {
   info: "bg-info/15 text-info",
 };
 
-const accentBorderMap: Record<AccentColor, string> = {
-  primary: "card-accent-primary",
-  secondary: "card-accent-secondary",
-  success: "card-accent-success",
-  warning: "card-accent-warning",
-  destructive: "card-accent-destructive",
-  info: "card-accent-info",
-};
-
 interface StatCardProps {
   label: string;
   value: number;
@@ -37,7 +28,7 @@ interface StatCardProps {
 export default function StatCard({ label, displayValue, unit, usd, icon: Icon, change, accent = "primary", compact }: StatCardProps) {
   return (
     <Card
-      className={cn("animate-fade-slide-up", accentBorderMap[accent])}
+      className="animate-fade-slide-up"
       aria-label={`${label}: ${displayValue}${unit ? ` ${unit}` : ''}`}
     >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
