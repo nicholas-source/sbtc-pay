@@ -3,11 +3,22 @@ import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
 import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
 import { amountToUsd as amountToUsdFn } from '@/lib/constants';
-import { authenticateWallet, hasValidAuth, clearWalletAuth } from '@/lib/supabase/client';
+import { authenticateWallet, hasValidAuth, clearWalletAuth } from '@/lib/supabase/auth';
 
 // Lazy-load @stacks/connect so the 1 MB WalletConnect SDK isn't in the initial bundle.
 // The module is cached after first import, so subsequent calls are instant.
 const loadStacksConnect = () => import('@stacks/connect');
+
+/**
+ * Warm the wallet SDK download before the user commits to connecting.
+ * checkConnection() skips the SDK for fresh visitors (no persisted session),
+ * so wire this to hover/focus on connect CTAs to hide the fetch latency.
+ */
+export const warmupWalletSdk = () => {
+  void loadStacksConnect().catch(() => {
+    // Prefetch only — a failure here surfaces on the real connect() call.
+  });
+};
 
 // Audio cue played when wallet auth resolves so the user knows the action
 // landed even when OS focus has shifted away from the browser tab.
@@ -42,11 +53,24 @@ function playAuthCueBeep(success: boolean) {
 // ── Synchronous session restore from @stacks/connect's localStorage ────────
 // This lets us hydrate wallet state instantly on page load without importing
 // the 1 MB library. Key: "@stacks/connect" (set by the library itself).
+// The SDK (v8) stores the value HEX-ENCODED — setItem(key,
+// bytesToHex(utf8ToBytes(JSON.stringify(data)))) — so decode before parsing.
+// A plain-JSON fallback covers any legacy value. checkConnection() treats this
+// as authoritative for "is there a session at all", so a decode mismatch here
+// would log every returning user out on reload.
 function getPersistedSession(): { address: string; publicKey: string | null } | null {
   try {
     const raw = localStorage.getItem('@stacks/connect');
     if (!raw) return null;
-    const data = JSON.parse(raw);
+    let json = raw;
+    if (raw.length % 2 === 0 && /^[0-9a-fA-F]+$/.test(raw)) {
+      const bytes = new Uint8Array(raw.length / 2);
+      for (let i = 0; i < bytes.length; i++) {
+        bytes[i] = parseInt(raw.slice(i * 2, i * 2 + 2), 16);
+      }
+      json = new TextDecoder().decode(bytes);
+    }
+    const data = JSON.parse(json);
     const stxEntry = data?.addresses?.stx?.[0];
     if (!stxEntry?.address) return null;
     return { address: stxEntry.address, publicKey: stxEntry.publicKey ?? null };
@@ -377,6 +401,19 @@ export const useWalletStore = create<WalletState>()(
       },
 
       checkConnection: async () => {
+        // First-time visitors have no persisted @stacks/connect session, so
+        // skip downloading the wallet SDK just to learn that. isConnected()
+        // reads the same localStorage key getPersistedSession() checks, and
+        // connect() loads the SDK on demand when the user actually clicks.
+        if (!getPersistedSession()) {
+          set({
+            connectionChecked: true,
+            isConnected: false,
+            address: null,
+            publicKey: null,
+          });
+          return;
+        }
         try {
           const mod = await loadStacksConnect();
           const { isConnected: stacksIsConnected, getLocalStorage, disconnect: stacksDisconnect } = mod;

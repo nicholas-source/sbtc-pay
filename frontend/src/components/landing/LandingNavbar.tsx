@@ -94,7 +94,7 @@ export default function LandingNavbar() {
             className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl object-contain"
             alt="sBTC Pay home"
           />
-          <span className="text-base font-bold leading-none">sBTC Pay</span>
+          <span className="text-base font-display font-bold leading-none">sBTC Pay</span>
         </Link>
 
         {/* Desktop nav */}
