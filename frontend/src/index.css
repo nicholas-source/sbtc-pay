@@ -23,12 +23,17 @@
     /* Bitcoin Orange — Primary */
     --primary: 27 98% 54%;
     --primary-foreground: 220 16% 6%;
+    
+     /* Stacks Purple — Secondary accent */
+    --secondary: 263 70% 58%;
+    --secondary-foreground: 40 10% 96%;
 
     /* Stacks Purple — Secondary accent.
        L 66% (not 58%) so text-secondary hits ≥4.5:1 on bg/card/surface;
-       dark foreground on the saturated fill, same convention as primary. */
+       dark foreground on the saturated fill, same convention as primary.
     --secondary: 263 70% 66%;
     --secondary-foreground: 220 16% 6%;
+    */
 
     /* Warm neutral muted */
     --muted: 220 12% 14%;
