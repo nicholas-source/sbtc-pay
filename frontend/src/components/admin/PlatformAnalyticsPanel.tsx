@@ -301,7 +301,7 @@ export function PlatformAnalyticsPanel() {
     : [];
 
   return (
-    <Card className="card-accent-info">
+    <Card className="border-info/30">
       <CardHeader className="flex flex-row items-center justify-between gap-4 flex-wrap">
         <div>
           <CardTitle className="text-heading-sm flex items-center gap-2">

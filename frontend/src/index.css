@@ -225,14 +225,6 @@
   .stagger-7 { animation-delay: 0.35s; }
   .stagger-8 { animation-delay: 0.4s; }
 
-  /* Card accent border (left) */
-  .card-accent-primary { border-left: 3px solid hsl(var(--primary)); }
-  .card-accent-secondary { border-left: 3px solid hsl(var(--secondary)); }
-  .card-accent-success { border-left: 3px solid hsl(var(--success)); }
-  .card-accent-warning { border-left: 3px solid hsl(var(--warning)); }
-  .card-accent-destructive { border-left: 3px solid hsl(var(--destructive)); }
-  .card-accent-info { border-left: 3px solid hsl(var(--info)); }
-
   /* Row hover for tables */
   .row-hover {
     @apply transition-colors hover:bg-surface-2/50;

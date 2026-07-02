@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { useWalletStore } from "@/stores/wallet-store";
+import { useWalletStore, warmupWalletSdk } from "@/stores/wallet-store";
 import InvoiceMock from "@/components/landing/InvoiceMock";
 
 const fadeUp = {
@@ -40,7 +40,7 @@ export default function HeroSection() {
             <motion.h1
               variants={fadeUp}
               custom={0}
-              className="text-display sm:text-display-lg lg:text-display-xl tracking-tight text-balance"
+              className="text-display sm:text-display-lg lg:text-display-xl font-display tracking-tight text-balance"
             >
               Get paid in sBTC.{" "}
               <span className="text-primary whitespace-nowrap">Nothing weird.</span>
@@ -60,7 +60,13 @@ export default function HeroSection() {
               custom={2}
               className="mt-8 flex flex-col items-stretch sm:flex-row sm:items-center sm:justify-center lg:justify-start gap-2.5 sm:gap-3 md:gap-4"
             >
-              <Button size="lg" className="gap-2 text-base h-12 px-6 w-full sm:w-auto" onClick={handleGetStarted}>
+              <Button
+                size="lg"
+                className="gap-2 text-base h-12 px-6 w-full sm:w-auto"
+                onClick={handleGetStarted}
+                onPointerEnter={warmupWalletSdk}
+                onFocus={warmupWalletSdk}
+              >
                 {isConnected ? "Open dashboard" : "Get your link"}
                 <ArrowRight className="h-4 w-4" />
               </Button>

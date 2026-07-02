@@ -200,17 +200,21 @@ function VolumeTooltip({ active, payload, label }: {
 
 function TokenMixTooltip({ active, payload, total }: {
   active?: boolean;
-  payload?: Array<{ name: string; value: number }>;
+  // Recharts types name/value as possibly undefined (and value as
+  // string | number | array for range charts), so accept that shape and
+  // coerce before use — a Pie always delivers a scalar at runtime.
+  payload?: Array<{ name?: string | number; value?: string | number | Array<string | number> }>;
   total: number;
 }) {
   if (!active || !payload?.length) return null;
   const item = payload[0];
-  const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+  const value = Number(item.value ?? 0);
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
   return (
     <div className="rounded-lg border border-border/50 bg-background px-2.5 py-1.5 text-xs shadow-xl">
       <p className="font-medium">{item.name}</p>
       <p className="font-mono text-muted-foreground">
-        {item.value} payment{item.value !== 1 ? "s" : ""} ({pct}%)
+        {value} payment{value !== 1 ? "s" : ""} ({pct}%)
       </p>
     </div>
   );
@@ -345,7 +349,7 @@ export function MerchantAnalyticsPanel() {
   ].filter((d) => d.value > 0);
 
   return (
-    <Card className="card-accent-info">
+    <Card className="border-info/30">
       <CardHeader className="pb-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <CardTitle className="text-heading-sm">Analytics</CardTitle>
