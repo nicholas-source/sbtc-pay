@@ -43,7 +43,7 @@ export default function DocsLayout() {
                   className="flex items-center gap-2 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
                   onClick={() => setMobileOpen(false)}
                 >
-                  <img src="/favicon.png" className="h-7 w-7 shrink-0 rounded-lg object-contain" alt="" aria-hidden="true" />
+                  <img src="/icon-192.png" className="h-7 w-7 shrink-0 rounded-lg object-contain" alt="" aria-hidden="true" />
                   <span className="font-semibold">sBTC Pay Docs</span>
                 </Link>
                 <button
@@ -65,7 +65,7 @@ export default function DocsLayout() {
             to="/docs"
             className="flex items-center gap-2 rounded-md transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
           >
-            <img src="/favicon.png" className="h-7 w-7 shrink-0 rounded-lg object-contain" alt="" aria-hidden="true" />
+            <img src="/icon-192.png" className="h-7 w-7 shrink-0 rounded-lg object-contain" alt="" aria-hidden="true" />
             <span className="font-semibold tracking-tight">sBTC Pay</span>
             <span className="rounded border border-border bg-muted/40 px-1.5 py-0.5 font-mono text-[0.65rem] uppercase tracking-wider text-muted-foreground">
               Docs

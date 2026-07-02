@@ -16,14 +16,16 @@ export default function LandingPage() {
       <div className="min-h-svh bg-background text-foreground overflow-x-hidden">
         <a href="#main-content" className="skip-link">Skip to main content</a>
         <LandingNavbar />
-        <HeroSection />
-        <TrustSection />
-        <FeaturesSection />
-        <HowItWorksSection />
-        <DeveloperSection />
-        <PricingSection />
-        <FaqSection />
-        <CtaSection />
+        <main id="main-content">
+          <HeroSection />
+          <TrustSection />
+          <FeaturesSection />
+          <HowItWorksSection />
+          <DeveloperSection />
+          <PricingSection />
+          <FaqSection />
+          <CtaSection />
+        </main>
         <LandingFooter />
       </div>
     </PageTransition>

@@ -131,7 +131,7 @@ const SCENARIOS: Scenario[] = [
 const STATUS_CFG = {
   pending: {
     label: "Pending",
-    badge: "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+    badge: "bg-blue-500/10 text-blue-300 border border-blue-500/20",
     bar: "from-blue-500/50 to-blue-400",
   },
   partial: {
@@ -146,9 +146,11 @@ const STATUS_CFG = {
   },
 } satisfies Record<Status, { label: string; badge: string; bar: string }>;
 
+// Text color rides with the background: dark on Bitcoin orange (white fails
+// WCAG at 2.6:1 there), white on Xverse purple (passes at 5.1:1).
 const WALLET_CTA: Record<Wallet, string> = {
-  Leather: "bg-primary",
-  Xverse: "bg-[#7B3FE4]",
+  Leather: "bg-primary text-primary-foreground",
+  Xverse: "bg-[#7B3FE4] text-white",
 };
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
@@ -230,7 +232,7 @@ function InvoiceCard({ s, prices }: {
             <span>Payment received</span>
             <motion.span
               key={`pct-${s.id}`}
-              className={cn("font-semibold", isPending ? "text-blue-400" : "text-primary")}
+              className={cn("font-semibold", isPending ? "text-blue-300" : "text-primary")}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.55 }}
@@ -304,8 +306,8 @@ function InvoiceCard({ s, prices }: {
           </>
         ) : (
           <>
-            <Bitcoin className="h-4 w-4 text-white" />
-            <span className="text-body-sm font-semibold text-white">
+            <Bitcoin className="h-4 w-4" />
+            <span className="text-body-sm font-semibold">
               Pay with {s.wallet}
             </span>
           </>

@@ -26,7 +26,7 @@ export default function LandingFooter() {
           <div className="flex flex-col gap-space-md">
             <div className="flex items-center gap-2">
               <img
-                src="/favicon.png"
+                src="/icon-192.png"
                 className="h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-xl object-contain"
                 alt="sBTC Pay"
               />

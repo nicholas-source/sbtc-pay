@@ -111,7 +111,7 @@ export default function PricingSection() {
                     </span>
                     <p className="mt-2 text-body text-muted-foreground">
                       per transaction
-                      {" "}<span className="line-through opacity-60">(0.5%)</span>
+                      {" "}<span className="line-through">(0.5%)</span>
                     </p>
                   </>
                 ) : (

@@ -119,7 +119,7 @@ export function DashboardLayout() {
           )}
         >
           <img
-            src="/favicon.png"
+            src="/icon-192.png"
             className="h-10 w-10 shrink-0 rounded-xl object-contain"
             alt="sBTC Pay home"
           />

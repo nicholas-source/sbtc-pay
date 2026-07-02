@@ -27,7 +27,7 @@ export default function HeroSection() {
   };
 
   return (
-    <section id="main-content" className="relative pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-32 bg-grid">
+    <section id="hero" className="relative pt-24 pb-16 sm:pt-32 sm:pb-20 lg:pt-40 lg:pb-32 bg-grid">
       <div className="container relative">
         <div className="grid grid-cols-1 lg:grid-cols-[1.05fr_1fr] gap-12 lg:gap-16 xl:gap-20 items-center">
           {/* Left — copy */}

@@ -200,7 +200,17 @@ try {
         });
       });
 
-      const html = await page.content();
+      let html = await page.content();
+
+      // The async-font trick in index.html (media="print" + onload swap) has
+      // already fired by snapshot time, so the captured <link>s say
+      // media="all" — which would re-block rendering for every real visitor.
+      // Restore the async form; the onload attribute survives serialization
+      // and re-runs the swap in the browser.
+      html = html.replace(
+        /(<link[^>]+(?:api\.fontshare\.com|fonts\.googleapis\.com)[^>]*?)media="all"/g,
+        '$1media="print"',
+      );
 
       // Sanity: don't overwrite a good file with an empty shell.
       if (!/<div id="root">\s*<\w/.test(html)) {

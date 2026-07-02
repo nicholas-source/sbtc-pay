@@ -446,7 +446,7 @@ export function PaymentConfirmation({
         {/* ── Brand header — rounded top corners applied here ── */}
         <div className="flex items-center justify-between bg-primary px-5 py-3 rounded-t-2xl">
           <div className="flex items-center gap-2.5">
-            <img src="/favicon.png" className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl object-contain" alt="" aria-hidden="true" />
+            <img src="/icon-192.png" className="h-8 w-8 sm:h-9 sm:w-9 shrink-0 rounded-xl object-contain" alt="" aria-hidden="true" />
             <span className="text-sm font-bold tracking-wide text-white">sBTC Pay</span>
           </div>
           <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-widest text-white/90">

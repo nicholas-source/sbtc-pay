@@ -50,7 +50,7 @@ export default function LandingNavbar() {
 
   // Hide "Get Started" while the hero is in the viewport — eliminates duplicate CTA
   useEffect(() => {
-    const hero = document.getElementById("main-content");
+    const hero = document.getElementById("hero");
     if (!hero) return;
     const obs = new IntersectionObserver(
       ([entry]) => setHeroVisible(entry.isIntersecting),
@@ -90,7 +90,7 @@ export default function LandingNavbar() {
           className="flex items-center gap-2.5 rounded-lg transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
         >
           <img
-            src="/favicon.png"
+            src="/icon-192.png"
             className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl object-contain"
             alt="sBTC Pay home"
           />

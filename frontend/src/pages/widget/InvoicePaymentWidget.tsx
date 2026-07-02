@@ -263,7 +263,7 @@ function WidgetShell({ children }: { children: React.ReactNode }) {
         <Card className="w-full max-w-xs border-border">
           <CardContent className="p-5 flex flex-col gap-space-md">
             <div className="flex items-center justify-center gap-2">
-              <img src="/favicon.png" className="h-8 w-8 shrink-0 rounded-xl object-contain" alt="" aria-hidden="true" />
+              <img src="/icon-192.png" className="h-8 w-8 shrink-0 rounded-xl object-contain" alt="" aria-hidden="true" />
               <span className="text-body font-bold text-primary">sBTC Pay</span>
               <Badge variant="outline" className="text-micro border-stacks text-stacks">Widget</Badge>
             </div>

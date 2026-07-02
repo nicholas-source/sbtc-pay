@@ -27,7 +27,7 @@ export default function CustomerLayout() {
         <div className="mx-auto max-w-4xl flex items-center justify-between px-3 sm:px-4 h-14 sm:h-16">
           <div className="flex items-center gap-3">
             <img
-              src="/favicon.png"
+              src="/icon-192.png"
               className="h-9 w-9 sm:h-10 sm:w-10 shrink-0 rounded-xl object-contain"
               alt="sBTC Pay"
             />

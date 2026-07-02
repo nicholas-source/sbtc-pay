@@ -1,0 +1,29 @@
+# sBTC Pay
+
+> Non-custodial Bitcoin payment infrastructure on Stacks. Merchants accept sBTC (1:1 Bitcoin) and STX with Stripe-style ergonomics — payment links, invoices, subscriptions, refunds, and embeddable widgets — settled wallet-to-wallet on-chain by a single Clarity smart contract. No third party ever holds funds.
+
+Key facts: registration is one on-chain transaction; a payment link takes under 60 seconds to create; payments settle in about 10 seconds (one Stacks block); the platform fee is 0.5% per transaction, deducted on-chain; supported wallets are Leather and Xverse.
+
+## Docs
+
+- [Introduction](https://sbtc-pay.com/docs): what sBTC Pay is and how the pieces fit
+- [Quickstart](https://sbtc-pay.com/docs/quickstart): wallet to first paid invoice, step by step
+- [Invoices](https://sbtc-pay.com/docs/invoices): amounts, expiry, partial payments, references
+- [Subscriptions](https://sbtc-pay.com/docs/subscriptions): recurring on-chain billing, renewals, cancellation
+- [Refunds](https://sbtc-pay.com/docs/refunds): full and partial refunds with on-chain audit trail
+- [Widgets](https://sbtc-pay.com/docs/widgets): embed a Pay button on any site with one script tag
+- [Widget parameters](https://sbtc-pay.com/docs/widget-parameters): every data-sbtcpay attribute
+- [Architecture](https://sbtc-pay.com/docs/architecture): contract, chainhook indexer, webhooks
+- [Settlement](https://sbtc-pay.com/docs/settlement): how funds move wallet-to-wallet
+- [Smart contract reference](https://sbtc-pay.com/docs/contract): every public function and error
+- [Fees](https://sbtc-pay.com/docs/fees): the 0.5% platform fee, on-chain enforcement
+- [FAQ](https://sbtc-pay.com/docs/faq): common questions answered
+
+## App
+
+- [Live app](https://sbtc-pay.com): landing page and merchant dashboard (wallet login)
+- [Testnet](https://testnet.sbtc-pay.com): same product against Stacks testnet, free faucet tokens
+
+## Source
+
+- [GitHub](https://github.com/nicholas-source/sbtc-pay): MIT-licensed monorepo (contract, frontend, indexer)
