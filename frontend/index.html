@@ -24,16 +24,27 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link rel="preconnect" href="https://api.fontshare.com" crossorigin />
+    <!-- Fonts load async (media="print" swap trick): two external stylesheets
+         were blocking first paint for ~900ms on mobile. display=swap means
+         text renders immediately in the system fallback and swaps in. -->
     <!-- General Sans — body/UI (Fontshare, distinctive alternative to Inter) -->
     <link
       href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
     <!-- Anybody — display/headings (Google Fonts, variable width axis) -->
     <link
       href="https://fonts.googleapis.com/css2?family=Anybody:wght@600;700;800;900&display=swap"
       rel="stylesheet"
+      media="print"
+      onload="this.media='all'"
     />
+    <noscript>
+      <link href="https://api.fontshare.com/v2/css?f[]=general-sans@300,400,500,600,700&display=swap" rel="stylesheet" />
+      <link href="https://fonts.googleapis.com/css2?family=Anybody:wght@600;700;800;900&display=swap" rel="stylesheet" />
+    </noscript>
     <meta name="author" content="sBTC Pay" />
 
     <!-- Open Graph (Facebook, LinkedIn, Discord, Telegram, Slack, etc.) -->
