@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { useWalletStore, warmupWalletSdk } from "@/stores/wallet-store";
+import { NETWORK_MODE } from "@/lib/stacks/config";
 import InvoiceMock from "@/components/landing/InvoiceMock";
 
 const fadeUp = {
@@ -80,7 +81,9 @@ export default function HeroSection() {
               custom={3}
               className="mt-6 text-caption text-muted-foreground"
             >
-              Live on Stacks mainnet · Non-custodial
+              {NETWORK_MODE === "mainnet"
+                ? "Live on Stacks mainnet · Non-custodial"
+                : "Live on Stacks testnet · Test funds only"}
             </motion.p>
           </motion.div>
 

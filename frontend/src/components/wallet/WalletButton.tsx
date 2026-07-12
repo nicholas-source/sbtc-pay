@@ -54,28 +54,34 @@ export function WalletButton() {
   if (!isConnected) {
     return (
       <div className="flex items-center gap-2">
-        {/* Network indicator */}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/10 border border-primary/30 text-primary text-caption font-medium cursor-help">
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
-              </span>
-              {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'}
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" className="max-w-xs">
-            <div className="flex flex-col gap-1">
-              <p className="font-semibold">{NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'} Mode</p>
-              <p className="text-muted-foreground">
-                sBTC Pay is running on Stacks {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'}. Make sure your wallet is set to {NETWORK_MODE === 'mainnet' ? 'Mainnet' : 'Testnet'} before connecting.
-              </p>
-            </div>
-          </TooltipContent>
-        </Tooltip>
+        {/* Network warning — testnet only. On mainnet the pill just repeats the
+            default every wallet already assumes (the hero caption carries the
+            network statement); on testnet nearly every visitor's wallet is set
+            to mainnet, so the mismatch error is the LIKELY path and this pill
+            is prevention, not decoration. Warning tones match NetworkBadge. */}
+        {NETWORK_MODE === 'testnet' && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-warning/10 border border-warning/30 text-warning text-caption font-medium cursor-help">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-warning opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-warning" />
+                </span>
+                Testnet
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-xs">
+              <div className="flex flex-col gap-1">
+                <p className="font-semibold">Testnet Mode</p>
+                <p className="text-muted-foreground">
+                  This is the sandbox: test funds only. Switch your wallet to Testnet before connecting.
+                </p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        )}
 
-        <Button 
+        <Button
           onClick={handleConnect} 
           disabled={isConnecting}
           className="gap-2"
