@@ -85,6 +85,14 @@ export default function LandingFooter() {
           <p className="text-caption text-muted-foreground">
             © {new Date().getFullYear()} sBTC Pay. All rights reserved.
           </p>
+          <nav aria-label="Legal" className="flex items-center gap-4">
+            <Link to="/privacy" className="text-caption text-muted-foreground hover:text-foreground transition-colors">
+              Privacy
+            </Link>
+            <Link to="/terms" className="text-caption text-muted-foreground hover:text-foreground transition-colors">
+              Terms
+            </Link>
+          </nav>
           <p className="text-caption text-muted-foreground">
             Built on Stacks. Secured by Bitcoin.
           </p>

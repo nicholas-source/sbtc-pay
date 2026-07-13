@@ -42,6 +42,8 @@ const DirectPaymentWidget = lazy(() => import("./pages/widget/DirectPaymentWidge
 const InvoicePaymentWidget = lazy(() => import("./pages/widget/InvoicePaymentWidget"));
 const SubscriptionWidget = lazy(() => import("./pages/widget/SubscriptionWidget"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const PrivacyPage = lazy(() => import("./pages/legal/PrivacyPage"));
+const TermsPage = lazy(() => import("./pages/legal/TermsPage"));
 
 // Docs
 const DocsLayout = lazy(() => import("./pages/docs/DocsLayout"));
@@ -88,12 +90,20 @@ const ROUTE_TITLES: Record<string, string> = {
   "/customer/subscriptions": "My Subscriptions | sBTC Pay",
   "/customer/payments": "My Payments | sBTC Pay",
   "/docs": "Documentation | sBTC Pay",
+  "/privacy": "Privacy Policy | sBTC Pay",
+  "/terms": "Terms of Service | sBTC Pay",
 };
 
 // Public, indexable surfaces. Everything else (dashboard, admin, customer, pay,
 // widget) is auth-gated or transient and must not be indexed.
 function isIndexable(pathname: string): boolean {
-  return pathname === "/" || pathname === "/docs" || pathname.startsWith("/docs/");
+  return (
+    pathname === "/" ||
+    pathname === "/privacy" ||
+    pathname === "/terms" ||
+    pathname === "/docs" ||
+    pathname.startsWith("/docs/")
+  );
 }
 
 // Scroll to top, move focus for screen readers, and set page title on route change
@@ -235,6 +245,10 @@ function AnimatedRoutes() {
           <Route path="errors" element={<DocsErrors />} />
           <Route path="faq" element={<DocsFaq />} />
         </Route>
+
+        {/* Legal */}
+        <Route path="/privacy" element={<ErrorBoundary><PrivacyPage /></ErrorBoundary>} />
+        <Route path="/terms" element={<ErrorBoundary><TermsPage /></ErrorBoundary>} />
 
         <Route path="*" element={<NotFound />} />
       </Routes>
