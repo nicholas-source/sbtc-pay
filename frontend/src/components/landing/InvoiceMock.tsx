@@ -225,51 +225,47 @@ function InvoiceCard({ s, prices }: {
         </div>
       </div>
 
-      {/* ── Progress bar (partial / pending) ── */}
-      {!isPaid && (
-        <div className="mb-4">
-          <div className="flex justify-between text-micro text-muted-foreground mb-1.5">
-            <span>Payment received</span>
-            <motion.span
-              key={`pct-${s.id}`}
-              className={cn("font-semibold", isPending ? "text-blue-300" : "text-primary")}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.55 }}
-            >
-              {pct}%
-            </motion.span>
-          </div>
-          <div className="h-2 rounded-full bg-border overflow-hidden">
-            <motion.div
-              key={`bar-${s.id}`}
-              className={cn("h-full rounded-full bg-gradient-to-r", cfg.bar)}
-              initial={{ width: "0%" }}
-              animate={{ width: `${pct}%` }}
-              transition={{ duration: 1.15, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.2 }}
-            />
-          </div>
-          <div className="flex justify-between text-micro text-muted-foreground mt-1.5">
-            <span>{formatAmount(s.paid, s.token)} {label} paid</span>
-            <span>{formatAmount(remaining, s.token)} remaining</span>
-          </div>
+      {/* ── Progress ──
+          Rendered in EVERY state, including "paid". The paid variant used to
+          drop the two label rows around the bar, which made the card 40px
+          shorter; because the card cycles scenarios on a timer, that swap
+          reflowed the whole page below it with no user input — layout shifts
+          that count fully toward CLS over the page's lifetime. Same rows in
+          every state means the height is stable by construction. */}
+      <div className="mb-4">
+        <div className="flex justify-between text-micro text-muted-foreground mb-1.5">
+          <span>Payment received</span>
+          <motion.span
+            key={`pct-${s.id}`}
+            className={cn(
+              "font-semibold",
+              isPaid ? "text-success" : isPending ? "text-blue-300" : "text-primary",
+            )}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.55 }}
+          >
+            {pct}%
+          </motion.span>
         </div>
-      )}
-
-      {/* ── Full bar (paid) ── */}
-      {isPaid && (
-        <div className="mb-4">
-          <div className="h-2 rounded-full bg-success/20 overflow-hidden">
-            <motion.div
-              key={`bar-${s.id}`}
-              className="h-full rounded-full bg-success"
-              initial={{ width: "0%" }}
-              animate={{ width: "100%" }}
-              transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94], delay: 0.15 }}
-            />
-          </div>
+        <div className={cn("h-2 rounded-full overflow-hidden", isPaid ? "bg-success/20" : "bg-border")}>
+          <motion.div
+            key={`bar-${s.id}`}
+            className={cn("h-full rounded-full", isPaid ? "bg-success" : `bg-gradient-to-r ${cfg.bar}`)}
+            initial={{ width: "0%" }}
+            animate={{ width: `${pct}%` }}
+            transition={{
+              duration: isPaid ? 0.8 : 1.15,
+              ease: [0.25, 0.46, 0.45, 0.94],
+              delay: isPaid ? 0.15 : 0.2,
+            }}
+          />
         </div>
-      )}
+        <div className="flex justify-between text-micro text-muted-foreground mt-1.5">
+          <span>{formatAmount(s.paid, s.token)} {label} paid</span>
+          <span>{isPaid ? "Fully settled" : `${formatAmount(remaining, s.token)} remaining`}</span>
+        </div>
+      </div>
 
       {/* ── Footer row ── */}
       <div className="flex items-center gap-1.5 mb-4 text-micro text-muted-foreground">
