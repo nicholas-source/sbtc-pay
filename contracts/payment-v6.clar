@@ -30,7 +30,7 @@
 ;; =============================================
 
 ;; sBTC token contract (TESTNET - change for mainnet)
-(define-constant SBTC_CONTRACT 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token)
+(define-constant SBTC_CONTRACT 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token)
 
 ;; Token type identifiers
 (define-constant TOKEN_SBTC u0)
@@ -288,7 +288,7 @@
 (define-private (safe-fee-transfer-sbtc (fee uint) (sender principal))
   (begin
     (if (and (> fee u0) (not (is-eq sender (var-get fee-recipient))))
-      (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+      (try! (contract-call? 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token transfer
         fee
         sender
         (var-get fee-recipient)
@@ -669,7 +669,7 @@
       (update-stats-sbtc actual-payment fee)
 
       ;; INTERACTIONS AFTER (CEI pattern)
-      (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+      (try! (contract-call? 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token transfer
         merchant-amount caller merchant-addr none
       ))
       (try! (safe-fee-transfer-sbtc fee caller))
@@ -834,7 +834,7 @@
     (update-stats-sbtc amount fee)
 
     ;; INTERACTIONS
-    (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+    (try! (contract-call? 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token transfer
       merchant-amount caller merchant-addr none
     ))
     (try! (safe-fee-transfer-sbtc fee caller))
@@ -951,7 +951,7 @@
       (var-set total-refunds-sbtc (+ (var-get total-refunds-sbtc) refund-amount))
 
       ;; INTERACTIONS
-      (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+      (try! (contract-call? 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token transfer
         refund-amount caller customer none
       ))
 
@@ -1169,7 +1169,7 @@
     (update-stats-sbtc amount fee)
 
     ;; INTERACTIONS
-    (try! (contract-call? 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token transfer
+    (try! (contract-call? 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token transfer
       merchant-amount caller merchant-addr none
     ))
     (try! (safe-fee-transfer-sbtc fee caller))

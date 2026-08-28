@@ -5,16 +5,24 @@ authors = []
 telemetry = true
 cache_dir = './.cache'
 
-# Testnet sBTC token — required by contracts/payment-v6.clar (the testnet
-# variant). Removing this breaks contract resolution for payment-v6 and
-# the whole simnet fails to initialise, taking every test with it.
+# Testnet sBTC token, at its post-reset address. The previous testnet token
+# ST1F7QA2...sbtc-token no longer exists — Stacks testnet was reset — and
+# fetching it 404s, which fails simnet init and takes every test with it. That
+# only ever resolved on machines with a ./.cache copy predating the reset, and
+# .cache/ is gitignored, so CI and every fresh clone failed. Verified live
+# before pinning; re-check this address if testnet is reset again.
 [[project.requirements]]
-contract_id = 'ST1F7QA2MDF17S807EPA36TSS8AMEFY4KA9TVGWXT.sbtc-token'
+contract_id = 'SN3VMHXEN64ZZF71JQ5VESXDWTR301XTTXGF4J8F1.sbtc-token'
 
 # Mainnet sBTC token — used by contracts/sbtc-pay-mainnet.clar (deployed).
 [[project.requirements]]
 contract_id = 'SM3VDXK3WZZSA84XXFKAFAF15NNZX32CTSG82JFQ4.sbtc-token'
 
+# Testnet variant. Its sBTC reference was repointed to the post-reset token
+# address above. No test references it directly, but keeping it registered means
+# clarinet still compiles it, so the testnet contract cannot silently rot.
+# NB: STR54P37...payment-v6 is not currently deployed on testnet — the token was
+# restored after the reset, this contract was not.
 [contracts.payment-v6]
 path = 'contracts/payment-v6.clar'
 clarity_version = 4
