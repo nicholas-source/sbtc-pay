@@ -1209,9 +1209,25 @@ Deno.serve(async (req: Request) => {
     return new Response("Method not allowed", { status: 405 });
   }
 
-  // Verify auth token if configured
-  // v2 chainhook consumer secrets are sent as Authorization header
-  if (CHAINHOOK_AUTH_TOKEN) {
+  // Verify the auth token. v2 chainhook consumer secrets arrive as an
+  // Authorization header.
+  //
+  // This fails CLOSED. It previously skipped verification entirely when
+  // CHAINHOOK_AUTH_TOKEN was unset, logging console.warn and then accepting the
+  // request — so a secret dropped during a redeploy would silently turn the
+  // payment-ledger ingestion endpoint into an open, unauthenticated write path,
+  // with nothing but a warning buried in the function logs to show for it.
+  // Refusing every request is the safe direction to fail: chainhook retries,
+  // and a 401 storm is loud, whereas silent open ingestion is not.
+  if (!CHAINHOOK_AUTH_TOKEN) {
+    console.error(
+      "CHAINHOOK_AUTH_TOKEN is not set — refusing all webhook requests. " +
+      "Set the secret on this function to restore ingestion.",
+    );
+    return new Response("Service misconfigured", { status: 503 });
+  }
+
+  {
     const authHeader = req.headers.get("authorization") ?? "";
     // Accept both "Bearer <token>" and plain "<token>" formats
     const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : authHeader;
@@ -1219,8 +1235,6 @@ Deno.serve(async (req: Request) => {
       console.error("Auth failed. Header prefix:", authHeader.slice(0, 20) + "...");
       return new Response("Unauthorized", { status: 401 });
     }
-  } else {
-    console.warn("CHAINHOOK_AUTH_TOKEN not set — webhook is unauthenticated!");
   }
 
   try {
