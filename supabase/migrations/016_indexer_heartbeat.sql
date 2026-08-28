@@ -1,3 +1,10 @@
+-- SUPERSEDED IN PART BY 023_disk_io_remediation.sql (2026-08-28).
+-- The MAX(block_height) subquery below has no usable index and seq-scans the
+-- whole events heap on every tick. It was the largest single consumer of this
+-- project's Supabase Disk IO Budget. Migration 023 replaces this schedule with
+-- an index-backed equivalent and adds heartbeat retention. Do not reintroduce
+-- this form; kept here only because the migration has already been applied.
+
 -- Indexer heartbeat — confirms the DB layer is alive even when no chain
 -- events fire. Without this, IndexerHealthPanel falsely flags "behind"
 -- during quiet periods (no merchants registering, no payments).
