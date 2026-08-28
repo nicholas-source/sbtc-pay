@@ -11,15 +11,22 @@ coverage
 *.info
 costs-reports.json
 node_modules
-scripts/
+# repo-root deploy/test scripts only (anchored so frontend/scripts/ stays tracked)
+/scripts/
 
 docs
+marketing
+traction
 
 # Supabase CLI temp files
 supabase/.temp/
 
-# Root lockfile (SDK dev tools only)
-package-lock.json
+# Root lockfile IS tracked. It was previously ignored, which let the root
+# `vitest` range ^4.0.7 float to 4.0.18 — incompatible with
+# vitest-environment-clarinet, so the Clarity suite silently ran zero
+# tests. frontend/ pinned its own lockfile and stayed on 3.2.4, which is
+# why only the contract tests broke. Committing this pins the toolchain
+# and lets CI use `npm ci`.
 
 # Environment secrets (never commit)
 .env
