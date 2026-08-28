@@ -1,0 +1,18 @@
+---
+id: 0
+name: Mainnet deployment
+network: mainnet
+stacks-node: "https://api.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoin.blockstack.com:8332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: sbtc-pay
+            expected-sender: SPR54P37AA27XHMMTCDEW4YZFPFJX69162JR5CT4
+            cost: 518080
+            path: contracts/sbtc-pay-mainnet.clar
+            anchor-block-only: true
+            clarity-version: 4
+      epoch: "3.3"

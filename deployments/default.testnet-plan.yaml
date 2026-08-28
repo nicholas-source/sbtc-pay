@@ -1,0 +1,32 @@
+---
+# Default testnet plan. Mirrors v6-only.testnet-plan.yaml, which is the plan
+# actually used to redeploy payment-v6 on 2026-08-28 (tx 47c67808...).
+#
+# The previous contents of this file were unusable: they referenced
+# contracts/payment-v4.clar (no such file) and ./.cache paths for
+# ST1F7QA2...sbtc-token, the pre-reset testnet sBTC token that no longer
+# exists on chain. Anyone running `clarinet deployments apply --testnet`
+# would have failed, or worse, deployed the wrong contract.
+#
+# NB: `clarinet deployments generate --testnet` currently panics trying to
+# resolve the MAINNET requirement (SM3VDXK3...sbtc-registry) against the
+# testnet API, because Clarinet.toml lists both networks' sBTC tokens. That
+# is fine for simnet/tests, which use the cached copies. Regenerate this file
+# by hand rather than with `generate`.
+id: 0
+name: Payment V6 Testnet Deployment
+network: testnet
+stacks-node: "https://api.testnet.hiro.so"
+bitcoin-node: "http://blockstack:blockstacksystem@bitcoind.testnet.stacks.co:18332"
+plan:
+  batches:
+    - id: 0
+      transactions:
+        - contract-publish:
+            contract-name: payment-v6
+            expected-sender: STR54P37AA27XHMMTCDEW4YZFPFJX69160WQESWR
+            cost: 750000
+            path: contracts/payment-v6.clar
+            anchor-block-only: true
+            clarity-version: 4
+      epoch: "3.3"
