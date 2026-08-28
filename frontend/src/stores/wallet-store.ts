@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { toast } from 'sonner';
-import { NETWORK_MODE, API_URL, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
+import { NETWORK_MODE, hiroFetch, SBTC_CONTRACT_ID } from '@/lib/stacks/config';
 import { amountToUsd as amountToUsdFn } from '@/lib/constants';
 import { authenticateWallet, hasValidAuth, clearWalletAuth } from '@/lib/supabase/auth';
 
@@ -558,8 +558,8 @@ export const useWalletStore = create<WalletState>()(
         // Retry up to 3 times with exponential backoff
         for (let attempt = 0; attempt < 3; attempt++) {
           try {
-            const response = await fetch(
-              `${API_URL}/extended/v1/address/${address}/balances`
+            const response = await hiroFetch(
+              `/extended/v1/address/${address}/balances`
             );
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();

@@ -24,7 +24,7 @@ import {
   SBTC_TOKEN,
   SBTC_CONTRACT_ID,
   NETWORK_MODE,
-  API_URL,
+  hiroFetch,
   TOKEN_TYPE_UINT,
   TOKEN_TYPE_MAP,
   type TokenType,
@@ -943,7 +943,7 @@ export async function waitForTransaction(
   for (let i = 0; i < maxAttempts; i++) {
     if (signal?.aborted) return { status: 'pending' };
     try {
-      const response = await fetch(`${API_URL}/extended/v1/tx/${cleanTxId}`, { signal });
+      const response = await hiroFetch(`/extended/v1/tx/${cleanTxId}`, { signal });
       const data = await response.json();
 
       if (data.tx_status === 'success') {
@@ -972,7 +972,7 @@ export async function waitForTransaction(
  */
 export async function getTransaction(txId: string): Promise<unknown> {
   const cleanTxId = txId.startsWith('0x') ? txId : `0x${txId}`;
-  const response = await fetch(`${API_URL}/extended/v1/tx/${cleanTxId}`);
+  const response = await hiroFetch(`/extended/v1/tx/${cleanTxId}`);
   return response.json();
 }
 
@@ -988,8 +988,8 @@ export async function fetchPaymentEventsForInvoice(
 ): Promise<{ txId: string; timestamp: Date; amount: number; payer: string }[]> {
   try {
     // Strategy 1: Search contract transactions for pay-invoice calls with this invoice ID
-    const txRes = await fetch(
-      `${API_URL}/extended/v1/address/${PAYMENT_CONTRACT_ID}/transactions?limit=50&offset=0`
+    const txRes = await hiroFetch(
+      `/extended/v1/address/${PAYMENT_CONTRACT_ID}/transactions?limit=50&offset=0`
     );
     if (txRes.ok) {
       const txData = await txRes.json();
@@ -1033,8 +1033,8 @@ export async function fetchPaymentEventsForInvoice(
     }
 
     // Strategy 2: Fall back to contract events (print events)
-    const res = await fetch(
-      `${API_URL}/extended/v1/contract/${PAYMENT_CONTRACT_ID}/events?limit=50&offset=0`
+    const res = await hiroFetch(
+      `/extended/v1/contract/${PAYMENT_CONTRACT_ID}/events?limit=50&offset=0`
     );
     if (!res.ok) return [];
     const data = await res.json();
@@ -1080,8 +1080,8 @@ export async function fetchRefundEventsForInvoice(
   invoiceId: number
 ): Promise<{ txId: string; timestamp: Date; amount: number; reason: string }[]> {
   try {
-    const txRes = await fetch(
-      `${API_URL}/extended/v1/address/${PAYMENT_CONTRACT_ID}/transactions?limit=50&offset=0`
+    const txRes = await hiroFetch(
+      `/extended/v1/address/${PAYMENT_CONTRACT_ID}/transactions?limit=50&offset=0`
     );
     if (!txRes.ok) return [];
 

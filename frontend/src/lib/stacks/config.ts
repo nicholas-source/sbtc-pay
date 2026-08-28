@@ -26,6 +26,31 @@ export const API_ENDPOINTS = {
 
 export const API_URL = import.meta.env.VITE_STACKS_API_URL || API_ENDPOINTS[NETWORK_MODE];
 
+// Optional Hiro API key. Anonymous callers get the lowest rate limits; an
+// authenticated key raises them and removes monthly caps, and as of Hiro's
+// 2026-10-30 change production API access is free. Absent the key everything
+// below behaves exactly as before, so this is safe to leave unset in dev.
+//
+// The key is NOT a secret in the credential sense — it identifies the caller
+// for rate limiting and ships in the browser bundle like VITE_SUPABASE_ANON_KEY.
+// It still belongs in env, not in git.
+const STACKS_API_KEY = import.meta.env.VITE_STACKS_API_KEY;
+
+/**
+ * fetch() against the Stacks API with the API key attached when configured.
+ *
+ * Takes a path (e.g. "/v2/info"), not a full URL, so API_URL stays the single
+ * place the host is decided. Use this instead of calling fetch(`${API_URL}...`)
+ * directly, otherwise the call silently falls back to anonymous rate limits.
+ */
+export function hiroFetch(path: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers);
+  // x-api-key, not the legacy x-hiro-api-key / x-partner headers, which stop
+  // granting authenticated limits after 2026-10-30.
+  if (STACKS_API_KEY) headers.set("x-api-key", STACKS_API_KEY);
+  return fetch(`${API_URL}${path}`, { ...init, headers });
+}
+
 // Explorer URLs
 export const EXPLORER_BASE = 'https://explorer.hiro.so';
 export const EXPLORER_CHAIN_SUFFIX = NETWORK_MODE === 'testnet' ? '?chain=testnet' : '';
@@ -111,7 +136,7 @@ export async function fetchBurnBlockHeight(): Promise<number> {
   if (_cachedBurnHeight && Date.now() - _cachedBurnHeight.ts < 60_000) {
     return _cachedBurnHeight.value;
   }
-  const res = await fetch(`${API_URL}/v2/info`);
+  const res = await hiroFetch(`/v2/info`);
   if (!res.ok) throw new Error('Failed to fetch block height');
   const data = await res.json();
   const h = data.burn_block_height as number;
@@ -126,7 +151,7 @@ export async function fetchBurnBlockTimestamp(burnBlockHeight: number): Promise<
   const cached = _blockTimeCache.get(burnBlockHeight);
   if (cached) return cached;
   try {
-    const res = await fetch(`${API_URL}/extended/v2/burn-blocks/${burnBlockHeight}`);
+    const res = await hiroFetch(`/extended/v2/burn-blocks/${burnBlockHeight}`);
     if (!res.ok) return null;
     const data = await res.json();
     const ts = data.burn_block_time as number | undefined;

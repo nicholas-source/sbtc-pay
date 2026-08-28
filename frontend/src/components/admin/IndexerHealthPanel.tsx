@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabaseWithWallet } from "@/lib/supabase/client";
 import { useWalletStore } from "@/stores/wallet-store";
-import { getExplorerTxUrl, API_URL } from "@/lib/stacks/config";
+import { getExplorerTxUrl, hiroFetch } from "@/lib/stacks/config";
 import { cn } from "@/lib/utils";
 import { ScrollableTable } from "@/components/ui/scrollable-table";
 
@@ -96,7 +96,7 @@ export function IndexerHealthPanel() {
           .from("webhook_dlq")
           .select("*", { count: "exact", head: true })
           .is("resolved_at", null),
-        fetch(`${API_URL}/v2/info`).then((r) => r.ok ? r.json() : null).catch(() => null),
+        hiroFetch(`/v2/info`).then((r) => r.ok ? r.json() : null).catch(() => null),
       ]);
 
       const reconciles = reconcileRes.data ?? [];

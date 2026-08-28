@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { safeStorage } from "@/lib/safe-storage";
 import { supabase, supabaseWithWallet } from "@/lib/supabase/client";
 import { cancelInvoice as cancelInvoiceOnChain, refundInvoice as refundInvoiceOnChain, updateInvoice as updateInvoiceOnChain, getMerchant as getMerchantOnChain, getInvoice as getInvoiceOnChain, fetchPaymentEventsForInvoice, fetchRefundEventsForInvoice } from "@/lib/stacks/contract";
-import { API_URL, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight, type TokenType } from "@/lib/stacks/config";
+import { hiroFetch, AVG_BLOCK_TIME_SECONDS, fetchBurnBlockHeight, type TokenType } from "@/lib/stacks/config";
 import { toast } from "sonner";
 import type { Tables } from "@/lib/supabase/types";
 
@@ -842,7 +842,7 @@ export const useInvoiceStore = create<InvoiceStore>((set, get) => ({
   backfillFromChain: async (txId, optimisticId, merchantPrincipal) => {
     try {
       const cleanTxId = txId.startsWith("0x") ? txId : `0x${txId}`;
-      const res = await fetch(`${API_URL}/extended/v1/tx/${cleanTxId}`);
+      const res = await hiroFetch(`/extended/v1/tx/${cleanTxId}`);
       if (!res.ok) return;
       const tx = await res.json();
       if (tx.tx_status !== "success") return;
