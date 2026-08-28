@@ -7,6 +7,7 @@ import { CalendarIcon, Plus, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useInvoiceStore } from "@/stores/invoice-store";
 import { useWalletStore } from "@/stores/wallet-store";
+import { useMerchantStore } from "@/stores/merchant-store";
 import { toast } from "sonner";
 import { createInvoice as createInvoiceOnChain, waitForTransaction, CONTRACT_LIMITS } from "@/lib/stacks/contract";
 
@@ -94,6 +95,11 @@ export default function CreateInvoiceDialog({ open: controlledOpen, onOpenChange
   const createInvoiceLocal = useInvoiceStore((s) => s.createInvoice);
   const backfillFromChain = useInvoiceStore((s) => s.backfillFromChain);
   const walletAddress = useWalletStore((s) => s.address);
+  // create-invoice requires an on-chain merchant record. Without it the
+  // contract returns ERR_MERCHANT_NOT_FOUND (u2001) and the caller has
+  // already paid gas — see the aborted mainnet tx on 2026-08-26.
+  const merchantProfile = useMerchantStore((s) => s.profile);
+  const merchantLoading = useMerchantStore((s) => s.isLoading);
 
   const schema = useMemo(() => createSchema(tokenType), [tokenType]);
   const form = useForm<FormValues>({
@@ -114,6 +120,17 @@ export default function CreateInvoiceDialog({ open: controlledOpen, onOpenChange
   async function onSubmit(data: FormValues) {
     if (!walletAddress) {
       toast.error("Wallet not connected");
+      return;
+    }
+
+    // Checked here as well as on the button: the button reflects store state
+    // that can be stale, and this is the last point before the wallet prompt.
+    if (!merchantProfile) {
+      toast.error("Register as a merchant first", {
+        description:
+          "Creating an invoice needs an on-chain merchant record. Without one the " +
+          "contract rejects the transaction and you still pay the gas.",
+      });
       return;
     }
 
@@ -287,8 +304,16 @@ export default function CreateInvoiceDialog({ open: controlledOpen, onOpenChange
               )} />
             </div>
 
+            {!merchantProfile && (
+              <p className="text-caption text-muted-foreground text-center">
+                {merchantLoading
+                  ? "Checking your merchant registration…"
+                  : "You need an on-chain merchant record before you can create invoices."}
+              </p>
+            )}
+
             <DialogFooter>
-              <Button type="submit" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" className="w-full" disabled={isSubmitting || !merchantProfile}>
                 {isSubmitting ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Submitting...</>
                 ) : (
