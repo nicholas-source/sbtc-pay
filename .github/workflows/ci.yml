@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend:
+    name: Frontend — typecheck & tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Run tests
+        run: pnpm test
+
+  contracts:
+    # The Clarity suite covers the contract deployed to mainnet holding real
+    # sBTC. It was absent from CI, and locally it had been failing to start for
+    # long enough that two separate breakages had stacked up unnoticed:
+    #   1. root `vitest` floated to 4.x, which vitest-environment-clarinet
+    #      cannot drive — the worker never started, so zero tests ran.
+    #   2. Clarinet.toml lost the testnet sbtc-token requirement, so
+    #      payment-v6.clar could not resolve and simnet failed to initialise.
+    # A green frontend job said nothing about either. Hence a separate job.
+    name: Clarity contracts — tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # `npm ci` (not `install`) so the toolchain is pinned by the lockfile.
+      # An unpinned root lockfile is what allowed the vitest drift above.
+      - run: npm ci
+
+      # Clarinet resolves [project.requirements] from api.hiro.so into ./.cache,
+      # which is gitignored — so this step needs network access. If it ever
+      # fails on a Hiro outage rather than a real regression, that is why.
+      - name: Run contract tests
+        run: npm test
