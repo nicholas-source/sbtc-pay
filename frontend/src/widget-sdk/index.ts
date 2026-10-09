@@ -17,7 +17,12 @@ export type SBTCPayOpenOptions = {
   plan?: string;
   interval?: "daily" | "weekly" | "biweekly" | "monthly" | "quarterly" | "yearly";
   theme?: "dark" | "light";
-  onSuccess?: (result: { txId: string; invoiceId?: number; mode: Mode }) => void;
+  /**
+   * Fires when the customer's wallet submits the transaction, not when it confirms, and it runs
+   * in the customer's browser. Use it to update the page; fulfil orders from a signed webhook.
+   * `status` is always "submitted" so a log or a type check says so.
+   */
+  onSuccess?: (result: { txId: string; invoiceId?: number; mode: Mode; status: "submitted" }) => void;
   onError?: (err: { message: string }) => void;
   onClose?: () => void;
 };
@@ -224,9 +229,9 @@ function open(opts: SBTCPayOpenOptions): { close: () => void } {
         const txId = String(data.txId ?? "");
         const invoiceId = typeof data.invoiceId === "number" ? data.invoiceId : undefined;
         try {
-          opts.onSuccess?.({ txId, invoiceId, mode: opts.mode });
+          opts.onSuccess?.({ txId, invoiceId, mode: opts.mode, status: "submitted" });
         } catch { /* swallow host errors */ }
-        emit("success", { txId, invoiceId });
+        emit("success", { txId, invoiceId, status: "submitted" });
         // Give the user a beat to see the success screen, then close
         setTimeout(cleanup, 2200);
         break;
