@@ -182,9 +182,10 @@ export default function StaticSiteExample() {
       <h2>Reacting to a successful payment</h2>
 
       <p>
-        The widget shows its own success state inside the modal. For a static site, you usually don't
-        need to do anything further. If you want to fire analytics or redirect on success, listen for
-        the <InlineCode>sbtcpay:success</InlineCode> window event:
+        The widget shows its own success state inside the modal. If you only take payments, such as
+        tips, donations or a pay-what-you-want page, you don't need anything else. To show a
+        thank-you page or record analytics, listen for the{" "}
+        <InlineCode>sbtcpay:success</InlineCode> window event:
       </p>
 
       <CodeBlock
@@ -192,9 +193,8 @@ export default function StaticSiteExample() {
         code={`<script src="https://sbtc-pay.com/sbtcpay.js" async></script>
 <script>
   window.addEventListener('sbtcpay:success', (e) => {
-    // e.detail = { mode, txId, invoiceId? }
-    console.log('Paid!', e.detail.txId);
-    // e.g. redirect to a thank-you page
+    // e.detail = { mode, txId, invoiceId?, status: 'submitted' }
+    // Submitted, not yet confirmed: fine for a thank-you page, not for handing over goods.
     window.location.href = '/thank-you?tx=' + e.detail.txId;
   });
 </script>
@@ -204,9 +204,24 @@ export default function StaticSiteExample() {
      data-sbtcpay-amount="100000"></div>`}
       />
 
+      <Callout variant="warning" title="Delivering something in return? Don't do it from this event.">
+        <p>
+          <InlineCode>sbtcpay:success</InlineCode> fires when the payment is submitted, before it is
+          confirmed, and it runs in the customer's browser. Anyone can trigger it by hand, or lower{" "}
+          <InlineCode>data-sbtcpay-amount</InlineCode> in their copy of your page before paying. Never
+          put a download link, licence key or access grant behind it.
+        </p>
+        <p>
+          To deliver automatically, create an <Link to="/docs/invoices">invoice</Link> per order
+          (you set its amount on chain, so the customer can't change it) and fulfil when your{" "}
+          <Link to="/docs/notifications">webhook</Link> reports it paid in full. A static site with
+          no backend should deliver by hand after checking the payment in the dashboard.
+        </p>
+      </Callout>
+
       <p>
-        For more advanced backend flows (sending a receipt email, updating a database when a payment
-        lands), see <Link to="/docs/notifications">Payment Notifications</Link>.
+        For receipt emails, database updates and other backend flows, see{" "}
+        <Link to="/docs/notifications">Payment Notifications</Link>.
       </p>
 
       <h2>Want an inline iframe instead?</h2>

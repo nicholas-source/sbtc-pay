@@ -144,6 +144,14 @@ export function verifySbtcPaySignature(
       <ul>
         <li>Respond <strong>2xx</strong> within 10 seconds to acknowledge delivery.</li>
         <li>Treat every event as potentially duplicate — use <InlineCode>tx_id + type</InlineCode> as an idempotency key.</li>
+        <li>
+          Check what was paid before you fulfil. For an invoice, act on{" "}
+          <InlineCode>payment-received</InlineCode> when <InlineCode>status</InlineCode> is{" "}
+          <InlineCode>2</InlineCode> (paid in full); you set the invoice amount on chain, so it can't
+          be changed. For a <InlineCode>direct-payment</InlineCode>, the amount and memo come from the
+          customer's page and can be edited, so compare <InlineCode>amount</InlineCode> with the
+          order's price before delivering.
+        </li>
         <li>Respond <strong>4xx</strong> if you permanently reject the payload (we stop retrying).</li>
         <li>Respond <strong>5xx</strong> or timeout if transient — we'll retry.</li>
       </ul>

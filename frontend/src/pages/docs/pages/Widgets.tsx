@@ -109,6 +109,21 @@ export default function Widgets() {
         <InlineCode>CustomEvent</InlineCode>s on <InlineCode>window</InlineCode>:
       </p>
 
+      <Callout variant="warning" title="The success event is not proof of payment">
+        <p>
+          <InlineCode>sbtcpay:success</InlineCode> and <InlineCode>onSuccess</InlineCode> fire as
+          soon as the customer's wallet <em>submits</em> the transaction, before it is confirmed on
+          chain. They also run in the customer's browser, where anyone can trigger them by hand or
+          edit the amount in your page before paying.
+        </p>
+        <p>
+          Use them to update the page: close the modal, show a thank-you message, record analytics.
+          Deliver goods, unlock downloads or mark an order paid only after a signed{" "}
+          <Link to="/docs/notifications">webhook</Link> confirms the payment and you have checked
+          its amount.
+        </p>
+      </Callout>
+
       <CodeBlock
         filename="Listen for events from auto-mounted buttons"
         language="html"
@@ -117,9 +132,10 @@ export default function Widgets() {
 <script src="https://sbtc-pay.com/sbtcpay.js" async></script>
 <script>
   window.addEventListener('sbtcpay:success', (e) => {
-    // e.detail = { mode, txId, invoiceId? }
-    console.log('Paid', e.detail.txId);
-    // e.g. fire analytics, redirect, refresh inventory
+    // e.detail = { mode, txId, invoiceId?, status: 'submitted' }
+    console.log('Submitted', e.detail.txId);
+    // Update the page here: a thank-you message, analytics.
+    // Fulfil the order from your webhook handler, not from this event.
   });
 
   window.addEventListener('sbtcpay:error', (e) => {
@@ -152,8 +168,8 @@ export default function Widgets() {
       mode: 'invoice',
       invoiceId: 123,
       onSuccess: ({ txId, invoiceId }) => {
-        console.log('Paid', txId, invoiceId);
-        // e.g. redirect to thank-you page
+        // The payment has been submitted, not yet confirmed. A thank-you page is fine;
+        // deliver the order from your webhook handler once the payment is on chain.
         window.location.href = '/thank-you?tx=' + txId;
       },
       onError: ({ message }) => console.error(message),
